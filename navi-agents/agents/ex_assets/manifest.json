@@ -1,0 +1,17 @@
+{
+  "id": "ex_assets",
+  "name": "Explorer › Assets",
+  "icon": "🔎",
+  "order": 20,
+  "category": "Explore",
+  "codename": "",
+  "summary": "Search navi.db assets by hostname, IP, OS or network. Read-only navi.db search via the UI.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "search"
+  ],
+  "hero": false,
+  "mission": "Platform",
+  "grid": false
+}

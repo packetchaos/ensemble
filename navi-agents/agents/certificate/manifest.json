@@ -1,0 +1,30 @@
+{
+  "id": "certificate",
+  "name": "Certificates",
+  "icon": "🔐",
+  "order": 1,
+  "category": "Tagging",
+  "summary": "Certania — finds expired certificates month by month over the last 12 months (plus everything older) and those failing in the next 12 months, and tags their assets Cert failure : <Mon>-<DD>-<YYYY>. Expiry timeline, crown jewels, weak crypto and self-signed metrics, Cert Issue tagging by plugin, and an IoT/app cache fingerprinted from certs. Deterministic — no free-form LLM reasoning.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "run",
+    "drill",
+    "dates",
+    "tags_apply",
+    "tags_issues"
+  ],
+  "codename": "Certania",
+  "tag_scope": {
+    "actions": [
+      "run",
+      "drill",
+      "dates",
+      "tags_apply",
+      "tags_issues"
+    ],
+    "ignore": []
+  },
+  "hero": true,
+  "mission": "Crypto & Certificates"
+}

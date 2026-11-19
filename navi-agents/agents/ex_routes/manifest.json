@@ -1,0 +1,17 @@
+{
+  "id": "ex_routes",
+  "name": "Explorer › Routes",
+  "icon": "🔎",
+  "order": 23,
+  "category": "Explore",
+  "codename": "",
+  "summary": "Application routes from navi.db (vuln_route) — search by app name or type. Read-only navi.db search via the UI.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "search"
+  ],
+  "hero": false,
+  "mission": "Platform",
+  "grid": false
+}

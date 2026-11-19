@@ -1,0 +1,23 @@
+{
+ "id": "deb_kernel_running_documented",
+ "provenance": "Tenable's Ubuntu kernel wording ('Running Kernel level of X does not meet the minimum fixed level of Y'), from memory; NOT a real sample",
+ "real_sample": false,
+ "fam": "deb",
+ "shape": "kernel_pair",
+ "plugin_name": "Ubuntu 20.04 LTS : Linux kernel vulnerabilities (USN-6600-1)",
+ "plugin_family": "Ubuntu Local Security Checks",
+ "solution": "Update the affected kernel package.",
+ "os": "Ubuntu 20.04.6 LTS",
+ "output": "\nRunning Kernel level of 5.4.0-150-generic does not meet the minimum fixed level of 5.4.0-170-generic for this advisory.\n\n",
+ "expect": {
+  "pairs": [],
+  "kernel_running": [
+   "5.4.0-150-generic",
+   "5.4.0-170-generic"
+  ],
+  "packages": [],
+  "kernel": true,
+  "family": "apt",
+  "kernel_workflow": true
+ }
+}

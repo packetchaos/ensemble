@@ -1,0 +1,52 @@
+{
+ "codename": "",
+ "discipline": "Tag Removal",
+ "category": "Tagging",
+ "tagline": "Sweep out tags that no longer belong — deliberately, on the record.",
+ "lore": "",
+ "problem": "Tag estates rot: abandoned experiments, superseded schemes, dated tags that no longer apply. Tags drive scans, automation and reporting, so a stale tag quietly corrupts everything built on it — and the Ensemble removes tags in one place only.",
+ "does": "Tag Removal lists every tag navi can remove — the tags in navi.db with the number of assets carrying each — and removes the ones you choose through the same background queue every specialist uses. He also explains why some tags in Tenable are out of navi's reach, and can hand your choices to the Contract to clear at the start of every cycle before re-tagging.",
+ "glance": {
+  "caption": "Tag Removal's tag list: each category : value in navi.db with its asset count, ready to select for removal — or to add to the Contract's removal phase."
+ },
+ "capabilities": [
+  [
+   "Only what navi can remove",
+   "the tags navi.db knows about, with asset counts — a tag that exists only in Tenable is shown separately, never offered."
+  ],
+  [
+   "Tags navi can't reach",
+   "navi.db assets compared with Tenable's licensed and stale assets."
+  ],
+  [
+   "Deliberate removal",
+   "pick the tags, confirm, and each is queued as a removal — marked as a removal in the Tagging log."
+  ],
+  [
+   "The Ensemble's only remover",
+   "every other specialist only adds tags; removal lives here and in the Contract's removal phase."
+  ],
+  [
+   "Hand-off to the Contract",
+   "the Contract removes your chosen tags first, pauses (30 minutes by default) for Tenable, runs navi update, then re-tags — without deleting the tags themselves."
+  ]
+ ],
+ "how": "Tag Removal reads the tags table in your local navi.db and removes with `navi enrich tag … -remove`, which strips the category : value from the assets navi.db says carry it. Removals go behind the write gate and a confirm.",
+ "who": "Tag governance owners and security operations teams who need the tag estate to stay meaningful as it grows.",
+ "better": "Explorer › Tags shows who carries a tag before you remove it, Automation turns Tag Removal's list into a recurring clean-and-re-tag cycle, and NO : UPDATE protection set by Criticality Calibration can only be removed here.",
+ "different": [
+  [
+   "One place to remove",
+   "a single, logged path for every tag removal in the Ensemble."
+  ],
+  [
+   "Clean, then re-tag",
+   "removal followed by fresh tagging keeps dated tags current without deleting the tag itself."
+  ],
+  [
+   "Nothing silent",
+   "every removal is confirmed and recorded."
+  ]
+ ],
+ "cta": "Let Tag Removal sweep the tag estate — so every tag left still means something."
+}

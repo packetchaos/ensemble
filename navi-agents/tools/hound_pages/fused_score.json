@@ -1,0 +1,60 @@
+{
+ "codename": "",
+ "discipline": "Exposure Score",
+ "category": "Risk",
+ "tagline": "Fuse every specialist's signal into one score per asset.",
+ "lore": "",
+ "problem": "Each specialist finds something real — KEV, EOL, weak crypto, an attack path, no owner — but a team can't work fifteen lists. The asset that appears on five of them matters more than any single finding, and no single score shows that.",
+ "does": "Exposure Score gives every asset one 0–100 Exposure Score built from 16 signals — exploitability (KEV and EPSS), Tenable AES and VPR, ACR, attack paths, identity, compliance, web-app findings, EOL, internet exposure, AI risk, weak or expiring crypto, SLA aging, finding volume, ownership and ATT&CK — then shows what to act on now, the worst asset from each specialist, and where their signals converge.",
+ "glance": {
+  "caption": "Exposure Score's At a glance on a 128-asset lab: every asset scored (1 high, 28 elevated, 99 low), 1 to act on now at 60 or more; 7 of 11 crown jewels carry a KEV, 4 run EOL software and 7 are blind; 71 assets have no owner."
+ },
+ "capabilities": [
+  [
+   "16 signals, one number",
+   "weights sum to 100, so a score reads as the share of the most danger one asset can carry; dispositions discount it, and Scan Health's coverage flags how far to trust it."
+  ],
+  [
+   "Your weighting",
+   "drag any weight to re-rank the estate to what matters to you; each weighting is cached separately."
+  ],
+  [
+   "Your assets, or the whole estate",
+   "score one tag's assets — an owner, a business tier, an environment — and every count, band, act-now set and leaderboard re-builds over just them, with each asset's score unchanged. Tag views keep their own cache, so you switch between a tag and the whole estate without rebuilding either."
+  ],
+  [
+   "Act now",
+   "the assets over 80, 60 or 40 today, with one-click hand-offs: tag Priority, tag owners (Ownership), email owners (Notify & Reports), raise ACR (Criticality Calibration) or add to the Contract."
+  ],
+  [
+   "Worst from each specialist",
+   "the top asset each specialist's signal points at — and the assets where several converge."
+  ],
+  [
+   "Explained",
+   "every asset's score broken down by factor, and how widespread each signal is across the estate."
+  ],
+  [
+   "Priority tags",
+   "Priority : P1 to P4 on the act-now set, recomputed on the server from navi.db — not taken from the browser."
+  ]
+ ],
+ "how": "Direct signals (KEV, EPSS, VPR, ACR, EOL, certificates, compliance, WAS, SLA aging) come straight from your local navi.db; the rest are read from the tags other specialists write. Per-asset aggregation runs inside the database, so it holds up on very large estates. Results are cached per navi.db and weighting, and rebuilt in the background.",
+ "who": "VM leads who need one ranked list, and executives who want to know which assets carry the most danger — and why.",
+ "better": "Exposure Score is the Ensemble's convergence point: Laelaps, Fenrir, Identity Inventory, Compliance Overview, Arachne, Charon, Pythia, Certania, Heimdall, SLA Tracker, Ownership and ATT&CK Mapping all feed it. Ensemble Report's crown-jewel and score cards open its evidence, Asset Dossier shows any asset's score and rank, and Automation can tag the top of the list P1.",
+ "different": [
+  [
+   "A rank, not a count",
+   "the same ordering at 100 assets or a million."
+  ],
+  [
+   "Shows its work",
+   "every point traced to the specialist and finding behind it."
+  ],
+  [
+   "Honest about blind spots",
+   "low scan coverage lowers confidence instead of hiding risk."
+  ]
+ ],
+ "cta": "Ask Exposure Score which assets have earned the reckoning — and act on those first."
+}

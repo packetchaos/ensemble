@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Scan Health — navi Ensemble</title>
+<link rel="stylesheet" href="/static/console.css"/>
+<style>
+  .plink{color:var(--accent);text-decoration:none}.plink:hover{text-decoration:underline}
+  .fchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:3px 10px;font-size:12px}
+  .fchip button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:13px;padding:0}
+  .pill{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+  .tagval{font-weight:700}
+  .segbar{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+  .segbar .seg{background:var(--panel);border:0;border-right:1px solid var(--line);padding:5px 10px;font-size:11.5px;color:var(--ink-2);cursor:pointer;font-family:inherit;display:inline-flex;gap:5px;align-items:center}
+  .segbar .seg:last-child{border-right:0}
+  .segbar .seg.on{background:var(--accent);color:#fff}.segbar .seg.on b{color:#fff}
+  .segbar .seg b{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+  .segbar .seg:hover:not(.on){background:var(--panel-2)}
+  .prob{color:var(--crit);font-weight:700}
+  .meter{display:inline-block;width:40px;height:6px;border-radius:3px;background:var(--panel-2);vertical-align:middle;margin-right:6px;overflow:hidden}
+  .meter i{display:block;height:100%;background:var(--accent)}
+</style>
+</head><body>
+<div class="wrap">
+  <header class="top" id="app-header"></header>
+
+  <section class="card" style="background:var(--panel)">
+    <div class="toolbar"><div><div class="acode">Scan Health</div><h2 style="margin:0">🩺 Scan Health</h2>
+      <p class="sub" style="margin:2px 0 0">What your scans can and can't see. Per asset: <b>credential health</b> from the Target Credential Status / Issues plugins (<span class="mono">104410 · 110385 · 102094 · 117885 · 110723 · 141118 · 110095</span>) and plugin 19506, <b>scan freshness</b>, agent vs network, and patch-assessment failures (<span class="mono">21745</span>). Per scanner, policy and scan: time per asset, load share, credential success and <b>plugin-feed currency</b>. Tags <b>the assets</b> by uuid under <span class="tagval">Scan Health</span>; writes are gated and tracked in the <a href="/web/tags-log.html">Tagging log</a>.</p></div>
+      <button class="btn run sm" id="run" data-run style="margin-left:auto">▶ Run</button></div>
+    <div id="flash" class="flash"></div>
+  </section>
+
+  <section class="card" id="secGlance" data-nav="At a glance" data-nav-icon="📊">
+    <h2 style="margin:0 0 2px;font-size:17px">📊 At a glance</h2>
+    <div id="metrics"><div class="setupcard"><div class="big">Press ▶ Run</div><p class="sub">Find the hosts your scans can't really see — failed or missing credentials, stale or never scanned, crown jewels in the dark — and the scanners, policies and scans that are slow, overloaded or running an old plugin feed.</p></div></div>
+  </section>
+
+  <section class="card" id="secAssets" data-nav="Coverage by asset" data-nav-icon="📋">
+    <div class="toolbar" style="margin:0"><h2 style="margin:0">Coverage by asset <span class="sub" id="aCount"></span></h2>
+      <button class="btn ghost sm" id="aCsv" style="margin-left:auto">⬇ CSV</button></div>
+    <p class="sub">Worst credential state first, then highest ACR. An asset takes the worst state any credential plugin reports for it. Click a metric card above or a state below to filter; the tag button tags exactly that set.</p>
+    <div class="toolbar" style="flex-wrap:wrap;gap:6px"><span class="sub">Credentials:</span><div class="segbar" id="stSeg"></div><span id="filt"></span>
+      <input id="aQ" class="fld" placeholder="Search host, IP, scanner, policy, scan" style="min-width:260px;margin-left:auto"></div>
+    <div class="toolbar" id="aTags" style="flex-wrap:wrap;gap:6px;margin-top:6px"></div>
+    <table id="aTbl" class="nocsv"><thead><tr><th>Host</th><th>ACR</th><th>Credentials</th><th>Last scan</th><th>Scanner</th><th>Policy</th><th>Duration</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="card" id="secScanners" data-nav="Scanners" data-nav-icon="📡">
+    <div class="toolbar" style="margin:0"><h2 style="margin:0">Scanners <span class="sub" id="scnCount"></span></h2><button class="btn ghost sm" id="scnCsv" style="margin-left:auto">⬇ CSV</button></div>
+    <p class="sub">Uneven load is the signal: a scanner well above the average time per asset<span id="avgPop"></span> (<b>⚠</b>, &gt; 1.5×) is a bottleneck. <b>Feed</b> is the newest plugin feed the scanner used; more than <span id="lagN">7</span> days behind the newest feed <span id="feedPop">in navi.db</span> means it's missing recent checks.</p>
+    <table id="scnTbl" class="nocsv"><thead><tr><th>Scanner</th><th>Assets</th><th>Load</th><th>Avg / asset</th><th>Max</th><th>Credentialed</th><th>Nessus · plugin feed</th><th>Last scan</th><th></th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="card" id="secPolicies" data-nav="Policies" data-nav-icon="📜">
+    <div class="toolbar" style="margin:0"><h2 style="margin:0">Policies <span class="sub" id="polCount"></span></h2><button class="btn ghost sm" id="polCsv" style="margin-left:auto">⬇ CSV</button></div>
+    <p class="sub">Heavy policies cost time per asset. <b>Safe checks off</b> can crash fragile services; <b>thorough tests</b> slow scans down.</p>
+    <table id="polTbl" class="nocsv"><thead><tr><th>Policy</th><th>Assets</th><th>Avg / asset</th><th>Max</th><th>Credentialed</th><th>Safe checks off</th><th>Thorough</th><th></th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="card" id="secScans" data-nav="Scans" data-nav-icon="🗂">
+    <div class="toolbar" style="margin:0"><h2 style="margin:0">Scans <span class="sub" id="scaCount"></span></h2><button class="btn ghost sm" id="scaCsv" style="margin-left:auto">⬇ CSV</button></div>
+    <p class="sub">Every scan name seen in plugin 19506. A scan that hasn't run recently or rarely gets credentials in is where coverage leaks.</p>
+    <table id="scaTbl" class="nocsv"><thead><tr><th>Scan</th><th>Assets</th><th>Avg / asset</th><th>Max</th><th>Credentialed</th><th>Last run</th><th></th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="card" id="secSlow" data-nav="Slowest assets" data-nav-icon="🐢">
+    <div class="toolbar" style="margin:0"><h2 style="margin:0">Slowest assets <span class="sub" id="slowCount"></span></h2>
+      <button class="btn sm" id="tagSlow" style="margin-left:auto" disabled>🏷️ Tag assets over 1 h → Scan Health : Slow Scan</button></div>
+    <p class="sub">Longest last scan per asset (plugin 19506 <span class="mono">Scan duration</span>). A single slow host can hold a whole scan window open.</p>
+    <table id="slowTbl" class="nocsv"><thead><tr><th>Host</th><th>Duration</th><th>Scanner</th><th>Policy</th><th>Scan</th><th>Last scan</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <footer>Scan Health · Scan Evaluations · reads navi.db read-only (19506 + credential-status plugins) · gated navi tags by uuid · tracked in the Tagging log</footer>
+</div>
+<script src="/static/brand.js"></script>
+<script src="/static/console.js"></script>
+<script>
+const API=agentApi('scan_eval');
+let DATA=null, WRITES=false, FILTER=null, STF='all';
+/* build 464 — payload contract: the asset rows stay on the server; the table, its state / metric
+   filters, search and CSV page or stream from the stored run (RUN). Tags were already keys. */
+let RUN=null, FIRST=null, TA=null;
+const N=v=>(v==null?0:v).toLocaleString();
+const dur=s=>{ if(s==null)return '—'; s=Math.round(s); return s<60?s+'s':(s<3600?Math.floor(s/60)+'m '+(s%60)+'s':Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m'); };
+const pct=v=>v==null?'<span class="sub">—</span>':`<span class="meter"><i style="width:${v}%;background:${v>=80?'#30a46c':v>=40?'#e0913a':'var(--crit)'}"></i></span>${v}%`;
+const ST={failed:['Failed','var(--crit)'],insufficient:['Insufficient privilege','#e0913a'],intermittent:['Intermittent','#c9a227'],
+  uncredentialed:['Uncredentialed','#8b95a7'],ok:['Credentialed','#30a46c'],unknown:['No scan data','#c4c9d4']};
+const FR={'0-7':['≤ 7 days','#30a46c'],'8-30':['8–30 days','#7cc48a'],'31-90':['31–90 days','#e0913a'],'90+':['> 90 days','var(--crit)'],never:['Never scanned','#8b95a7'],unknown:['Date unknown','#c4c9d4']};
+const BLIND=['failed','insufficient','intermittent','uncredentialed'];
+/* filter → [label, predicate, tag keys that tag exactly this set] */
+const FILTERS={
+  failed:['Credential failure',x=>x.status==='failed',['status:failed']],
+  insufficient:['Insufficient privilege',x=>x.status==='insufficient',['status:insufficient']],
+  intermittent:['Intermittent authentication',x=>x.status==='intermittent',['status:intermittent']],
+  uncredentialed:['Scanned without credentials',x=>x.status==='uncredentialed',['status:uncredentialed']],
+  blind:['Not credentialed (any reason)',x=>BLIND.includes(x.status),['status:failed','status:insufficient','status:intermittent','status:uncredentialed']],
+  patch:['Patch assessment failed',x=>x.patch==='failed',['patch:failed']],
+  stale30:['Last scan over 30 days ago',x=>x.fresh==='31-90'||x.fresh==='90+',['fresh:31-90','fresh:90+']],
+  stale90:['Last scan over 90 days ago',x=>x.fresh==='90+',['fresh:90+']],
+  never:['Never scanned',x=>x.fresh==='never',['fresh:never']],
+  slow:['Scan over 1 hour',x=>(x.dur||0)>(DATA.slow_sec||3600),['slow']],
+  crownblind:['Crown-jewel blind spots',x=>x.crown&&(BLIND.includes(x.status)||x.fresh==='90+'||x.fresh==='never'),['crown:blind']],
+  crown:['Crown jewels (ACR ≥ 7)',x=>x.crown,[]],
+  issue:['Credentialed, but a credential failed or lacked privilege',x=>!!x.issue,[]],
+  agent:['Scanned by a Nessus Agent',x=>x.type==='Agent',[]], network:['Scanned over the network',x=>x.type==='Network',[]] };
+const KEYVAL={'status:failed':'Cred Failure','status:insufficient':'Insufficient Privilege','status:intermittent':'Intermittent Auth','status:uncredentialed':'Uncredentialed',
+  'patch:failed':'Patch Assessment Failed','fresh:31-90':'Stale Scan 30d+','fresh:90+':'Stale Scan 90d+','fresh:never':'Never Scanned','slow':'Slow Scan','crown:blind':'Crown Jewel Blind Spot'};
+/* build 489 — tag filter: population-relative wording reads right in a tag view */
+const AVG=()=>tagScope()?"this tag's average":'the overall average';
+const host=(u,h)=>u?`<a class="plink" href="/agents/argos/page.html?target=${encodeURIComponent(u)}">${esc(h)}</a>`:esc(h);
+
+async function run(){
+  const b=document.getElementById('run'); b.disabled=true;
+  flash('flash','<span class="spin"></span> evaluating scan coverage, credentials and performance from navi.db'+esc(tagScopeNote())+'…','run');
+  let o; try{ o=await API.post('run'); }catch(e){ o={ok:false,error:e.message}; }
+  b.disabled=false;
+  if(!o||!o.ok||!o.result){ flash('flash','✗ '+esc((o&&(o.error||o.message))||'failed'),'crit'); return; }
+  DATA=o.result; FILTER=null; STF='all'; RUN=(o.drill&&o.drill.run)||null; FIRST=o;
+  ['scnTbl','polTbl','scaTbl','slowTbl'].forEach(hPageReset);
+  const m=DATA.metrics||{};
+  if(!m.assets) flash('flash',tagScope()?'No assets carry the tag '+esc(tagScopeLabel())+' in navi.db.':'No assets in navi.db.','warn');
+  else if(!m.scanned) flash('flash','No Nessus Scan Information (plugin 19506) in navi.db'+esc(tagScopeNote(' for the assets tagged '))+' — run a navi update that includes vulns.','warn');
+  else flashClear('flash');
+  render();
+  // evidence deep link (Ensemble Report): ?view=blind → the asset table filtered to it
+  hViewOnce('view', v=>{ if(!FILTERS[v]) return; FILTER=v; STF='all'; renderMetrics(); renderAssets();
+    setTimeout(()=>document.getElementById('secAssets').scrollIntoView({behavior:'smooth',block:'start'}),60); });
+}
+
+/* ---- gated writes: one line of feedback; detail lives in the Tagging log ---- */
+async function gated(btn,label,call,okMsg,ask){   /* ask: plain-text question naming the exact tag + count */
+  if(btn&&btn.disabled) return null;
+  await testRunStatus();
+  if(!confirm((typeof ask==='function'?ask():ask)+(WRITES?'':'\n\nWrites are gated (NAVI_ALLOW_WRITES not set) — the job queues but is blocked.'))) return null;
+  if(btn&&btn.disabled) return null;
+  const fb=document.getElementById('flash'); const scroll=()=>{ if(fb) fb.scrollIntoView({behavior:'smooth',block:'center'}); };
+  if(btn){ btn.dataset.label=btn.dataset.label||btn.textContent; btn.disabled=true; btn.textContent='⏳'; }
+  flash('flash','<span class="spin"></span> '+label+'…','run'); scroll();
+  let o; try{ o=await call(); }catch(e){ o={ok:false,error:e.message}; }
+  if(btn){ btn.disabled=false; btn.textContent=btn.dataset.label; }
+  if(!o||!o.ok){ flash('flash','✗ '+esc((o&&(o.error||o.message))||'failed'),'crit'); scroll(); return o; }
+  flash('flash','✓ '+okMsg(o)+' — sent to the <a href="/web/tags-log.html">Tagging log</a>.'+(o.writes_enabled===false?' Writes are gated, so nothing reaches Tenable until NAVI_ALLOW_WRITES=1.':' Tags take ~30 min to land in Tenable.'),'ok'); scroll();
+  return o;
+}
+async function tagKeys(keys,btn,n){
+  if(!keys.length) return;
+  const ask=()=>`Tag ${keys.map(k=>tagCat('Scan Health')+' : '+KEYVAL[k]).join(' + ')} on ${n!=null?N(n)+' asset(s)':'the matching assets'}${keys.length>1?` (${keys.length} selectors)`:''}${tagScopeNote()}?`;
+  if(keys.length===1) return gated(btn,`queuing Scan Health : ${KEYVAL[keys[0]]}`,()=>API.post('tag',{key:keys[0],confirm:true}),
+    o=>`queued <span class="tagval">Scan Health : ${esc(o.value)}</span> on ${N(o.count)} asset(s)`,ask);
+  return gated(btn,'queuing '+keys.length+' Scan Health tags',async()=>{ let n=0,a=0,last=null;
+      for(const k of keys){ const o=await API.post('tag',{key:k,confirm:true}); if(o&&o.ok){ n++; a+=o.count||0; last=o; } }
+      return n?{ok:true,n,count:a,writes_enabled:last.writes_enabled}:{ok:false,error:'nothing to tag'}; },
+    o=>`queued ${N(o.n)} Scan Health tag(s) across ${N(o.count)} asset(s)`,ask);
+}
+function tagDim(kind,name,btn){
+  const K=kind[0].toUpperCase()+kind.slice(1), x=((DATA&&DATA[{scanner:'scanners',policy:'policies',scan:'scans'}[kind]])||[]).find(y=>String(y.key)===String(name));
+  return gated(btn,`queuing Scan Health : ${K} : ${esc(name)}`,()=>API.post('tag',{key:kind,name,confirm:true}),
+    o=>`queued <span class="tagval">Scan Health : ${esc(o.value)}</span> on ${N(o.count)} asset(s)`,
+    ()=>`Tag ${tagCat('Scan Health')} : ${K} : ${name} on ${x&&x.assets!=null?N(x.assets)+' asset(s)':'its assets'}${tagScopeNote()}?`);
+}
+
+/* 📊 At a glance — the shared renderGlance template; a filter number narrows the asset list */
+const BARC={failed:'crit',insufficient:'high',intermittent:'med',uncredentialed:'var(--mut)',ok:'ok',unknown:'var(--line)',
+  '0-7':'ok','8-30':'low','31-90':'high','90+':'crit',never:'var(--mut)'};
+function renderMetrics(){
+  const m=DATA.metrics||{}, st=m.status||{}, fr=m.fresh||{}, has=!!m.assets;   // split bars + scanner list only when there are assets (as before)
+  const sp=m.scanned?Math.round(100*m.scanned/m.assets):null;
+  const sc=(DATA.scanners||[]).slice().sort((a,b)=>b.assets-a.assets), top=sc.slice(0,5), rest=sc.slice(5).reduce((s,x)=>s+x.assets,0);
+  const el=document.getElementById('metrics');
+  el.innerHTML='<p class="sub" style="margin:2px 0 0">Click a number to filter the asset list.</p><div id="glxScan"></div>';
+  renderGlance('glxScan', [
+    {title:'Coverage',
+     hero:{v:N(m.scanned), l:'assets with scan results'+(sp!=null?' · '+sp+'%':''), u:tagScope()?`of ${N(m.assets)} assets tagged ${tagScopeLabel()}`:`of ${N(m.assets)} assets in navi.db`, sev:'info', zero:false},
+     chips:[{v:N(m.never), l:'never scanned', u:'in navi.db but no Nessus Scan Information (19506)', filter:'never'},
+            {v:N(fr['0-7']), l:'scanned in the last 7 days', u:`${N(fr['8-30'])} more within 30 days`, sev:'ok', zero:false},
+            {v:`${N(m.network)} / ${N(m.agent)}`, l:'network / agent scanned', u:'by the latest scan of each asset', sev:'info', filter:m.agent?'agent':'network',
+             t:'network / agent scanned — by the latest scan of each asset · click to show agent-scanned assets', zero:false}]},
+    {title:'Credential health', t:'Credentialed = any 19506 “Credentialed checks : yes”, or 141118 / 110095. A host that is not credentialed is counted once, under the reason.',
+     hero:{v:m.cred_ok_pct!=null?m.cred_ok_pct+'%':'—', l:'credentialed', u:`${N(st.ok)} of ${N(m.scanned)} scanned assets${m.cred_issue?` · ${N(m.cred_issue)} with a credential issue`:''}`, sev:'ok', zero:false},
+     bar:has?Object.keys(ST).map(s=>({label:ST[s][0], value:st[s]||0, color:BARC[s]})):null,
+     chips:[{v:N(st.failed), l:'credential failures — blind', u:'credentials rejected and no credentialed login · 104410', sev:'crit', filter:'failed'},
+            {v:N(st.insufficient), l:'insufficient privilege — blind', u:"no credentialed login (19506) · 110385 / 102094", sev:'high', filter:'insufficient'},
+            {v:N(st.intermittent), l:'intermittent authentication — blind', u:'no credentialed login (19506) · 117885', sev:'med', filter:'intermittent'},
+            {v:N(m.cred_issue), l:'credentialed, with a credential issue', u:'19506 yes, but a credential failed or lacked privilege (104410 / 110385 / 117885)', sev:'med', filter:'issue'},
+            {v:N(st.uncredentialed), l:'scanned without credentials', u:'none provided, or 19506 says credentialed : no', filter:'uncredentialed'},
+            {v:N(m.patch_failed), l:'patch assessment failed', u:`OS patch checks didn't run · 21745${m.patch_na?` · ${N(m.patch_na)} not available (117886)`:''}`, sev:'high', filter:'patch'}]},
+    {title:'Freshness and crown jewels', t:"Days since each asset's most recent scan, as of "+(DATA.today||'today')+'.',
+     hero:{v:N(m.crown_blind), l:'crown-jewel blind spots', u:`of ${N(m.crown)} crown jewels (ACR ≥ 7) · ${N(m.crown_uncred)} uncredentialed · ${N(m.crown_stale)} stale or never scanned`, sev:'crit', filter:'crownblind'},
+     bar:has?Object.keys(FR).map(f=>({label:FR[f][0], value:fr[f]||0, color:BARC[f]})):null,
+     chips:[{v:N(m.stale_30), l:'last scanned over 30 days ago', u:`${N(m.stale_90)} over 90 days`, sev:'high', filter:'stale30'},
+            {v:N(m.stale_90), l:'last scanned over 90 days ago', u:'findings may no longer be true', sev:'crit', filter:'stale90'},
+            {v:N(m.crown), l:'crown jewels', u:'ACR ≥ 7', sev:'info', filter:'crown'}]},
+    {title:'Performance and scanners', t:'Assets per scanner; an asset scanned by several counts for each.',
+     hero:{v:dur(m.overall_avg_sec), l:'average scan time per asset', u:`${N(m.slow)} asset(s) over 1 hour`, sev:'high', filter:'slow', zero:false},
+     chips:[{v:N(m.slow_scanners), l:'slow scanners', u:`of ${N(m.scanner_count)} · busiest carries ${m.top_scanner_share!=null?m.top_scanner_share+'%':'—'} of ${tagScope()?"this tag's":'the'} load`, sev:'high', href:'#secScanners',
+             t:`slow scanners of ${N(m.scanner_count)} · busiest carries ${m.top_scanner_share!=null?m.top_scanner_share+'%':'—'} of ${tagScope()?"this tag's":'the'} load — avg time per asset > 1.5× ${AVG()}`},
+            {v:`${N(m.slow_policies)} / ${N(m.slow_scans)}`, l:'slow policies / scans', u:'avg > 1.5× '+AVG(), sev:'high', href:'#secPolicies', zero:!m.slow_policies&&!m.slow_scans},
+            {v:N(m.outdated_scanners), l:'scanners on an old plugin feed', u:m.newest_feed?`> ${DATA.feed_lag_days} days behind ${m.newest_feed}${tagScope()?' (newest feed on this tag)':''} · ${N(m.versions)} Nessus version(s) in use`:'no feed version in 19506 output', sev:'crit', href:'#secScanners'},
+            {v:N(m.safe_off), l:'assets scanned with safe checks off', u:'can disrupt fragile services', sev:'high', href:'#secPolicies'}],
+     ranked:has?{title:'Scanner load', items:top.map(x=>({label:x.key, value:x.assets, sev:'info', href:'#secScanners'})).concat(rest?[{label:'Other', value:rest, sev:'none', href:'#secScanners'}]:[])}:null}
+  ], {active:FILTER, onFilter:(f,_el,on)=>{ FILTER=on?f:null; STF='all'; renderMetrics(); renderAssets();
+    if(FILTER) document.getElementById('secAssets').scrollIntoView({behavior:'smooth',block:'start'}); }});
+}
+
+function viewFlags(){ const f=[]; if(STF!=='all') f.push('st:'+STF); if(FILTER) f.push('f:'+FILTER); return f; }
+function aQ(){ return String((document.getElementById('aQ')||{}).value||'').trim(); }
+function assetRow(x){ return `<tr><td><b>${host(x.asset_uuid,x.host)}</b><div class="sub mono" style="font-size:11px">${x.ip&&x.ip!==x.host?esc(x.ip)+' ':''}${safeUrl(x.url,'')?`<a href="${esc(safeUrl(x.url))}" target="_blank" rel="noopener noreferrer" class="plink" title="Open in Tenable">↗</a>`:''}</div></td>`+
+      `<td>${x.acr==null?'<span class="sub">—</span>':(x.crown?`<b style="color:var(--crit)">${x.acr}</b>`:x.acr)}</td>`+
+      `<td><span class="pill" style="color:${(ST[x.status]||ST.unknown)[1]}">${esc((ST[x.status]||ST.unknown)[0])}</span>${x.issue?` <span class="pill" style="color:#e0913a" title="credentialed (19506 yes), but ${esc(x.issue==='failed'?'one credential was rejected (104410)':x.issue==='insufficient'?'a login lacked privilege (110385 / 102094)':'authentication was intermittent (117885)')}">${esc(x.issue==='failed'?'a credential failed':x.issue==='insufficient'?'some checks lacked privilege':'intermittent login')}</span>`:''}${x.patch==='failed'?' <span class="pill" style="color:#e0913a" title="21745 OS Security Patch Assessment Failed">patch checks failed</span>':''}</td>`+
+      `<td>${x.last_scan?`${esc(x.last_scan)} <span class="sub" style="color:${FR[x.fresh]?FR[x.fresh][1]:'inherit'}">${N(x.age_days)}d</span>`:`<span class="sub">${x.fresh==='never'?'never':'—'}</span>`}</td>`+
+      `<td><span class="mono" style="font-size:12px">${esc(x.scanner||'—')}</span>${x.type?`<div class="sub" style="font-size:11px">${esc(x.type)}</div>`:''}</td><td>${esc(x.policy||'—')}</td>`+
+      `<td class="mono">${x.dur!=null?dur(x.dur):'—'}</td></tr>`; }
+function renderAssets(){
+  const m=DATA.metrics||{}, st=m.status||{}, total=DATA.assets_total||0;
+  const seg=document.getElementById('stSeg');
+  seg.innerHTML='<button class="seg" data-sf="all">All <b>'+N(total)+'</b></button>'+Object.keys(ST).filter(s=>st[s]).map(s=>`<button class="seg" data-sf="${s}">${ST[s][0]} <b>${N(st[s])}</b></button>`).join('');
+  seg.querySelectorAll('.seg').forEach(s=>{ s.classList.toggle('on',s.dataset.sf===STF); s.onclick=()=>{ STF=s.dataset.sf; FILTER=null; renderMetrics(); renderAssets(); }; });
+  const fe=document.getElementById('filt');
+  fe.innerHTML=FILTER?`<span class="fchip">${esc(FILTERS[FILTER][0])}<button id="clrF" title="Clear">✕</button></span>`:'';
+  const c=document.getElementById('clrF'); if(c) c.onclick=()=>{ FILTER=null; renderMetrics(); renderAssets(); };
+  setNavCount('secAssets', N(m.blind)+' blind');
+  // the tag button tags EXACTLY the shown set — only offered when a server-side key matches it
+  // (a search narrows the table but not a key, so the tag button names the unsearched set)
+  const paint=k=>{ const at=document.getElementById('aTags');
+    const keys=FILTER?FILTERS[FILTER][2]:(STF!=='all'&&STF!=='ok'&&STF!=='unknown'?['status:'+STF]:[]);   // current view (the hDrill outlives a render)
+    at.innerHTML=keys.length&&k&&!(FILTER&&STF!=='all')&&!aQ()?`<button class="btn sm" id="tagShown">🏷️ Tag these ${N(k)} → ${keys.map(x=>'Scan Health : '+esc(KEYVAL[x])).join(' + ')}</button>`:
+      '<span class="sub">'+(aQ()?'Clear the search to tag a state or metric-card set.':'Pick a credential state or a metric card to tag that set.')+'</span>';
+    const tb=document.getElementById('tagShown'); if(tb) tb.onclick=function(){ tagKeys(keys,this,k); }; };
+  const flags=viewFlags();
+  if(!RUN){ document.querySelector('#aTbl tbody').innerHTML='<tr><td colspan="7" class="sub">Press ▶ Run.</td></tr>'; return; }
+  const opts={api:API, table:'aTbl', run:RUN, section:'assets', cols:7, row:assetRow, filter:flags, search:'aQ',
+    empty:'<tr><td colspan="7" class="sub">'+(total?'Nothing matches the filter or search.':'No assets.')+'</td></tr>',
+    onRender:T=>{ const total=(DATA&&DATA.assets_total)||0, t=T.total, k=t?+t.value||0:0, f=viewFlags();
+      document.getElementById('aCount').textContent=(k===total&&!f.length&&!aQ())?`(${N(total)})`:`(${N(k)} of ${N(total)})`; paint(k); }};
+  if(!TA) TA=hDrill(Object.assign(opts,{first:flags.length?null:FIRST})); else TA.set({run:RUN, filter:flags});
+}
+
+function dimTable(tbl,list,kind,cells,secId,countId){
+  document.getElementById(countId).textContent=`(${N(list.length)}${list.some(x=>x.problematic)?' · '+list.filter(x=>x.problematic).length+' slow':''})`;
+  setNavCount(secId, N(list.length));
+  hPaginate(tbl, list, x=>`<tr><td class="${(x.problematic?'prob ':'')+(kind==='scanner'?'mono':'')}" style="max-width:360px;overflow-wrap:anywhere">${esc(x.key)}${x.problematic?' ⚠':''}</td>`+cells(x)+
+      `<td><button class="btn ghost sm" data-k="${esc(x.key)}" title="Tag its assets → Scan Health : ${kind[0].toUpperCase()+kind.slice(1)} : ${esc(x.key)}">🏷️ Tag</button></td></tr>`,
+    {cols:12, empty:'<tr><td colspan="12" class="sub">None found in plugin 19506.</td></tr>',
+     wire:tb=>tb.querySelectorAll('button[data-k]').forEach(b=>b.onclick=()=>tagDim(kind,b.dataset.k,b))});
+}
+function renderDims(){
+  document.getElementById('lagN').textContent=DATA.feed_lag_days||7;
+  document.getElementById('feedPop').textContent=tagScope()?'seen on the assets of this tag':'in navi.db';
+  document.getElementById('avgPop').textContent=tagScope()?" of this tag's assets":'';
+  dimTable('scnTbl',DATA.scanners||[],'scanner',x=>`<td>${N(x.assets)}</td><td>${x.share_pct}%</td><td class="${x.problematic?'prob':''}">${dur(x.avg_sec)}</td><td class="mono">${dur(x.max_sec)}</td>`+
+    `<td>${pct(x.cred_pct)}</td><td><span class="mono" style="font-size:12px">${esc((x.versions||[]).join(', ')||'—')}</span>`+
+    `<div style="font-size:11.5px">${x.feed?`<span class="mono${x.outdated?' prob':''}">${esc(x.feed)}</span>${x.feed_lag_days?` <span class="${x.outdated?'prob':'sub'}">${N(x.feed_lag_days)}d behind</span>`:''}`:'<span class="sub">no feed info</span>'}</div></td>`+
+    `<td>${esc(x.last_scan||'—')}</td>`,'secScanners','scnCount');
+  dimTable('polTbl',DATA.policies||[],'policy',x=>`<td>${N(x.assets)}</td><td class="${x.problematic?'prob':''}">${dur(x.avg_sec)}</td><td class="mono">${dur(x.max_sec)}</td><td>${pct(x.cred_pct)}</td>`+
+    `<td>${x.safe_off?`<b style="color:#e0913a">${N(x.safe_off)}</b>`:'0'}</td><td>${x.thorough?N(x.thorough):'0'}</td>`,'secPolicies','polCount');
+  dimTable('scaTbl',DATA.scans||[],'scan',x=>`<td>${N(x.assets)}</td><td class="${x.problematic?'prob':''}">${dur(x.avg_sec)}</td><td class="mono">${dur(x.max_sec)}</td><td>${pct(x.cred_pct)}</td><td>${esc(x.last_scan||'—')}</td>`,'secScans','scaCount');
+}
+function renderSlow(){
+  const s=DATA.slowest||[], m=DATA.metrics||{};
+  document.getElementById('slowCount').textContent=`(top ${N(s.length)} · ${N(m.slow)} over 1 h)`; setNavCount('secSlow', N(m.slow));
+  document.getElementById('tagSlow').disabled=!m.slow;
+  hPaginate('slowTbl', s, x=>`<tr><td><b>${host(x.asset_uuid,x.host)}</b></td><td class="mono${(x.dur||0)>(DATA.slow_sec||3600)?' prob':''}">${dur(x.dur)}</td><td class="mono" style="font-size:12px">${esc(x.scanner||'—')}</td><td>${esc(x.policy||'—')}</td><td>${esc(x.scan||'—')}</td><td>${esc(x.last_scan||'—')}</td></tr>`,
+    {cols:6, empty:'<tr><td colspan="6" class="sub">No scan durations in plugin 19506.</td></tr>'});
+}
+
+function csvDim(list,keyName,fname){ downloadCSV(fname+'.csv',[keyName,'assets','share_pct','avg_sec','max_sec','cred_pct','last_scan','problematic'],
+  (list||[]).map(x=>({[keyName]:x.key,assets:x.assets,share_pct:x.share_pct,avg_sec:Math.round(x.avg_sec||0),max_sec:Math.round(x.max_sec||0),cred_pct:x.cred_pct==null?'':x.cred_pct,last_scan:x.last_scan||'',problematic:x.problematic?'yes':'no'}))); }
+document.getElementById('scnCsv').onclick=()=>DATA&&csvDim(DATA.scanners,'scanner','scan-eval-scanners');
+document.getElementById('polCsv').onclick=()=>DATA&&csvDim(DATA.policies,'policy','scan-eval-policies');
+document.getElementById('scaCsv').onclick=()=>DATA&&csvDim(DATA.scans,'scan','scan-eval-scans');
+document.getElementById('aCsv').onclick=async function(){ if(!DATA||!RUN)return;
+  // every row of the current view, streamed from the stored run on the server (not just the loaded page)
+  const btn=this; btn.disabled=true; const lbl=btn.textContent; btn.textContent='⏳ CSV…';
+  let o; try{ o=await API.post('export',{run:RUN, filter:viewFlags(), q:aQ()}); }catch(e){ o={ok:false,error:e.message}; }
+  btn.disabled=false; btn.textContent=lbl;
+  if(!o||!o.ok){ flash('flash','✗ '+esc((o&&o.error)||'export failed'),'crit'); return; }
+  downloadText(_safeName('scan-eval-assets')+'.csv', o.csv); };
+document.getElementById('tagSlow').onclick=function(){ tagKeys(['slow'],this,((DATA&&DATA.metrics)||{}).slow); };
+
+function render(){ if(!DATA) return; renderMetrics(); renderAssets(); renderDims(); renderSlow(); }
+document.getElementById('run').onclick=run;
+mountAgentHeader({id:'scan_eval',icon:'📈',name:'Scan Evaluations',sub:'Scan Health · credential health · freshness · scanner performance'});
+mountTagScope({agent:'scan_eval', note:"each asset's credential state and freshness are the same as in the whole estate; scanner, policy and scan averages, load shares and feed lag are of this tag's assets"});
+mountSectionNav();
+try{ hMailAuto(); }catch(e){}
+jget('/api/health').then(h=>{WRITES=!!h.writes_enabled;}).catch(()=>{});
+</script>
+</body></html>

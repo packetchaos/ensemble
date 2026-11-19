@@ -1,0 +1,24 @@
+{
+  "id": "acr",
+  "name": "Criticality Calibration",
+  "icon": "⚖️",
+  "order": 3,
+  "category": "Risk",
+  "summary": "Adjust Asset Criticality Rating per tag (set / +N / −N) with a business justification; bulk via natural language.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "run",
+    "apply",
+    "bulk_apply",
+    "interpret",
+    "preview",
+    "metrics",
+    "log",
+    "log_export",
+    "protect"
+  ],
+  "codename": "",
+  "hero": false,
+  "mission": "Ownership & SLA"
+}

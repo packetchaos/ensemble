@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Agent Group Sync — navi Ensemble</title>
+<link rel="stylesheet" href="/static/console.css"/>
+</head><body data-page-cache="off">
+<div class="wrap">
+  <header class="top" id="app-header"></header>
+
+  <section class="card">
+    <div class="toolbar"><div><h2 style="margin:0">🛰️ Agent Group Sync</h2>
+      <p class="sub" style="margin:2px 0 0">Agent Group Sync tags every asset in a Tenable <b>agent group</b> with <span class="tagval">Agent Group : &lt;name&gt;</span> — runs <span class="mono">navi enrich tag --c "Agent Group" --v "&lt;name&gt;" --group "&lt;name&gt;"</span> per group, on the background queue (see the <a href="/web/tags-log.html">Tagging log</a>). Three ways below. Writes are gated.</p></div>
+      <button id="load" style="margin-left:auto" class="btn run sm" data-run title="Pull the agent-group list (navi explore info agent-groups) — nothing loads on its own">▶ Load</button></div>
+    <div id="flash" class="flash"></div>
+    <div class="kpi" id="kpi"></div>
+  </section>
+
+  <!-- 1) NL list -->
+  <section class="card" id="nlCard" style="display:none">
+    <h3 style="margin:0 0 4px">① Tag by a list of group names</h3>
+    <p class="sub" style="margin:0 0 8px">Paste group names (one per line or comma-separated). Each is matched to a real agent group and tagged.</p>
+    <textarea id="nlList" rows="4" placeholder="Linux&#10;Missing&#10;Exclusion test" style="width:100%;box-sizing:border-box;font-size:14px;padding:10px;border-radius:7px;border:1px solid var(--line);background:var(--bg-2);color:var(--ink)"></textarea>
+    <div class="toolbar" style="margin-top:8px"><button class="btn sm" id="nlTag">🏷️ Tag listed groups</button><span class="chip" id="nlMatch"></span></div>
+    <div id="nlFlash" class="flash"></div>
+  </section>
+
+  <!-- 2) checkbox widget -->
+  <section class="card" id="pickCard" style="display:none">
+    <div class="toolbar"><div><h3 style="margin:0">② Pick groups to tag</h3>
+      <p class="sub" style="margin:2px 0 0">Tick the agent groups, then tag the selected.</p></div>
+      <span style="margin-left:auto;display:flex;gap:6px"><input id="grpFilter" placeholder="filter…" style="padding:6px 9px;border-radius:7px;border:1px solid var(--line);background:var(--bg-2);color:var(--ink)"><button class="btn ghost sm" id="selAll">All</button><button class="btn ghost sm" id="selNone">None</button></span></div>
+    <div class="toolbar" style="margin:6px 0"><button class="btn sm" id="pickTag" disabled>🏷️ Tag selected</button><span class="chip" id="pickSel">0 selected</span></div>
+    <div style="overflow-x:auto"><table id="grpTbl"><thead><tr><th style="width:34px"></th><th>Agent group</th><th>Group ID</th><th>UUID</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <!-- 3) tag all -->
+  <section class="card" id="allCard" style="display:none">
+    <h3 style="margin:0 0 4px">③ Tag every agent group</h3>
+    <p class="sub" style="margin:0 0 8px">Runs through <b>every</b> group and tags each — the classic agent-group-tags script, on the background queue.</p>
+    <button class="btn sm" id="tagAll">🏷️ Tag all groups</button>
+    <div id="allFlash" class="flash"></div>
+  </section>
+  <footer>Agent Group Sync · agent-group tagging · navi enrich tag --group · gated by NAVI_ALLOW_WRITES · tracked in the Tagging log</footer>
+</div>
+<script src="/static/brand.js"></script>
+<script src="/static/console.js"></script>
+<script>
+const API=agentApi('agentgroup');
+let GROUPS=[], WRITES=false, _gSel=new Set(), _gRows=[];
+function picked(){ return [..._gSel]; }   // selection survives pagination
+function syncPick(){ const n=picked().length; document.getElementById('pickSel').textContent=n+' selected'; document.getElementById('pickTag').disabled=!n; }
+function renderGroups(){
+  const f=(document.getElementById('grpFilter').value||'').toLowerCase();
+  _gRows=GROUPS.filter(g=>!f||(g.name||'').toLowerCase().includes(f));
+  hPageReset('grpTbl'); hPaginate('grpTbl', _gRows, g=>
+    `<tr><td><input type="checkbox" class="gsel" data-n="${esc(g.name)}"${_gSel.has(g.name)?' checked':''}></td><td><b>${esc(g.name)}</b></td><td class="mono">${esc(g.gid||'')}</td><td class="mono" style="font-size:11px;color:var(--mut)">${esc(g.uuid||'')}</td></tr>`,
+    {cols:4, empty:'<tr><td colspan="4" class="sub">No groups match.</td></tr>',
+     wire:tb=>{ tb.querySelectorAll('input.gsel').forEach(c=>c.onchange=()=>{ if(c.checked)_gSel.add(c.dataset.n); else _gSel.delete(c.dataset.n); syncPick(); }); }});
+  syncPick();
+}
+async function load(){
+  document.getElementById('load').disabled=true; flash('flash','<span class="spin"></span> pulling agent groups (navi explore info agent-groups)…','run');
+  let o; try{ o=await API.post('run'); }catch(e){ o={ok:false,error:e.message}; }
+  document.getElementById('load').disabled=false;
+  if(!o.ok && !(o.result&&o.result.groups)){ flash('flash','✗ '+esc(o.error||'failed — is navi on PATH?'),'crit'); return; }
+  GROUPS=(o.result&&o.result.groups)||[]; flashClear('flash');
+  document.getElementById('kpi').innerHTML=`<div class="k"><div class="v">${GROUPS.length}</div><div class="l">agent groups</div></div>`;
+  ['nlCard','pickCard','allCard'].forEach(id=>document.getElementById(id).style.display='block');
+  renderGroups();
+  if(!GROUPS.length) flash('flash','No agent groups found.','warn');
+}
+async function tagNames(names, flashId, btn){
+  if(btn&&btn.disabled)return;
+  if(!names.length){ flash(flashId,'No groups to tag.','warn'); return; }
+  await testRunStatus();
+  if(!confirm('Tag '+tagCat('Agent Group')+' : <group name> on the agents in '+names.length+' agent group'+(names.length===1?'':'s')+' (navi --group, one selector each)?\n\n'
+    +names.slice(0,12).map(n=>'• '+tagCat('Agent Group')+' : '+n).join('\n')+(names.length>12?'\n• … +'+(names.length-12)+' more':'')+(WRITES?'':'\n\nWrites are gated (NAVI_ALLOW_WRITES not set) — the job queues but is blocked.'))) return;
+  if(btn&&btn.disabled)return;
+  const fb=document.getElementById(flashId);
+  const scroll=()=>{ if(fb)fb.scrollIntoView({behavior:'smooth',block:'center'}); };
+  const reset=()=>{ if(!btn)return; btn.disabled=false; btn.textContent=btn.dataset.label; btn.style.opacity=''; btn.style.transform=''; btn.style.cursor=''; };
+  if(btn){ btn.dataset.label=btn.dataset.label||btn.textContent; btn.disabled=true; btn.textContent='⏳ Sending…'; btn.style.opacity='.6'; btn.style.transform='translateY(1px)'; btn.style.cursor='default'; }
+  flash(flashId,'<span class="spin"></span> queuing '+names.length+' agent-group tag(s)…','run');
+  scroll();
+  let o; try{ o=await API.post('tag',{groups:names,confirm:true}); }catch(e){ o={ok:false,error:e.message}; }
+  if(!o.ok){ flash(flashId,'✗ '+esc(o.error||'failed'),'crit'); reset(); scroll(); return; }
+  flash(flashId,'✓ queued '+o.queued+' tag(s) — watch the <a href="/web/tags-log.html">Tagging log</a>. Each tags Agent Group : &lt;name&gt; via navi --group.','ok');
+  scroll(); reset();
+}
+function nlTag(){
+  const raw=(document.getElementById('nlList').value||'').split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);
+  if(!raw.length){ flash('nlFlash','Paste some group names first.','warn'); return; }
+  const byLower={}; GROUPS.forEach(g=>byLower[(g.name||'').toLowerCase()]=g.name);
+  const matched=[], missed=[];
+  raw.forEach(r=>{ const hit=byLower[r.toLowerCase()]; if(hit) matched.push(hit); else missed.push(r); });
+  document.getElementById('nlMatch').textContent=matched.length+' matched'+(missed.length?(' · '+missed.length+' unmatched'):'');
+  if(!matched.length){ flash('nlFlash','None of those names match a loaded agent group. Unmatched: '+esc(missed.slice(0,6).join(', ')),'crit'); return; }
+  tagNames([...new Set(matched)],'nlFlash',document.getElementById('nlTag')).then(()=>{ if(missed.length) flash('nlFlash',document.getElementById('nlFlash').innerHTML+' <span style="color:var(--warn,var(--cx-e7c66b))">(unmatched: '+esc(missed.slice(0,6).join(', '))+')</span>','ok'); });
+}
+async function tagAll(){
+  const btn=document.getElementById('tagAll'); if(btn&&btn.disabled)return;
+  if(!GROUPS.length) return;
+  await testRunStatus();
+  if(!confirm('Tag ALL '+GROUPS.length+' agent groups as '+tagCat('Agent Group')+' : <group name>? Each runs navi enrich tag --group on the background queue ('+GROUPS.length+' selector'+(GROUPS.length===1?'':'s')+').'+(WRITES?'':'\n\nWrites are gated (NAVI_ALLOW_WRITES not set) — the job queues but is blocked.'))) return;
+  if(btn&&btn.disabled)return;
+  const fb=document.getElementById('allFlash');
+  const scroll=()=>{ if(fb)fb.scrollIntoView({behavior:'smooth',block:'center'}); };
+  const reset=()=>{ if(!btn)return; btn.disabled=false; btn.textContent=btn.dataset.label; btn.style.opacity=''; btn.style.transform=''; btn.style.cursor=''; };
+  if(btn){ btn.dataset.label=btn.dataset.label||btn.textContent; btn.disabled=true; btn.textContent='⏳ Sending…'; btn.style.opacity='.6'; btn.style.transform='translateY(1px)'; btn.style.cursor='default'; }
+  flash('allFlash','<span class="spin"></span> queuing all '+GROUPS.length+' groups…','run');
+  scroll();
+  let o; try{ o=await API.post('tag_all',{confirm:true}); }catch(e){ o={ok:false,error:e.message}; }
+  if(!o.ok){ flash('allFlash','✗ '+esc(o.error||'failed'),'crit'); reset(); scroll(); return; }
+  flash('allFlash','✓ queued '+o.queued+' of '+o.total_groups+' group tag(s) — watch the <a href="/web/tags-log.html">Tagging log</a>.','ok');
+  scroll(); reset();
+}
+document.getElementById('load').onclick=load;
+document.getElementById('grpFilter').addEventListener('input',()=>{ if(GROUPS.length) renderGroups(); });
+document.getElementById('selAll').onclick=()=>{ _gRows.forEach(g=>_gSel.add(g.name)); renderGroups(); };
+document.getElementById('selNone').onclick=()=>{ _gSel.clear(); renderGroups(); };
+document.getElementById('pickTag').onclick=function(){tagNames(picked(),'flash',this);};
+document.getElementById('nlTag').onclick=nlTag;
+document.getElementById('tagAll').onclick=tagAll;
+mountAgentHeader({icon:'🛰️',name:'Agent Group Tagging',sub:'Agent Group Sync · tag assets by Tenable agent group'});
+try{ hMailAuto(); }catch(e){}
+jget('/api/health').then(h=>{WRITES=!!h.writes_enabled;}).catch(()=>{});
+// explicit-run: the list is a live Tenable call — ▶ Load fetches it (the page cache restores the last one)
+flash('flash','Nothing loads automatically — click <b>▶ Load</b> (it reads live, so the list is always current).','idle');
+</script>
+</body></html>

@@ -1,0 +1,34 @@
+{
+  "id": "postquantum",
+  "name": "Post-Quantum",
+  "icon": "⚛️",
+  "order": 13,
+  "category": "Tagging",
+  "summary": "Heimdall — one ▶ Run reads certificate crypto (RSA / ECC / DSA are broken by Shor), TLS/SSH key exchange, OpenSSH/OpenSSL versions and Tenable's Post-Quantum plugins (277650 / 277652 / 277653). Metrics: share of the estate quantum-vulnerable, certificates still valid at the CNSA 2.0 deadlines (2030 / 2033), harvest-now exposure, legacy stacks, crown jewels and KEV overlap. Ranks a migration roadmap and tags the assets: Post-Quantum, PQC Priority, PQC Risk, PQC Harvest-Now, PQC Transport, PQC Agility.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "run",
+    "tag",
+    "tag_uuids",
+    "cert",
+    "transport",
+    "roadmap",
+    "roadmap_tag"
+  ],
+  "codename": "Heimdall",
+  "tag_scope": {
+    "actions": [
+      "run",
+      "tag",
+      "tag_uuids",
+      "tag_signal",
+      "cert",
+      "transport",
+      "roadmap"
+    ],
+    "ignore": []
+  },
+  "hero": true,
+  "mission": "Crypto & Certificates"
+}

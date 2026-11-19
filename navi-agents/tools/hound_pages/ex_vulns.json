@@ -1,0 +1,38 @@
+{
+ "codename": "",
+ "discipline": "Explorer › Vulnerabilities",
+ "category": "Explore",
+ "tagline": "Hunt any finding — by plugin, CVE, severity or finding ID.",
+ "lore": "",
+ "problem": "Finding every instance of one vulnerability — a CVE in the news, a plugin a vendor just flagged — shouldn't mean writing SQL or waiting on a report.",
+ "does": "Explorer › Vulnerabilities searches every finding in navi.db, one row each, by plugin name or ID, CVE, severity or finding ID, and shows each finding with its asset and VPR. A finding ID opens it in Tenable, the asset opens Asset Dossier, and a fix can be handed to Remote Remediation.",
+ "glance": {
+  "caption": "Explorer › Vulnerabilities's results: one row per finding with plugin, severity, VPR and asset — each linking to Tenable, Asset Dossier or an Remote Remediation fix."
+ },
+ "capabilities": [
+  [
+   "Search by anything",
+   "plugin name, plugin ID, CVE, severity or finding ID."
+  ],
+  [
+   "Findings in context",
+   "asset, severity and VPR on every row."
+  ],
+  [
+   "Open in Tenable",
+   "a finding ID opens that finding in Tenable."
+  ],
+  [
+   "Deep-dive and fix",
+   "the asset opens Asset Dossier; Remediate hands the plugin and host to Remote Remediation, pre-filled, never auto-run."
+  ],
+  [
+   "Email the result",
+   "send the rows to an owner through Notify & Reports."
+  ]
+ ],
+ "how": "Explorer › Vulnerabilities runs a read-only search over the findings in your local navi.db; results page on the server, 20 rows a page (up to 50).",
+ "who": "Analysts answering \"where do we have this?\" and responders scoping a new CVE.",
+ "better": "Part of the search pack with Explorer › Assets, Explorer › Plugins, Explorer › Routes and Explorer › Paths. Laelaps and Exposure Score rank what Explorer › Vulnerabilities finds; Remote Remediation fixes it.",
+ "cta": "Name the vulnerability — Explorer › Vulnerabilities finds every instance."
+}

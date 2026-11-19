@@ -1,0 +1,20 @@
+{
+  "id": "email",
+  "name": "Notify & Reports",
+  "icon": "📧",
+  "order": 20,
+  "category": "Loop",
+  "codename": "",
+  "summary": "The loop-closer. Turns the Ensemble's findings into owner-routed remediation, KEV fire-alarms, cert countdowns, and morning briefings — emailed to the right humans with deep-links back into the Tenable platform. Reads Exposure Routes Owner: tags to send each owner only THEIR assets. Preview first; sending is double-gated (writes + email + confirm).",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "run",
+    "recipients",
+    "preview",
+    "send",
+    "status"
+  ],
+  "hero": false,
+  "mission": "Ownership & SLA"
+}

@@ -1,0 +1,38 @@
+{
+ "codename": "",
+ "discipline": "Explorer › Assets",
+ "category": "Explore",
+ "tagline": "Find any host — and every asset behind a dashboard number.",
+ "lore": "",
+ "problem": "\"Which assets is that number?\" is the first question after any dashboard — and answering it usually means a hand-written query or an export. Without the list, a metric can't be acted on.",
+ "does": "Explorer › Assets searches every asset by hostname, IP, OS or network. It is also where Ensemble Report's At a glance cards land: each card opens the exact assets behind its number — computed by the specialist that owns it — riskiest (highest ACR) first, ready to page, search and export.",
+ "glance": {
+  "caption": "Explorer › Assets opened from an Ensemble Report card: the evidence card names the number and the specialist that owns it, and the asset list below pages and searches on the server and exports to CSV."
+ },
+ "capabilities": [
+  [
+   "Search every asset",
+   "hostname, IP, OS or network in one box."
+  ],
+  [
+   "Evidence lists",
+   "KEV-exploitable assets, assets scored 60 or more, crown jewels (all, with KEV, or scanned without credentials), assets flagged by four or more specialists, EOL software, quantum-vulnerable crypto."
+  ],
+  [
+   "Same count as the card",
+   "each list is computed with the owning specialist's own rule — Laelaps, Exposure Score, Charon or Heimdall."
+  ],
+  [
+   "Any size",
+   "the list is stored on the server, so 50 or 150,000 assets page, search and export the same way."
+  ],
+  [
+   "One click to act",
+   "every host opens Asset Dossier, where its findings can be remediated with Remote Remediation or tagged; a Tenable link opens it in Tenable."
+  ]
+ ],
+ "how": "Explorer › Assets reads your local navi.db and changes nothing. Evidence lists are built on request by the specialist that owns the number, so they reflect navi.db now — a card built at the last Run the Ensemble run can differ slightly.",
+ "who": "Analysts and VM leads who need to see — and act on — the assets behind a metric.",
+ "better": "Ensemble Report's cards open here; Asset Dossier takes over for one asset; Notify & Reports can email the list.",
+ "cta": "Give Explorer › Assets a number — it brings back every asset behind it."
+}

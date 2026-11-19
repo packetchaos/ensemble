@@ -1,0 +1,29 @@
+{
+ "id": "real_I2_openssh_banner_multios",
+ "provenance": "REAL sample from the owner's navi.db (real_samples.md §I, plugin 103781, read 2026-11-18): the OUTPUT is verbatim. plugin_family / solution are SYNTHETIC (no real solution text supplied for this banner plugin) in Tenable's documented style (the solution text was not supplied).",
+ "real_sample": true,
+ "fam": "deb",
+ "shape": "remote_banner",
+ "plugin_id": "103781",
+ "plugin_name": "OpenSSH < 7.6",
+ "plugin_family": "Misc.",
+ "solution": "Upgrade to OpenSSH version 7.6 or later. Update the affected openssh package.",
+ "os": "Linux Kernel 3.10\nLinux Kernel 3.13\nLinux Kernel 4.2\nLinux Kernel 4.8",
+ "output": "\n  Version source    : SSH-2.0-OpenSSH_6.7p1 Raspbian-5+deb8u8\n  Installed version : 6.7p1\n  Fixed version     : 7.6\n",
+ "expect": {
+  "pairs": [],
+  "upstream": [
+   [
+    "",
+    "6.7p1",
+    "7.6"
+   ]
+  ],
+  "packages": [],
+  "kernel": false,
+  "family": "apt",
+  "not_os_package": true,
+  "esm": false,
+  "os_family": "unknown"
+ }
+}

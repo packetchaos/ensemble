@@ -1,0 +1,17 @@
+{
+  "id": "ex_fixed",
+  "name": "Explorer › Fixed",
+  "icon": "🩹",
+  "order": 26,
+  "category": "Explore",
+  "codename": "",
+  "summary": "Search the fixed table — remediation history + Pass/Fail SLA verdicts. Filter by severity, state, and SLA outcome. Read-only navi.db search.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "search"
+  ],
+  "hero": false,
+  "mission": "Platform",
+  "grid": false
+}

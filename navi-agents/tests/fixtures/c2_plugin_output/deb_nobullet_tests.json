@@ -1,0 +1,27 @@
+{
+ "id": "deb_nobullet_tests",
+ "provenance": "the build-485 test fixture form (no '- ' bullet); NOT a real sample",
+ "real_sample": false,
+ "fam": "deb",
+ "shape": "single_pair",
+ "plugin_name": "Ubuntu 20.04 : OpenSSL vulnerabilities (USN-0000-1)",
+ "plugin_family": "Ubuntu Local Security Checks",
+ "solution": "Update the affected libssl1.1 and openssl packages.",
+ "os": "Ubuntu 20.04",
+ "output": "Installed package : openssl_1.1.1f-1ubuntu2.16\n  Fixed package     : openssl_1.1.1f-1ubuntu2.20\n",
+ "expect": {
+  "pairs": [
+   [
+    "openssl",
+    "1.1.1f-1ubuntu2.16",
+    "1.1.1f-1ubuntu2.20",
+    "distro"
+   ]
+  ],
+  "packages": [
+   "openssl"
+  ],
+  "kernel": false,
+  "family": "apt"
+ }
+}

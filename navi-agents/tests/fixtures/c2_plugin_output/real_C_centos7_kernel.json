@@ -1,0 +1,52 @@
+{
+ "id": "real_C_centos7_kernel",
+ "provenance": "REAL sample from the owner's navi.db (real_samples.md, plugin 119662, read 2026-11-18): OUTPUT verbatim; SOLUTION verbatim from real_solutions.md. plugin_family is synthetic (not supplied).",
+ "real_sample": true,
+ "fam": "rpm",
+ "shape": "kernel_pair",
+ "plugin_id": "119662",
+ "plugin_name": "CentOS 7 : kernel (CESA-2018:3651)",
+ "plugin_family": "CentOS Local Security Checks",
+ "solution": "Update the affected kernel packages.",
+ "os": "CentOS Linux 7.6.1810",
+ "output": "\nRemote package installed : kernel-3.10.0-957.el7\nShould be                : kernel-3.10.0-957.1.3.el7\n\nRemote package installed : kernel-tools-3.10.0-957.el7\nShould be                : kernel-tools-3.10.0-957.1.3.el7\n\nRemote package installed : kernel-tools-libs-3.10.0-957.el7\nShould be                : kernel-tools-libs-3.10.0-957.1.3.el7\n\nRemote package installed : python-perf-3.10.0-957.el7\nShould be                : python-perf-3.10.0-957.1.3.el7\n\n",
+ "expect": {
+  "pairs": [
+   [
+    "kernel",
+    "3.10.0-957.el7",
+    "3.10.0-957.1.3.el7",
+    "distro"
+   ],
+   [
+    "kernel-tools",
+    "3.10.0-957.el7",
+    "3.10.0-957.1.3.el7",
+    "distro"
+   ],
+   [
+    "kernel-tools-libs",
+    "3.10.0-957.el7",
+    "3.10.0-957.1.3.el7",
+    "distro"
+   ],
+   [
+    "python-perf",
+    "3.10.0-957.el7",
+    "3.10.0-957.1.3.el7",
+    "distro"
+   ]
+  ],
+  "packages": [
+   "kernel",
+   "kernel-tools",
+   "kernel-tools-libs",
+   "python-perf"
+  ],
+  "kernel": true,
+  "family": "yum",
+  "compare": "rpm",
+  "requires_reboot": true,
+  "esm": false
+ }
+}

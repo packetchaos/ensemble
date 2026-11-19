@@ -1,0 +1,31 @@
+{
+ "id": "real_H_ubuntu2204_uat_tilde",
+ "provenance": "REAL sample from the owner's navi.db (real_samples.md, plugin 327616, read 2026-11-18): OUTPUT verbatim; SOLUTION verbatim from real_solutions.md. plugin_family is synthetic (not supplied).",
+ "real_sample": true,
+ "fam": "deb",
+ "shape": "pair",
+ "plugin_id": "327616",
+ "plugin_name": "Ubuntu 22.04 LTS : Ubuntu Advantage Tools (pro client) vulnerabilities (USN-8555-1)",
+ "plugin_family": "Ubuntu Local Security Checks",
+ "solution": "Update the affected packages.",
+ "os": "Ubuntu 22.04",
+ "output": "\n  - Installed package : ubuntu-advantage-tools_28.1~22.04\n  - Fixed package     : ubuntu-advantage-tools_37.2ubuntu~22.04.1\n\n",
+ "expect": {
+  "pairs": [
+   [
+    "ubuntu-advantage-tools",
+    "28.1~22.04",
+    "37.2ubuntu~22.04.1",
+    "distro"
+   ]
+  ],
+  "packages": [
+   "ubuntu-advantage-tools"
+  ],
+  "kernel": false,
+  "family": "apt",
+  "compare": "dpkg",
+  "requires_reboot": false,
+  "esm": false
+ }
+}

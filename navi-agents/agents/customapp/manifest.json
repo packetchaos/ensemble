@@ -1,0 +1,33 @@
+{
+  "id": "customapp",
+  "name": "Custom App Discovery",
+  "icon": "🏷️",
+  "order": 4,
+  "category": "Discovery",
+  "summary": "Finds software missing from inventory via routes/paths; tag custom apps in plain English ('Tag my custom app navi').",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "run",
+    "interpret",
+    "search",
+    "tag"
+  ],
+  "codename": "",
+  "tag_scope": {
+    "actions": [
+      "run",
+      "search",
+      "tag"
+    ],
+    "ignore": [
+      "interpret",
+      "ignore_list",
+      "ignore_add",
+      "ignore_remove",
+      "ignore_import"
+    ]
+  },
+  "hero": false,
+  "mission": "Asset Truth"
+}

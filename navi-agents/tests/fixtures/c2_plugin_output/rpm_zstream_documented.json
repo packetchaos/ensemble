@@ -1,0 +1,27 @@
+{
+ "id": "rpm_zstream_documented",
+ "provenance": "documented rpm format with an underscore in the release (el7_9); NOT a real sample",
+ "real_sample": false,
+ "fam": "rpm",
+ "shape": "single_pair",
+ "plugin_name": "CentOS 7 : openssl (CESA-2023:xxxx)",
+ "plugin_family": "CentOS Local Security Checks",
+ "solution": "Update the affected openssl packages.",
+ "os": "CentOS Linux 7",
+ "output": "\n  Remote package installed : openssl-1.0.2k-25.el7_9.x86_64\n  Should be                : openssl-1.0.2k-26.el7_9\n",
+ "expect": {
+  "pairs": [
+   [
+    "openssl",
+    "1.0.2k-25.el7_9",
+    "1.0.2k-26.el7_9",
+    "distro"
+   ]
+  ],
+  "packages": [
+   "openssl"
+  ],
+  "kernel": false,
+  "family": "yum"
+ }
+}

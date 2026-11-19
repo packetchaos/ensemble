@@ -1,0 +1,382 @@
+/* ============================================================
+   Navi Agents — shared console styling.
+   Matte-black base + Iris (blue-violet) accent, flat/no gloss.
+   Space Grotesk / Inter / JetBrains Mono.
+   Matches the live console theme so both surfaces look identical.
+   Dark is the default; [data-theme="light"] is the toggle.
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root{
+  /* Warm-dark ink base + Tenable lime accent (dark default) — matches the live console */
+  --bg:#14161b; --bg-2:#16181e; --panel:#1b1e25; --panel-2:#232732;
+  --line:#2c313b; --line-soft:#252a33;
+  --ink:#f2f4f8; --ink-2:#aeb5c1; --ink-3:#9aa3b2;   /* was #6b7280 (3.1–3.7:1 on the panels — unreadable small text); now ≥ 5.9:1 */
+  --amber:#6d70e6; --amber-dim:#5052c4; --amber-glow:rgba(109,112,230,.08);
+  --cyan:#6ea8e6; --cyan-dim:#3f6f9b;
+  --crit:#e5484d; --high:#e0913a; --med:#c9a83f; --low:#5d92d6; --info:#6b7280; --ok:#43b98a;
+  --crit-bg:rgba(229,72,77,.13); --high-bg:rgba(224,145,58,.13); --med-bg:rgba(201,168,63,.13); --ok-bg:rgba(67,185,138,.13);
+  --shadow:0 2px 6px rgba(0,0,0,.35), 0 18px 44px rgba(0,0,0,.55); --radius:14px; --radius-sm:9px;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --body:'Inter',system-ui,-apple-system,sans-serif;
+  --display:'Space Grotesk',var(--body);
+  /* compatibility aliases for existing class names */
+  --panel2:var(--panel-2); --txt:var(--ink); --mut:var(--ink-3);
+  --accent:var(--amber); --accent2:#46cbcb; --chip:#12151b;
+  --run:var(--amber); --runbg:rgba(109,112,230,.14); --okbg:var(--ok-bg);
+  --warn:var(--med); --warnbg:var(--med-bg); --critbg:var(--crit-bg);
+  --h0:#0e1020; --h1:#1b1f45; --h2:#33386f; --h3:#565ab0; --h4:#8b8fe6;
+
+  /* chart palette (dark = current values) */ --cx-f43f5e:#f43f5e; --cx-fb7185:#fb7185; --cx-e0607e:#e0607e; --cx-ffb4c6:#ffb4c6; --cx-fb923c:#fb923c; --cx-ff9a4d:#ff9a4d; --cx-ff8a3d:#ff8a3d; --cx-f5a623:#f5a623; --cx-e0913a:#e0913a; --cx-e7c66b:#e7c66b; --cx-fbbf24:#fbbf24; --cx-ffd28a:#ffd28a; --cx-e0b341:#e0b341; --cx-b9791a:#b9791a; --cx-6ea8ff:#6ea8ff; --cx-3ea6ff:#3ea6ff; --cx-7cc4ff:#7cc4ff; --cx-7ec8ff:#7ec8ff; --cx-9fd0ff:#9fd0ff; --cx-9ad9ff:#9ad9ff; --cx-2fa06e:#2fa06e; --cx-3fae74:#3fae74; --cx-4f9e6e:#4f9e6e; --cx-2e7d57:#2e7d57; --cx-43b98a:#43b98a; --cx-3f9db0:#3f9db0; --cx-5a5fe0:#5a5fe0; --cx-3f78c2:#3f78c2; --cx-2f9d9d:#2f9d9d; --cx-7d64d4:#7d64d4; --cx-3f8fb0:#3f8fb0; --cx-4a6fd0:#4a6fd0; --cx-2f9e88:#2f9e88; --cx-6f73e0:#6f73e0; --cx-2f88a8:#2f88a8; --cx-5a7fc0:#5a7fc0; --cx-8a67d6:#8a67d6; --cx-3fb0c9:#3fb0c9; --cx-a97fd6:#a97fd6; --cx-6d70e6:#6d70e6; --cx-8b8fe6:#8b8fe6; --cx-a78bfa:#a78bfa; --cx-6a70d8:#6a70d8;
+}
+[data-theme="light"]{
+  /* Tenable product look: cool white, navy ink, Tenable product-blue accent */
+  --bg:#f4f7fb; --bg-2:#eaf0f8; --panel:#ffffff; --panel-2:#f3f7fc;
+  --line:#dbe3ef; --line-soft:#e9eef6;
+  --ink:#16213d; --ink-2:#3c486a; --ink-3:#4b5675;   /* was #5b6580; now ≥ 6.3:1 on every light surface */
+  --amber:#5457cc; --amber-dim:#6d70e6; --amber-glow:rgba(84,87,204,.05);
+  --cyan:#2a7d9c; --cyan-dim:#5bb8c4;
+  --crit:#c81e3f; --high:#d9772b; --med:#b7791f; --low:#2f6fb0; --info:#5b6580; --ok:#0b6b47;
+  --crit-bg:rgba(200,30,63,.09); --high-bg:rgba(181,101,28,.10); --med-bg:rgba(138,109,23,.12); --ok-bg:rgba(11,107,71,.13);
+  --shadow:0 1px 2px rgba(28,40,70,.06),0 6px 18px rgba(28,40,70,.06);
+  --accent:#5457cc; --accent2:#2a7d9c; --run:#5457cc; --runbg:rgba(84,87,204,.08); --chip:#eef3fa;
+  --h0:#eef2f8; --h1:#d3e4f5; --h2:#a9cdee; --h3:#6aa9e0; --h4:#2f7fae;
+
+  /* chart palette (Hounds Signature) */ --cx-f43f5e:#c81e3f; --cx-fb7185:#d05070; --cx-e0607e:#c25467; --cx-ffb4c6:#c81e3f; --cx-fb923c:#d9772b; --cx-ff9a4d:#d9772b; --cx-ff8a3d:#d9772b; --cx-f5a623:#c8791f; --cx-e0913a:#c8791f; --cx-e7c66b:#b7791f; --cx-fbbf24:#b7791f; --cx-ffd28a:#b7791f; --cx-e0b341:#b7791f; --cx-b9791a:#b7791f; --cx-6ea8ff:#2f6fb0; --cx-3ea6ff:#2f6fb0; --cx-7cc4ff:#2f6fb0; --cx-7ec8ff:#2f6fb0; --cx-9fd0ff:#2f6fb0; --cx-9ad9ff:#2f6fb0; --cx-2fa06e:#0b6b47; --cx-3fae74:#0b6b47; --cx-4f9e6e:#0b6b47; --cx-2e7d57:#0b6b47; --cx-43b98a:#0b6b47; --cx-3f9db0:#0d9488; --cx-5a5fe0:#3559b3; --cx-3f78c2:#c05a25; --cx-2f9d9d:#0d9488; --cx-7d64d4:#b23a72; --cx-3f8fb0:#0b6b47; --cx-4a6fd0:#6a5bc4; --cx-2f9e88:#c81e3f; --cx-6f73e0:#3559b3; --cx-2f88a8:#0d9488; --cx-5a7fc0:#c05a25; --cx-8a67d6:#b23a72; --cx-3fb0c9:#0d9488; --cx-a97fd6:#6a5bc4; --cx-6d70e6:#5457cc; --cx-8b8fe6:#6a5bc4; --cx-a78bfa:#6a5bc4; --cx-6a70d8:#5457cc; --trim:#8b8fe6; --trim-soft:#e2e2f7;
+}
+/* Light overrides — indigo buttons (white text) on a clean, neutral corporate backdrop.
+   (The former multi-tone iris/purple glows were dropped: light mode now reads as a
+   professional cool-white surface with a faint neutral dot-grid, no colored corner wash.) */
+[data-theme="light"] body::before{
+  opacity:1;
+  background:
+    linear-gradient(180deg,#f7f9fc 0%,#eef2f8 62%,#e9eef5 100%),
+    radial-gradient(rgba(100,116,139,.05) 1px, transparent 1.5px);
+  background-size:auto, 26px 26px;
+}
+[data-theme="light"] .btn,[data-theme="light"] .btn.run{background:linear-gradient(180deg,#6366ea,#5457cc);color:#fff;border:1px solid transparent;box-shadow:0 2px 8px rgba(84,87,204,.28)}
+[data-theme="light"] .btn:hover,[data-theme="light"] .btn.run:hover{background:linear-gradient(180deg,#5457cc,#43459f)}
+[data-theme="light"] .btn.ghost{background:#fff;color:#5457cc;border:1px solid var(--line)}
+[data-theme="light"] .btn.ghost:hover{background:#f2f2fc;border-color:#c9cbf0}
+[data-theme="light"] nav.tabs button.active{color:#5457cc;background:#edeefb;border-color:#d2d4f4}
+[data-theme="light"] nav.tabs button.lens{color:#5457cc}
+[data-theme="light"] .logo{color:#5457cc}
+[data-theme="light"] .tagval{color:#5457cc}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+/* Cross-browser scrollbars — Windows/Linux render chunky light-gray default bars that
+   clash with the dark UI (macOS uses thin auto-hiding overlays). Style them to match. */
+*{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:var(--ink-3)}
+::-webkit-scrollbar-corner{background:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;
+  transition:background .35s ease,color .35s ease}
+.wrap{max-width:1240px;margin:0 auto;padding:clamp(10px,2vw,16px) clamp(16px,4vw,40px) 60px}
+/* global content links — default browser blue looked out of place on the dark theme.
+   Buttons/logo/tabs set their own colour (class specificity), so this only hits plain links. */
+a{color:var(--accent);text-underline-offset:2px}
+a:hover{opacity:.82}
+
+/* ---- header / brand ---- */
+header.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:4px}
+.logo{width:30px;height:30px;border-radius:8px;
+  background:var(--panel-2);
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:15px;color:var(--amber);text-decoration:none;flex:0 0 auto}
+.logo svg{width:20px;height:20px}
+.brand-mark .sweep{transform-origin:16px 16px;animation:sweep 4.5s linear infinite}
+@keyframes sweep{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.brand-mark .sweep{animation:none}}
+h1{font-family:var(--display);font-size:16px;letter-spacing:.01em;margin:0;line-height:1.15}
+h1 small{display:inline;color:var(--ink-3);font-weight:400;font-size:10.5px;margin-left:8px;font-family:var(--mono);letter-spacing:.1em}
+.meta{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.top .nextagent{margin-left:10px;align-self:center;white-space:nowrap;text-decoration:none;
+  font-size:12.5px;color:var(--accent);border:1px solid var(--accent);border-radius:100px;
+  padding:5px 13px;transition:background .12s,color .12s}
+.top .nextagent:hover{background:var(--accent);color:#0b0e17}
+.top .nextagent b{font-weight:700}
+.chip{background:var(--panel-2);border:1px solid var(--line);border-radius:100px;padding:4px 11px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.03em;color:var(--ink-2)}
+.chip b{color:var(--ink)}
+.live{background:var(--ok-bg);border-color:transparent;color:var(--ok)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:5px;vertical-align:middle}
+.gate{background:var(--med-bg);border-color:transparent;color:var(--med)}
+.gate.on{background:var(--ok-bg);color:var(--ok)}
+
+/* ---- tabs (nav-link style) ---- */
+nav.tabs{display:flex;gap:3px;margin:8px 0 6px;flex-wrap:wrap}
+nav.tabs button{background:transparent;border:1px solid transparent;color:var(--ink-2);
+  padding:5px 11px;border-radius:var(--radius-sm);cursor:pointer;font-size:12.5px;font-weight:500;font-family:var(--body)}
+nav.tabs button:hover{color:var(--ink);background:var(--panel)}
+nav.tabs button.active{color:var(--amber);background:var(--panel);border-color:var(--line)}
+nav.tabs .navsep{width:1px;align-self:stretch;background:var(--line);margin:3px 5px}
+nav.tabs button.lens{color:var(--amber)}
+nav.tabs button.lens.active{color:var(--ink);background:var(--panel);border-color:var(--line)}
+
+/* ---- panels / cards ---- */
+section.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:22px;margin-bottom:20px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05), var(--shadow);overflow-x:auto}  /* keep wide tables inside the card */
+.view{display:none}.view.active{display:block}
+h2{font-family:var(--display);font-weight:600;font-size:18px;letter-spacing:-.01em;margin:0 0 4px}
+.sub{color:var(--ink-2);font-size:13px;margin:0 0 14px}
+
+/* ---- tables ---- */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:10px 13px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{font-family:var(--mono);color:var(--ink-3);font-weight:500;font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;border-bottom:1px solid var(--line)}
+tr:hover td{background:var(--panel-2)}
+.mono{font-family:var(--mono);font-size:12.5px}
+
+/* tag value pill */
+.tagval{display:inline-block;background:var(--panel-2);color:var(--cyan);
+  border:1px solid var(--line-soft);border-radius:6px;padding:2px 8px;font-family:var(--mono);font-size:12px}
+
+/* ---- badges / pills ---- */
+.badge{font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:100px;font-weight:500;white-space:nowrap;display:inline-block;border:1px solid var(--line)}
+.b-pending{background:var(--panel-2);color:var(--ink-3)}
+.b-appr{background:var(--runbg);color:var(--cyan);border-color:transparent}
+.b-applied,.b-ready{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+.b-running{background:var(--runbg);color:var(--cyan);border-color:transparent}
+.b-planned{background:var(--med-bg);color:var(--med);border-color:transparent}
+.b-err{background:var(--crit-bg);color:var(--crit);border-color:transparent}
+
+/* ---- buttons ---- */
+.btn{background:var(--amber);color:#eef1fb;font-weight:700;border:none;border-radius:var(--radius-sm);padding:8px 14px;
+  font-weight:600;font-size:12.5px;cursor:pointer;font-family:var(--body)}
+.btn:hover{filter:brightness(1.07)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--amber)}
+.btn.sm{padding:5px 11px;font-size:11.5px;border-radius:7px}
+.btn:disabled{opacity:.45;cursor:default}
+/* filter/toggle chips (identity type filter, agent-grid filters, etc.) */
+.atagchip{font-size:12.5px;font-weight:600;color:var(--ink-2);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;cursor:pointer;font-family:var(--body);transition:background .15s,color .15s,border-color .15s}
+.atagchip:hover{border-color:var(--amber);color:var(--ink)}
+.atagchip.on{color:#eef1fb;background:var(--amber);border-color:var(--amber)}
+/* themed form control (select / input) used across agent pages */
+.fld{background:var(--bg-2);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-family:var(--body);font-size:12.5px}
+.fld:focus{outline:none;border-color:var(--amber)}
+.btn.run{background:var(--amber);color:#eef1fb}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.callbox{background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:11px 13px;
+  font-family:var(--mono);font-size:11.5px;color:var(--cyan);white-space:pre-wrap;word-break:break-word;margin-top:6px}
+
+/* ---- heat map 1 ---- */
+.cal{display:grid;grid-template-columns:repeat(13,1fr);gap:6px;margin-top:6px}
+.cell{aspect-ratio:1/1.1;border-radius:var(--radius-sm);border:1px solid var(--line);padding:6px;display:flex;flex-direction:column;justify-content:space-between;min-height:58px}
+.cell .m{font-size:10px;color:var(--ink-3);font-weight:500;font-family:var(--mono)}.cell .n{font-family:var(--display);font-size:19px;font-weight:700;text-align:right}
+.cell.has{cursor:pointer}.cell.has:hover{border-color:var(--amber)}
+.legend{display:flex;gap:8px;align-items:center;margin-top:13px;font-size:11.5px;color:var(--ink-2);flex-wrap:wrap}
+.sw{width:15px;height:15px;border-radius:4px;border:1px solid var(--line);display:inline-block}
+
+/* ---- heat map 2 / bars ---- */
+.h2row{display:grid;grid-template-columns:1fr 50px;gap:10px;align-items:center;margin-bottom:7px}
+.h2bar{height:26px;border-radius:100px;display:flex;align-items:center;padding:0 11px;color:#eef1fb;font-weight:700;font-family:var(--mono);font-size:12px;min-width:30px;background:linear-gradient(90deg,var(--amber-dim),var(--amber))}
+.h2lab{font-size:13px}.h2lab .pid{color:var(--ink-3);font-family:var(--mono);font-size:11px}
+.h2cnt{text-align:right;font-weight:700;font-family:var(--mono)}
+.filterbtns{display:flex;gap:6px}
+.filterbtns button{background:var(--panel-2);border:1px solid var(--line);color:var(--ink-2);border-radius:7px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:500}
+.filterbtns button.on{color:var(--ink);border-color:var(--amber);background:var(--amber-glow)}
+
+/* ---- misc ---- */
+.setupcard{text-align:center;padding:26px 18px}.setupcard .big{font-size:15px;font-weight:700;margin-bottom:6px}
+.flash{padding:11px 14px;border-radius:var(--radius-sm);margin-bottom:14px;font-size:13px;display:none}.flash.show{display:block}
+.note{color:var(--ink-3);font-size:12px;margin-top:13px;border-top:1px solid var(--line-soft);padding-top:11px}
+footer{color:var(--ink-3);font-size:12px;text-align:center;padding:18px 0;font-family:var(--mono)}
+.dtype{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:6px;font-weight:500}
+.t-iot{background:var(--amber-glow);color:var(--amber)}.t-app{background:var(--runbg);color:var(--cyan)}
+.kpi{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.kpi .k{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:13px 16px;flex:1;min-width:110px}
+.kpi .k .v{font-family:var(--display);font-size:26px;font-weight:700}.kpi .k .l{font-size:11.5px;color:var(--ink-3);margin-top:4px}
+.agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
+.agent{border:1px solid var(--line);border-radius:var(--radius);padding:18px;background:var(--panel);display:flex;flex-direction:column;gap:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05), var(--shadow);transition:border-color .2s ease,transform .2s ease,box-shadow .2s ease}
+.agent:hover{border-color:var(--amber);transform:translateY(-2px)}
+.agent.dim{opacity:.6}.agent .ah{display:flex;align-items:center;gap:10px}
+.agent .ico{width:34px;height:34px;border-radius:9px;background:var(--panel-2);display:flex;align-items:center;justify-content:center;font-size:17px;border:1px solid var(--line)}
+.agent .nm{font-family:var(--display);font-weight:600;font-size:14.5px}.agent .ds{color:var(--ink-3);font-size:12px;min-height:32px}
+.agent .row{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3)}
+.agent .acts{display:flex;gap:8px}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--cyan);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.log{font-family:var(--mono);font-size:11px;color:var(--ink-2);background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 11px;max-height:130px;overflow:auto;white-space:pre-wrap;margin-top:14px}
+
+/* floating theme toggle (shared) */
+#naviTheme{position:fixed;right:16px;bottom:16px;z-index:9999;display:flex;align-items:center;gap:7px;
+  background:var(--panel);border:1px solid var(--line);color:var(--ink-2);border-radius:100px;
+  padding:8px 13px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;cursor:pointer;box-shadow:var(--shadow)}
+#naviTheme:hover{border-color:var(--amber);color:var(--ink)}
+#naviTheme svg{width:15px;height:15px}
+
+/* graphite backdrop — subtle iris depth: two soft corner glows + a faint dot-grid mesh.
+   Fixed, behind content, non-interactive. Alphas kept low so it reads as texture, not decoration. */
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(1320px 840px at 6% -12%, rgba(109,112,230,.20), transparent 62%),
+    radial-gradient(1320px 840px at 114% 116%, rgba(109,112,230,.20), transparent 62%),
+    radial-gradient(rgba(139,143,230,.05) 1px, transparent 1.4px);
+  background-size:auto, auto, 26px 26px;
+  background-position:0 0, 0 0, 0 0;
+}
+
+/* consistent tile background — matte panel with a soft iris glow anchored top-right.
+   The gradient is a background layer over the panel, so it's clipped to the card's
+   border-radius and sits behind content without affecting overflow/scroll. */
+section.card,.agent,.acard,.itile{
+  background:radial-gradient(560px 380px at 100% 0%, rgba(109,112,230,.13), transparent 60%), var(--panel);
+}
+/* Light: lift the cards — clean white→cool-white surface + soft neutral shadow.
+   (The top-right iris/purple glow was removed so cards read as a plain corporate panel.) */
+[data-theme="light"] section.card,
+[data-theme="light"] .agent,
+[data-theme="light"] .acard,
+[data-theme="light"] .itile{
+  background:linear-gradient(180deg,#ffffff,#f7f9fc);
+  border-color:#dbe2f2;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(40,54,100,.05), 0 12px 30px rgba(60,72,130,.10);
+}
+[data-theme="light"] .agent:hover{border-color:#c3ccdd;transform:translateY(-2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.9), 0 4px 8px rgba(40,54,100,.07), 0 22px 48px rgba(60,72,130,.14)}
+
+/* general Hounds crest (logo + Release-the-Hounds) */
+.hcrest{display:inline-block;background:url('/static/brand-mark.png?v=1') center/contain no-repeat;border-radius:7px;vertical-align:middle}   /* the navi Ensemble iris mark */
+.logo .hcrest.brand{width:100%;height:100%;border-radius:7px}
+.hcrest.sm{width:20px;height:20px;border-radius:5px;margin-right:6px;position:relative;top:-1px}
+
+/* Custom-dashboard tab strip (up to 5 named boards) */
+.dashtabs{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:12px 0 0;padding:8px 11px;background:var(--panel);border:1px solid var(--line);border-radius:11px}
+.dashtabs .lbl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);margin-right:2px}
+.dashtabs .dtab{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.dashtabs .dtab.active{border-color:var(--accent);background:var(--accent)}
+.dashtabs .dtab-name{background:transparent;border:0;color:var(--ink-2);padding:6px 12px;font-size:12.5px;cursor:pointer;white-space:nowrap;font-family:inherit}
+.dashtabs .dtab.active .dtab-name{color:#0c0e13;font-weight:700}
+.dashtabs .dtab-ic{background:transparent;border:0;border-left:1px solid rgba(12,14,19,.25);color:#0c0e13;padding:6px 8px;font-size:11px;cursor:pointer;opacity:.8}
+.dashtabs .dtab-ic:hover{opacity:1}
+.dashtabs .dtab-add{background:transparent;border:1px dashed var(--line);color:var(--ink-2);padding:6px 12px;border-radius:999px;font-size:12.5px;cursor:pointer;white-space:nowrap;font-family:inherit}
+.dashtabs .dtab-add:hover{border-color:var(--accent);color:var(--ink)}
+.dashtabs .dtab-max{font-size:11px;color:var(--mut);padding:0 6px}
+.dashtabs .dsep{width:1px;height:20px;background:var(--line);margin:0 3px}
+.dashtabs .dtab-io{background:transparent;border:1px solid var(--line);color:var(--mut);padding:6px 10px;border-radius:999px;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit}
+.dashtabs .dtab-io:hover{border-color:var(--accent);color:var(--ink)}
+
+/* ===== Left-nav shell (fixed top bar + grouped left sidebar) ===== */
+:root{--sbw:242px;--tbh:52px}
+body{padding-top:var(--tbh)}
+/* the shared header becomes a fixed, full-width top bar (brand · status chips) */
+header.top,#app-header{position:fixed;top:0;left:0;right:0;height:var(--tbh);z-index:60;
+  margin:0;padding:0 16px;border-bottom:1px solid var(--line);background:var(--bg-2);
+  display:flex;align-items:center;gap:10px;flex-wrap:nowrap;overflow:hidden}
+header.top .logo,#app-header .logo{flex:0 0 auto}
+header.top h1,#app-header h1{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+header.top h1 small,#app-header h1 small{display:none}
+header.top .meta,#app-header .meta{margin-left:auto;flex-wrap:nowrap;overflow-x:auto}
+.side-collapse{background:transparent;border:1px solid var(--line);color:var(--ink-3);border-radius:8px;
+  width:30px;height:30px;cursor:pointer;flex:0 0 auto;font-size:13px;line-height:1}
+.side-collapse:hover{border-color:var(--accent);color:var(--ink)}
+/* #topnav is built by mountTopNav() as a grouped vertical sidebar under the bar */
+#topnav{position:fixed;top:var(--tbh);left:0;width:var(--sbw);height:calc(100vh - var(--tbh));z-index:40;
+  margin:0;padding:12px 10px 22px;display:block;overflow-y:auto;overflow-x:hidden;
+  background:var(--bg-2);border-right:1px solid var(--line);transition:width .16s ease}
+#topnav .navsep{display:none}
+#topnav .navgrp{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-3);padding:0 9px;margin:15px 0 4px}
+#topnav .navgrp:first-child{margin-top:2px}
+#topnav button{display:flex;align-items:center;gap:10px;width:100%;justify-content:flex-start;text-align:left;
+  padding:8px 10px;margin:1px 0;border-radius:9px;font-size:13.5px;white-space:nowrap;overflow:hidden;
+  background:transparent;border:1px solid transparent;color:var(--ink-2);cursor:pointer;font-family:var(--body)}
+#topnav button:hover{color:var(--ink);background:var(--panel)}
+#topnav button.active{color:var(--ink);background:var(--panel);border-color:var(--line);box-shadow:inset 3px 0 0 var(--accent)}
+#topnav button .ico{width:20px;flex:0 0 auto;text-align:center;font-size:14px;display:inline-flex;align-items:center;justify-content:center}
+#topnav button .ico .hcrest.sm{width:18px;height:18px}
+#topnav button .lbl{overflow:hidden;text-overflow:ellipsis}
+/* content column clears the fixed bar + sidebar */
+.wrap{max-width:none;margin:0;padding:16px 26px 60px calc(var(--sbw) + 26px)}
+/* collapsed to icons */
+body.navcollapsed #topnav{width:62px}
+body.navcollapsed #topnav .navgrp,body.navcollapsed #topnav button .lbl{display:none}
+body.navcollapsed #topnav button{justify-content:center;padding:9px 0;gap:0}
+body.navcollapsed .wrap{padding-left:calc(62px + 26px)}
+@media(max-width:920px){:root{--sbw:212px}}
+/* phones: the sidebar is an overlay drawer, closed by default (☰ opens it), so content gets
+   the full width with a 16px gutter instead of the ~130px a fixed sidebar would leave */
+@media(max-width:640px){
+  #topnav{width:min(260px,82vw);transform:translateX(-102%);transition:transform .18s ease;z-index:70;
+    box-shadow:6px 0 24px rgba(0,0,0,.35)}
+  body.navopen #topnav{transform:none}
+  body.navcollapsed #topnav{width:min(260px,82vw)}
+  body.navcollapsed #topnav .navgrp,body.navcollapsed #topnav button .lbl{display:revert}
+  body.navcollapsed #topnav button{justify-content:flex-start;padding:8px 10px;gap:10px}
+  .wrap,body.navcollapsed .wrap{padding:12px 16px 60px 16px}
+}
+/* pressed state for multi-step buttons (▶ Run all) */
+.btn.pressed{transform:translateY(1px) scale(.98);box-shadow:inset 0 2px 6px rgba(0,0,0,.35)}
+/* ===== 📊 At a glance — shared template (design C · headline + chips) =====================
+   Rendered by renderGlance(target, groups, opts) in console.js — see CONTRIBUTING.md
+   "At a glance". Pages must not restyle these classes; colours come from tokens only.
+   .glx            responsive grid of group panels
+   .glx-p          one group panel        .glx-k  its small uppercase group label
+   .glx-h          headline (big number <b> + .glx-l label, one line)   .glx-d  muted detail line
+   .glx-bar/.glx-lg stacked mini-bar + legend
+   .glx-cs/.glx-c  chips (number + label; left border = severity)
+   .glx-rk/.glx-r  ranked mini-bar list (label · bar · count)
+   .glx-sev-{crit|high|med|low|ok|info|none}   severity colour (sets --glx-rc)
+   .glx-zero       value is 0 → dimmed        .on  the active filter       .glx-act  clickable */
+:root{
+  --glx-title:#46cbcb;   /* group + ranked-list titles: a colour of their own (≥ 7.5:1 on the panel) */
+  --glx-s1:#8b8fe6; --glx-s2:#3fb0c9; --glx-s3:#a97fd6; --glx-s4:#43b98a;
+  --glx-s5:#e0913a; --glx-s6:#5d92d6; --glx-s7:#e0607e; --glx-s8:#c9a83f;
+}
+[data-theme="light"]{
+  --glx-title:#1f6a85;   /* ≥ 5.7:1 on --panel-2 */
+  --glx-s1:#5457cc; --glx-s2:#1f8fa8; --glx-s3:#8a4fc4; --glx-s4:#0b6b47;
+  --glx-s5:#c05a25; --glx-s6:#2f6fb0; --glx-s7:#b23a72; --glx-s8:#b7791f;
+}
+.glx{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:10px;margin-top:10px;min-width:0}
+.glx-p{border:1px solid var(--line);border-radius:12px;background:var(--panel-2);padding:9px 11px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.glx-k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--glx-title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.glx-h{display:flex;align-items:baseline;gap:8px;min-width:0;color:inherit;text-decoration:none;border-radius:8px}
+.glx-h b{font-size:22px;font-weight:800;line-height:1.15;color:var(--ink);font-variant-numeric:tabular-nums;flex:0 0 auto}
+.glx-h .glx-l{font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.glx-h.glx-sev-crit b{color:var(--crit)}.glx-h.glx-sev-high b{color:var(--high)}.glx-h.glx-sev-med b{color:var(--med)}
+.glx-h.glx-sev-low b{color:var(--low)}.glx-h.glx-sev-ok b{color:var(--ok)}
+.glx-d{font-size:10.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-4px;min-width:0}
+.glx-bar{display:flex;height:6px;border-radius:4px;overflow:hidden;background:var(--line-soft)}
+.glx-bar i{display:block;height:100%;background:var(--glx-c,var(--glx-s1))}
+.glx-bar i+i{box-shadow:inset 1px 0 0 var(--panel-2)}
+.glx-lg{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:10.5px;color:var(--ink-3);margin-top:-2px}
+.glx-lg span{white-space:nowrap}.glx-lg span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:2px;background:var(--glx-c,var(--glx-s1));margin-right:4px}
+.glx-lg b{color:var(--ink-2);font-weight:600;font-variant-numeric:tabular-nums}
+.glx-cs{display:flex;flex-wrap:wrap;gap:5px;min-width:0}
+.glx-c{--glx-rc:var(--line);display:inline-flex;align-items:baseline;gap:5px;max-width:100%;min-width:0;border:1px solid var(--line);border-left:3px solid var(--glx-rc);border-radius:7px;padding:2px 7px;font-size:11.5px;color:var(--ink-2);background:var(--panel);text-decoration:none}
+.glx-c b{color:var(--ink);font-size:12.5px;font-variant-numeric:tabular-nums;flex:0 0 auto}
+/* a long text value (a hostname) truncates instead of spilling out and hiding its label */
+.glx-c b,.glx-h b{min-width:0;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.glx-c .glx-l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.glx-sev-crit{--glx-rc:var(--crit)}.glx-sev-high{--glx-rc:var(--high)}.glx-sev-med{--glx-rc:var(--med)}
+.glx-sev-low{--glx-rc:var(--low)}.glx-sev-ok{--glx-rc:var(--ok)}.glx-sev-info{--glx-rc:var(--info)}.glx-sev-none{--glx-rc:var(--line)}
+.glx-rk{display:flex;flex-direction:column;gap:3px;margin-top:4px;min-width:0}
+.glx-rt{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--glx-title)}
+.glx-r{display:grid;grid-template-columns:minmax(0,1fr) 54px minmax(22px,auto);gap:6px;align-items:center;font-size:11.5px;color:var(--ink-2);text-decoration:none;border-radius:6px}
+.glx-r .glx-l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.glx-r .glx-t{height:5px;border-radius:3px;background:var(--line-soft);overflow:hidden}
+.glx-r .glx-t i{display:block;height:100%;background:var(--glx-rc,var(--accent));border-radius:3px}
+.glx-r.glx-sev-none .glx-t i{background:var(--accent)}
+.glx-r b{text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+.glx-empty{font-size:11.5px;color:var(--ink-3)}
+.glx-zero{opacity:.68}   /* dimmed, but still readable */
+.glx-act{cursor:pointer}
+.glx-c.glx-act:hover{border-color:var(--accent);border-left-color:var(--glx-rc)}
+.glx-h.glx-act:hover .glx-l,.glx-r.glx-act:hover .glx-l{color:var(--accent)}
+.glx-act:focus{outline:none}
+.glx-act:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.glx .on{box-shadow:0 0 0 2px var(--accent)}
+.glx-flash{box-shadow:0 0 0 2px var(--accent);transition:box-shadow .3s}
+
+/* At a glance — value suffix + ranked footer */
+.glx .glx-v2{font-size:11px;font-weight:600;color:var(--ink-3);margin-left:-2px}
+.glx .glx-h .glx-v2{font-size:12.5px}
+.glx .glx-more{display:block;font-size:11px;color:var(--ink-3);margin-top:3px}
+.glx a.glx-more,.glx .glx-more.glx-act{color:var(--accent);cursor:pointer}

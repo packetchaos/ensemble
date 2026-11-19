@@ -1,0 +1,19 @@
+{
+  "id": "argos",
+  "name": "Asset Dossier",
+  "icon": "🔦",
+  "order": 19,
+  "category": "Explore",
+  "codename": "",
+  "summary": "Give it one asset UUID or IP and it returns the whole story: risk band, the Ensemble's tags deciphered (what each one means + which specialist raised it), severity breakdown, top CVEs, software and certs — plus live navi explore uuid views.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "run",
+    "lookup",
+    "live",
+    "output"
+  ],
+  "hero": false,
+  "mission": "Asset Truth"
+}

@@ -1,0 +1,27 @@
+{
+  "id": "identity",
+  "name": "Identity Inventory",
+  "icon": "🪪",
+  "order": 7,
+  "category": "Tagging",
+  "summary": "Identity Inventory — finds human, service/NHI and machine identities by content (local-user enumeration plugins + output), classified by external authority (Microsoft well-known SIDs/RIDs, AD $ accounts, Linux UID convention). Metrics for inventory, credential coverage, account hygiene (privileged, account reuse, never-expiring, SSH passwords) and priority (privileged on exploitable hosts, KEV, crown jewels). Tags the hosting assets: Identity, NHI, Machine ID, Owner, Identity Risk, Identity Coverage (gated), plus natural-language tagging.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "run",
+    "tag",
+    "interpret"
+  ],
+  "tag_scope": {
+    "actions": [
+      "run",
+      "drill",
+      "tag",
+      "interpret"
+    ],
+    "ignore": []
+  },
+  "codename": "",
+  "hero": false,
+  "mission": "Asset Truth"
+}

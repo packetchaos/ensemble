@@ -1,0 +1,38 @@
+{
+ "codename": "",
+ "discipline": "Explorer › Tags",
+ "category": "Explore",
+ "tagline": "See every tag — and exactly which assets carry it.",
+ "lore": "",
+ "problem": "Tags are how the Ensemble's work reaches Tenable, but once there are hundreds of categories and values, nobody can say what exists, how many assets carry each one, or whether a tag landed where it should.",
+ "does": "Explorer › Tags lists every tag in navi.db — one row per category : value with its asset count — searchable by category or value. Click a tag to see exactly which assets carry it, each linking to Asset Dossier and to the asset in Tenable.",
+ "glance": {
+  "caption": "Explorer › Tags's results: each category : value with its asset count; clicking a tag lists the assets that carry it."
+ },
+ "capabilities": [
+  [
+   "Every tag",
+   "one row per category : value, with its asset count and when it was first and last applied."
+  ],
+  [
+   "Search",
+   "by category or value."
+  ],
+  [
+   "Who carries it",
+   "every asset carrying the tag — host, IP, OS, ACR, AES, when it was tagged, and a Tenable link."
+  ],
+  [
+   "Deep-dive",
+   "every host opens Asset Dossier."
+  ],
+  [
+   "Email the result",
+   "send the list through Notify & Reports."
+  ]
+ ],
+ "how": "Explorer › Tags reads the tags and assets tables in your local navi.db and changes nothing. New tags appear after the next navi asset sync.",
+ "who": "Anyone checking that a tag landed, auditing the tag estate, or finding the assets behind a tag.",
+ "better": "Explorer › Tags reads what the tagging specialists write. Tag Removal removes what no longer belongs, and the Tagging log shows each write from the Ensemble's side.",
+ "cta": "Check any tag with Explorer › Tags — and see every asset that carries it."
+}

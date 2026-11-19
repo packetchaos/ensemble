@@ -1,0 +1,45 @@
+{
+ "id": "real_F_centos8_openssl",
+ "provenance": "REAL sample from the owner's navi.db (real_samples.md, plugin 187735, read 2026-11-18): OUTPUT verbatim; SOLUTION verbatim from real_solutions.md. plugin_family is synthetic (not supplied).",
+ "real_sample": true,
+ "fam": "rpm",
+ "shape": "multi_pair",
+ "plugin_id": "187735",
+ "plugin_name": "CentOS 8 : openssl (CESA-2023:7877)",
+ "plugin_family": "CentOS Local Security Checks",
+ "solution": "Update the affected packages.",
+ "os": "CentOS Linux 8",
+ "output": "\nRemote package installed : openssl-1.1.1k-11.el8\nShould be                : openssl-1.1.1k-12.el8\n\nRemote package installed : openssl-devel-1.1.1k-11.el8\nShould be                : openssl-devel-1.1.1k-12.el8\n\nRemote package installed : openssl-libs-1.1.1k-11.el8\nShould be                : openssl-libs-1.1.1k-12.el8\n\n",
+ "expect": {
+  "pairs": [
+   [
+    "openssl",
+    "1.1.1k-11.el8",
+    "1.1.1k-12.el8",
+    "distro"
+   ],
+   [
+    "openssl-devel",
+    "1.1.1k-11.el8",
+    "1.1.1k-12.el8",
+    "distro"
+   ],
+   [
+    "openssl-libs",
+    "1.1.1k-11.el8",
+    "1.1.1k-12.el8",
+    "distro"
+   ]
+  ],
+  "packages": [
+   "openssl",
+   "openssl-devel",
+   "openssl-libs"
+  ],
+  "kernel": false,
+  "family": "dnf",
+  "compare": "rpm",
+  "requires_reboot": true,
+  "esm": false
+ }
+}

@@ -1,0 +1,653 @@
+"""Explore — shared read-only drill-down service.
+
+Backs the reusable vuln detail page (web/vuln.html) that agent widgets link into
+(asset drill-downs now open the Argos deep-dive). All reads go through core.db
+(sqlite read-only); this
+service never writes. It is registered as a hidden agent so its actions mount at
+/api/explore/<action> on every server, but it does NOT appear as a runnable card
+on the hub.
+
+Actions
+  asset      payload {uuid}   -> asset info + its vulns/plugins + its certs
+  vuln       payload {plugin} -> plugin name + every affected asset + outputs
+  cert_month payload {month}  -> assets whose cert fails in YYYY-MM + the cert
+                                 plugins seen on those assets
+"""
+import json
+import re
+
+from core import db, llm, navi_cli
+
+# tables the NL→SQL explorer boxes are allowed to query
+_NL_TABLES = {"assets", "vulns", "vuln_route", "vuln_paths", "tags", "apps", "fixed", "compliance"}
+_SQL_BANNED = re.compile(
+    r"\b(insert|update|delete|drop|alter|create|attach|detach|pragma|replace(?!\s*\()|"
+    r"vacuum|reindex|truncate|grant|revoke|load_extension|readfile|writefile)\b", re.I)
+
+
+_RUN_MAX = 500          # rows run_sql returns, whatever LIMIT the SQL carries
+
+
+# one left-to-right pass: a quote inside a "quoted identifier" or a comment can't start a fake
+# string literal and hide a ';' or a keyword from the checks below
+# (an unclosed [ runs to the end, like an unclosed /* — else each '[' rescans the rest: O(n²) under the GIL)
+_SQL_LEX = re.compile(r"'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"|`(?:[^`]|``)*`|\[[^\]]*(?:\]|$)|--[^\n]*|/\*.*?(?:\*/|$)", re.S)
+
+
+def _bare(s):
+    """The SQL with its 'string literals' blanked and comments removed — so a LIKE '%update%' or
+    '%limit%' is not read as a keyword (the engine-level guard in db.user_query is the real backstop)."""
+    return _SQL_LEX.sub(lambda m: "''" if m.group(0)[0] == "'" else (m.group(0) if m.group(0)[0] in '"`[' else " "), s)
+
+
+def _safe_select(sql: str):
+    s = (sql or "").strip().rstrip(";").strip()
+    if not s:
+        return None, "no SQL produced"
+    if not re.match(r"^(select|with)\b", s, re.I):
+        return None, "only SELECT / WITH queries are allowed"
+    bare = _bare(s)
+    if ";" in bare:
+        return None, "only a single statement is allowed"
+    if _SQL_BANNED.search(bare):
+        return None, "read-only queries only (no writes / DDL / file access)"
+    if not re.search(r"\blimit\b", bare, re.I):
+        s += "\nLIMIT 500"          # own line: never inside a trailing -- comment
+    return s, None
+
+
+def _cols(table):
+    """Column names for a table (read-only PRAGMA), [] on error."""
+    try:
+        return {r["name"] for r in db.query(f'PRAGMA table_info("{table}");')}
+    except Exception:
+        return set()
+
+
+_MONTHS = {m: i for i, m in enumerate(
+    ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], 1)}
+
+
+def _parse_not_after(s):
+    """'Apr 03 16:07:23 2027 GMT' -> 'YYYY-MM-DD' (or None)."""
+    m = re.match(r"([A-Z][a-z]{2})\s+(\d{1,2})\s+[\d:]+\s+(\d{4})", s or "")
+    if not m:
+        return None
+    return f"{int(m.group(3)):04d}-{_MONTHS[m.group(1)]:02d}-{int(m.group(2)):02d}"
+
+
+def _table_exists(name):
+    try:
+        return bool(db.query("SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1", (name,)))
+    except Exception:
+        return False
+
+
+def asset(p):
+    uuid = (p.get("uuid") or "").strip()
+    if not uuid:
+        return {"ok": False, "error": "uuid required"}, 400
+    a_url = ", url" if "url" in _cols("assets") else ""
+    v_url = ", url" if "url" in _cols("vulns") else ""
+    info = db.query(f"SELECT uuid, hostname, ip_address{a_url} FROM assets WHERE uuid=? LIMIT 1;", (uuid,))
+    vulns = db.query(
+        f"SELECT plugin_id, plugin_name, output, last_found{v_url} FROM vulns "
+        "WHERE asset_uuid=? ORDER BY CAST(plugin_id AS INTEGER);", (uuid,))
+    try:
+        certs = db.query(
+            "SELECT common_name, organization, organization_unit, not_valid_after, "
+            "signature_algorithm, key_length FROM certs WHERE asset_uuid=?;", (uuid,))
+    except Exception:
+        certs = []
+    for c in certs:
+        c["expiry_iso"] = _parse_not_after(c.get("not_valid_after"))
+    try:
+        from core import hostprofile
+        host = hostprofile.profile(uuid)
+    except Exception:
+        host = {}
+    return {"ok": True, "asset": (info[0] if info else {"uuid": uuid, "hostname": "", "ip_address": ""}),
+            "vulns": vulns, "certs": certs, "host": host,
+            "tables": {"certs": _table_exists("certs"), "software": _table_exists("software")},
+            "counts": {"vulns": len(vulns), "certs": len(certs)}}, 200
+
+
+_VULN_ROWS = 2000
+
+
+def vuln(p):
+    plugin = str(p.get("plugin") or "").strip()
+    if not plugin:
+        return {"ok": False, "error": "plugin required"}, 400
+    has_v_url = "url" in _cols("vulns")
+    has_a_url = "url" in _cols("assets")
+    plugin_url = None
+    if has_v_url:
+        plugin_url = db.scalar("SELECT url FROM vulns WHERE plugin_id=? AND url IS NOT NULL AND url<>'' LIMIT 1;", (plugin,))
+    name = db.scalar("SELECT plugin_name FROM vulns WHERE plugin_id=? LIMIT 1;", (plugin,))
+    fsel = ", v.url AS finding_url" if has_v_url else ""
+    asel = ", a.url AS asset_url" if has_a_url else ""
+    # bounded (scale): a common plugin is on every asset — count it over the covering index,
+    # send the first _VULN_ROWS findings with a trimmed output (the page shows 260 chars)
+    total = db.scalar("SELECT COUNT(*) FROM vulns" + db.indexed_by("hx_v_plugin") + " WHERE plugin_id=?",
+                      (plugin,)) or 0
+    rows = db.query(
+        f"SELECT v.asset_uuid, a.hostname, a.ip_address, substr(v.output, 1, 400) AS output, "
+        f"v.last_found{fsel}{asel} "
+        "FROM vulns v LEFT JOIN assets a ON a.uuid=v.asset_uuid "
+        "WHERE v.plugin_id=? ORDER BY a.ip_address LIMIT ?;", (plugin, _VULN_ROWS))
+    for r in rows:
+        r["hostname"] = (r.get("hostname") or "").strip() or "(none)"
+    return {"ok": True, "plugin": plugin, "plugin_name": name or "(unknown plugin)",
+            "plugin_url": plugin_url, "assets": rows, "count": max(int(total), len(rows)),
+            "truncated": int(total) > len(rows)}, 200
+
+
+def cert_month(p):
+    month = (p.get("month") or "").strip()  # 'YYYY-MM'
+    if not re.match(r"^\d{4}-\d{2}$", month):
+        return {"ok": False, "error": "month must be YYYY-MM"}, 400
+    a_url = ", a.url AS asset_url" if "url" in _cols("assets") else ""
+    certs = db.query(
+        "SELECT c.asset_uuid, a.hostname, a.ip_address, c.common_name, "
+        "c.not_valid_after, c.signature_algorithm, c.key_length" + a_url + " "
+        "FROM certs c LEFT JOIN assets a ON a.uuid=c.asset_uuid;")
+    assets, seen, uuids = [], set(), set()
+    for c in certs:
+        iso = _parse_not_after(c.get("not_valid_after"))
+        if not iso or iso[:7] != month:
+            continue
+        key = (c["asset_uuid"], iso)
+        if key in seen:
+            continue
+        seen.add(key)
+        uuids.add(c["asset_uuid"])
+        assets.append({"asset_uuid": c["asset_uuid"],
+                       "hostname": (c.get("hostname") or "").strip() or "(none)",
+                       "ip": c.get("ip_address"), "cn": c.get("common_name"),
+                       "asset_url": c.get("asset_url"),
+                       "expiry_iso": iso, "date": c.get("not_valid_after"),
+                       "signature_algorithm": c.get("signature_algorithm"),
+                       "key_length": c.get("key_length")})
+    assets.sort(key=lambda x: x["expiry_iso"])
+    # relevant cert plugins seen on exactly those assets
+    plugins = []
+    if uuids:
+        # the uuid set rides in ONE json parameter: a busy month is 40k+ assets, past SQLite's
+        # bound-variable limit (the old "IN (?,?,…)" raised "too many SQL variables")
+        ju = (json.dumps(sorted(uuids)),)
+        from core import hx_summary
+        if hx_summary.usable():
+            # the certificate plugins from hx_plugin, then a covered (plugin_id, asset_uuid)
+            # seek per plugin on hx_v_plugin — no vulns rows read for the name test
+            plugins = db.query(
+                "SELECT p.plugin_id, p.name AS plugin_name, COUNT(DISTINCT v.asset_uuid) AS asset_count "
+                "FROM hx_plugin p CROSS JOIN vulns v" + db.indexed_by("hx_v_plugin") + " ON v.plugin_id = p.plugin_id "
+                "WHERE p.name LIKE '%Certificate%' AND v.asset_uuid IN (SELECT value FROM json_each(?)) "
+                "GROUP BY p.plugin_id, p.name ORDER BY asset_count DESC;", ju)
+        else:
+            plugins = db.query(
+                "SELECT plugin_id, plugin_name, COUNT(DISTINCT asset_uuid) AS asset_count "
+                "FROM vulns WHERE plugin_name LIKE '%Certificate%' AND asset_uuid IN "
+                "(SELECT value FROM json_each(?)) "
+                "GROUP BY plugin_id, plugin_name ORDER BY asset_count DESC;", ju)
+    return {"ok": True, "month": month, "assets": assets, "plugins": plugins,
+            "counts": {"assets": len(assets), "plugins": len(plugins)}}, 200
+
+
+def applied(p):
+    """Applied tags straight from navi.db's `tags` table — the source of truth for
+    'applied' status (so agent pages don't rely on a local cache)."""
+    try:
+        # DISTINCT (build 464): the page only asks "is category:value applied?" — one row per
+        # tag, not one per asset × tag (100k assets × a dozen tags was a 30 MB answer on every
+        # page open). SQLite de-duplicates in the engine; nothing per-asset leaves the server.
+        rows = db.query("SELECT DISTINCT tag_key, tag_value FROM tags WHERE tag_value IS NOT NULL;")
+    except Exception:
+        rows = []
+    from core import tagname
+    out = []
+    for r in rows:
+        d = {"tag_key": r.get("tag_key"), "tag_value": r.get("tag_value")}
+        if tagname.is_prefixed(d["tag_key"]):        # a Settings → Test run tag also counts
+            d["base"] = tagname.base(d["tag_key"])   # as its plain category (tagApplied)
+        out.append(d)
+    return {"ok": True, "applied": out}, 200
+
+
+def tags_compare(p):
+    """Tenable ⇄ navi.db tag comparison. The Tenable side is the LIVE tag list
+    (`navi explore info tags`, straight from the platform API); the navi.db side is
+    the local `tags` table (asset assignments as of the last sync). The delta =
+    what exists on one side but not the other, i.e. what has not synced. Read-only.
+
+    `side` in the payload picks which half to fetch so the UI can load the fast
+    navi.db side instantly and the (possibly slow, live-API) Tenable side after:
+      "navi"    -> only the navi.db tags table (instant)
+      "tenable" -> only `navi explore info tags` (may hit the platform API)
+      "both"    -> both (default)."""
+    side = (p or {}).get("side", "both")
+    navi_rows, navi_err = [], ""
+    if side in ("both", "navi"):
+        try:
+            navi = db.query("SELECT tag_key, tag_value, COUNT(DISTINCT asset_uuid) c "
+                            "FROM tags WHERE tag_value IS NOT NULL "
+                            "GROUP BY tag_key, tag_value")
+        except Exception as e:
+            navi, navi_err = [], str(e)
+        navi_rows = [{"cat": r.get("tag_key"), "val": r.get("tag_value"), "c": r.get("c") or 0}
+                     for r in navi]
+    ten_rows, ten_ok, ten_msg, ten_src = [], False, "", "navi explore info tags"
+    if side in ("both", "tenable"):
+        lt = navi_cli.list_tags()
+        ten_rows = [{"cat": t.get("category"), "val": t.get("value")}
+                    for t in lt.get("tags", []) if t.get("category") and t.get("value")]
+        ten_ok = bool(lt.get("ok"))
+        ten_msg = lt.get("message") or lt.get("stderr") or ""
+        ten_src = lt.get("source", ten_src)
+    return {"ok": True, "side": side,
+            "navi": navi_rows, "navi_error": navi_err,
+            "ten": ten_rows, "ten_ok": ten_ok,
+            "ten_source": ten_src, "ten_message": ten_msg}, 200
+
+
+def nl_translate(p):
+    """NL question -> ONE read-only SELECT over a single allowed table. Generates
+    the SQL only; the caller reviews/refines and then runs it via run_sql."""
+    table = (p.get("table") or "").strip()
+    prompt = (p.get("prompt") or "").strip()
+    if table not in _NL_TABLES:
+        return {"ok": False, "error": f"table must be one of {sorted(_NL_TABLES)}"}, 400
+    if not prompt:
+        return {"ok": False, "error": "empty question"}, 400
+    cols = sorted(_cols(table))
+    if not cols:
+        return {"ok": False, "error": f"no such table '{table}' in navi.db"}, 200
+    gen = llm.table_query(prompt, table, cols, value_hint=db.value_hint([table]))
+    if not gen.get("ok"):
+        return {"ok": False, "message": gen.get("message", "AI unavailable"),
+                "llm_available": llm.available()}, 200
+    sql, err = _safe_select(gen.get("sql", ""))
+    if err:
+        return {"ok": False, "message": err, "sql": gen.get("sql", "")}, 200
+    return {"ok": True, "sql": sql, "model": gen.get("model")}, 200
+
+
+def run_sql(p):
+    """Execute a user-reviewed read-only SELECT and return rows. Re-validated
+    server-side (SELECT/WITH only, single statement, no DDL/writes, LIMIT<=500)."""
+    sql, err = _safe_select(p.get("sql", ""))
+    if err:
+        return {"ok": False, "message": err}, 200
+    rows, more = [], False
+    try:
+        it = db.user_iter(sql)             # engine-level guard: navi's credential tables are unreadable
+        try:
+            for r in it:                   # streamed + capped: a sub-query LIMIT or LIMIT 100000
+                if len(rows) >= _RUN_MAX:  # can't send millions of rows to the browser
+                    more = True
+                    break
+                rows.append(r)
+        finally:
+            it.close()
+    except Exception as e:
+        return {"ok": False, "message": str(e), "sql": sql}, 200
+    return {"ok": True, "sql": sql, "rows": rows, "count": len(rows), "truncated": more,
+            "columns": list(rows[0].keys()) if rows else []}, 200
+
+
+def nl_query(p):
+    """Back-compat one-shot: translate + run in a single call."""
+    out, code = nl_translate(p)
+    if code != 200 or not out.get("ok"):
+        return out, code
+    return run_sql({"sql": out["sql"]})
+
+
+# Curated navi.db join keys — the model applies whichever tables actually exist.
+_NAVI_JOINS = [
+    ("assets.uuid", "vulns.asset_uuid", "one asset → many vuln findings"),
+    ("assets.uuid", "tags.asset_uuid", "asset → tag assignments (tag_key / tag_value)"),
+    ("assets.uuid", "software.asset_uuid", "installed software — ONE row per software string; asset_uuid is the "
+                                           "LIST of assets as text \"['uuid', …]\". Never join it directly: "
+                                           "%s, then j.value = assets.uuid" % "FROM software s, json_each(CASE WHEN substr(trim(s.asset_uuid),1,1)='[' THEN replace(s.asset_uuid, char(39), char(34)) ELSE json_array(s.asset_uuid) END) j"),
+    ("assets.uuid", "certs.asset_uuid", "SSL/TLS certs per asset"),
+    ("assets.uuid", "vuln_paths.asset_uuid", "vulnerable filesystem paths per asset"),
+    ("assets.uuid", "fixed.asset_uuid", "remediated findings per asset"),
+    ("assets.uuid", "compliance.asset_uuid", "compliance checks per asset"),
+    ("assets.agent_uuid", "agents.uuid", "Nessus agent for an asset"),
+    ("vulns.plugin_id", "plugins.plugin_id", "plugin metadata (description, solution, xrefs)"),
+    ("vulns.plugin_id", "zipper.plugin_id", "EPSS per finding — FAST. zipper(plugin_id, epss_value) = one EPSS score per plugin. USE THIS for EPSS."),
+    ("vulns.cves LIKE '%'||epss.cve||'%'", "epss.cve", "EPSS by CVE — SLOW fallback only (epss has 300k+ rows). Prefer zipper."),
+    ("findings.config_id", "apps.config_id", "WAS findings ↔ WAS app/scan"),
+]
+
+
+def _all_tables():
+    try:
+        return [r["name"] for r in db.query(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name NOT LIKE 'sqlite_%' ORDER BY name;") if r.get("name")]
+    except Exception:
+        return []
+
+
+def schema(p):
+    """Live tables + columns + the join keys available in THIS navi.db."""
+    tabs = _all_tables()
+    cols = {t: sorted(_cols(t)) for t in tabs}
+    joins = [{"left": a, "right": b, "note": n} for (a, b, n) in _NAVI_JOINS
+             if a.split(".")[0].split(" ")[0] in tabs and b.split(".")[0] in tabs]
+    return {"ok": True, "tables": cols, "joins": joins}, 200
+
+
+def advanced_translate(p):
+    """NL question -> ONE read-only SELECT that may JOIN across tables. Execute
+    the returned SQL with run_sql (re-validated read-only)."""
+    prompt = (p.get("prompt") or "").strip()
+    if not prompt:
+        return {"ok": False, "error": "empty question"}, 400
+    tabs = _all_tables()
+    if not tabs:
+        return {"ok": False, "error": "no tables in navi.db"}, 200
+    schema_text = "\n".join(f"  {t}({', '.join(sorted(_cols(t)))})" for t in tabs)
+    join_text = "\n".join(
+        f"  {a} = {b}   -- {n}" for (a, b, n) in _NAVI_JOINS
+        if a.split(".")[0].split(" ")[0] in tabs and b.split(".")[0] in tabs)
+    gen = llm.advanced_query(prompt, schema_text, join_text,
+                             value_hint=db.value_hint(tabs))
+    if not gen.get("ok"):
+        return {"ok": False, "message": gen.get("message", "AI unavailable"),
+                "llm_available": llm.available()}, 200
+    sql, err = _safe_select(gen.get("sql", ""))
+    if err:
+        return {"ok": False, "message": err, "sql": gen.get("sql", "")}, 200
+    return {"ok": True, "sql": sql, "model": gen.get("model")}, 200
+
+
+def columns(p):
+    """Column names for an allowed explorer table — used by the column picker."""
+    table = (p.get("table") or "").strip()
+    if table not in _NL_TABLES and table != "software":
+        return {"ok": False, "error": f"table must be one of {sorted(_NL_TABLES | {'software'})}"}, 400
+    cols = sorted(_cols(table))
+    return {"ok": True, "table": table, "columns": cols}, 200
+
+
+def which_agent(p):
+    """Recommend the agent(s) for a plain-English task. The caller passes the
+    roster it already has from /api/registry so this stays self-contained."""
+    prompt = (p.get("prompt") or "").strip()
+    agents = p.get("agents") or []
+    if not prompt:
+        return {"ok": False, "error": "empty question"}, 400
+    out = llm.which_agent(prompt, agents)
+    if not out.get("ok"):
+        return {"ok": False, "message": out.get("message", "AI unavailable"),
+                "llm_available": llm.available()}, 200
+    return {"ok": True, "picks": out.get("picks", []), "note": out.get("note", ""),
+            "model": out.get("model")}, 200
+
+
+def navi_refresh(p):
+    """Fire-and-forget: kick `navi config update assets`/`vulns` in the background to
+    pull freshly-applied tags/ACR into navi.db. Returns immediately (large syncs can
+    take minutes; nothing waits on them)."""
+    from core import navi_cli
+    kinds = p.get("kinds") or ["assets"]
+    if not isinstance(kinds, (list, tuple)):
+        kinds = [kinds]
+    return {"ok": True, **navi_cli.update_async(tuple(kinds))}, 200
+
+
+def navi_optimize(p):
+    """Fire-and-forget `navi config optimize` — builds SQL indexes so tagging on big
+    datasets goes from minutes to seconds. Returns immediately."""
+    from core import navi_cli
+    return {"ok": True, **navi_cli.optimize_async()}, 200
+
+
+def tag_workers(p):
+    """Get/set how many tags run in parallel (1-32). Pass {workers:N} to resize."""
+    from core import tagq
+    if p.get("workers") is not None:
+        tagq.set_workers(p.get("workers"))
+    return {"ok": True, "counts": tagq.counts()}, 200
+
+
+def tag_jobs(p):
+    """The background tag queue — every tag write the server has seen this run."""
+    from core import tagq
+    return {"ok": True, "jobs": tagq.list_jobs(brief=True), "counts": tagq.counts()}, 200
+
+
+def tag_job_output(p):
+    """The tail of navi's own output for one tag job — why a write did (or didn't) land."""
+    from core import tagq
+    return {"ok": True, "id": p.get("id"), "output": tagq.job_output(p.get("id"))}, 200
+
+
+def tag_series(p):
+    """Progress of one tag series (page n of N, assets done / total)."""
+    from core import tagq
+    sid = str(p.get("series") or "")
+    if not sid:
+        return {"ok": False, "error": "series required"}, 400
+    return {"ok": True, "result": tagq.series_progress(sid)}, 200
+
+
+def tag_retry(p):
+    """Gated: re-run ONE failed / cancelled page of a tag series, alone."""
+    from core.gates import confirmed
+    if not confirmed(p):
+        return {"ok": False, "error": "confirm=true required to retry a tag page"}, 400
+    r = navi_cli.retry_page(p.get("id"))
+    return r, (200 if r.get("ok") else 400)
+
+
+def tag_cancel(p):
+    """Stop the rest of a tag series (pages still waiting are cancelled; nothing is removed)."""
+    sid = str(p.get("series") or "")
+    if not sid:
+        return {"ok": False, "error": "series required"}, 400
+    return navi_cli.cancel_series(sid), 200
+
+
+def tag_clear(p):
+    """Drop finished jobs from the log (keeps queued/running)."""
+    from core import tagq
+    return {"ok": True, "removed": tagq.clear(), "counts": tagq.counts()}, 200
+
+
+_CSV_FORMULA = ("=", "+", "-", "@", "\t", "\r")
+
+
+def csv_safe(v):
+    """A CSV cell that a spreadsheet won't run as a formula: text starting with = + - @ TAB CR
+    gets a leading ' (OWASP CSV injection). Non-strings pass through."""
+    if isinstance(v, str) and v.startswith(_CSV_FORMULA):
+        return "'" + v
+    return v
+
+
+def _acr_cmd(spec):
+    """Render a `navi enrich acr` command from an ACR spec (for exported scripts)."""
+    from core.contract import _sh
+    reasons = [x for x in (spec.get("reasons") or ["business"])]
+    return ("navi enrich acr --c %s --v %s --score %s --mod %s %s%s" % (
+        _sh(spec.get("category")), _sh(spec.get("value")), spec.get("score", 0),
+        spec.get("mod", "set"), " ".join("-" + r for r in reasons),
+        (" --note " + _sh(spec.get("note"))) if spec.get("note") else ""))
+
+
+def tag_export(p):
+    """Export every navi command in the Tagging log as a runnable script — a shell
+    script (default) or a python script — so the batch can be dropped into cron.
+
+    payload: {format: 'sh'|'py' (default 'sh'), which: 'all'|'done' (default 'all'),
+              include_acr: false (default) — ACR changes are left out unless asked for, and then
+              only the ones that were applied (status done): a replayed ACR change runs outside
+              the Hounds, so it is NOT recorded in the ACR log.}
+    Rebuilds each command from the job's retained spec, reproducing the exact
+    `navi enrich tag` / `navi enrich acr` calls (add-only unless the job was a
+    removal). Emitted oldest-first for replay.
+    """
+    from core import tagq
+    from core.contract import _cmd_for_spec
+    fmt = (p.get("format") or "sh").lower()
+    which = (p.get("which") or "all").lower()
+    # CSV export — a portable record of the tagging log the AI Contract can re-import
+    # (survives server restarts, unlike the in-memory queue).
+    if fmt == "csv":
+        import csv as _csv
+        import io as _io
+        buf = _io.StringIO()
+        w = _csv.writer(buf)
+        w.writerow(["agent", "category", "value", "selector", "detail", "op", "status", "business_case"])
+        rows = 0
+        for j in tagq.list_jobs():
+            if which == "done" and j.get("status") != "done":
+                continue
+            w.writerow([csv_safe(x) for x in (
+                j.get("agent", ""), j.get("category", ""), j.get("value", ""),
+                j.get("selector", ""), j.get("detail", ""), j.get("op", ""),
+                j.get("status", ""), j.get("business_case", ""))])
+            rows += 1
+        return {"ok": True, "format": "csv", "count": rows,
+                "filename": "navi-tags-log.csv", "script": buf.getvalue()}, 200
+    include_acr = p.get("include_acr") is True or str(p.get("include_acr")).lower() in ("1", "true", "yes", "on")
+    jobs = list(reversed(tagq.list_jobs()))          # log is newest-first; replay oldest-first
+    cmds, n_acr, skipped_acr = [], 0, 0
+    for j in jobs:
+        spec = j.get("spec") or {}
+        is_acr = (j.get("op") == "acr" or spec.get("_acr") or str(j.get("selector") or "").startswith("acr ")
+                  or ("score" in spec and "query" not in spec and "plugin" not in spec
+                      and "cve" not in spec and "xrefs" not in spec))
+        if is_acr and (not include_acr or j.get("status") != "done"):
+            skipped_acr += 1 if spec.get("category") else 0
+            continue
+        if which == "done" and j.get("status") != "done":
+            continue
+        if not spec.get("category") and not spec.get("value"):
+            continue
+        if is_acr:
+            n_acr += 1
+        cmds.append(_acr_cmd(spec) if is_acr else _cmd_for_spec(spec))
+    n = len(cmds)
+    acr_note = ["Includes %d applied ACR change(s): a replayed ACR change is NOT recorded in navi Ensemble's "
+                "ACR log, and navi skips every asset tagged NO : UPDATE." % n_acr] if n_acr else []
+    if fmt in ("py", "python"):
+        body = "\n".join("    %r," % c for c in cmds)
+        script = ('#!/usr/bin/env python3\n'
+                  '"""Replay every navi command captured in navi Ensemble tagging log.\n'
+                  'Generated for cron — runs each navi command in order, logging pass/fail.\n'
+                  'Requires the navi CLI on PATH (or set NAVI_BIN) with API keys configured.\n'
+                  + "".join(x + "\n" for x in acr_note) + '"""\n'
+                  'import os, shlex, subprocess, sys\n\n'
+                  'NAVI = os.environ.get("NAVI_BIN", "navi")\n'
+                  'COMMANDS = [\n' + body + '\n]\n\n'
+                  'def main():\n'
+                  '    ok = fail = 0\n'
+                  '    for i, c in enumerate(COMMANDS, 1):\n'
+                  '        argv = shlex.split(c)\n'
+                  '        if argv and argv[0] == "navi":\n'
+                  '            argv[0] = NAVI\n'
+                  '        print(f"[{i}/{len(COMMANDS)}] {c}")\n'
+                  '        r = subprocess.run(argv, capture_output=True, text=True)\n'
+                  '        if r.returncode == 0:\n'
+                  '            ok += 1\n'
+                  '        else:\n'
+                  '            fail += 1\n'
+                  '            sys.stderr.write((r.stderr or r.stdout or "").strip() + "\\n")\n'
+                  '    print(f"done: {ok} ok, {fail} failed")\n'
+                  '    sys.exit(1 if fail else 0)\n\n'
+                  'if __name__ == "__main__":\n'
+                  '    main()\n')
+        fn = "navi-tags-from-log.py"
+    else:
+        lines = "\n".join(c.replace("navi ", '"$NAVI" ', 1) for c in cmds)
+        script = ('#!/usr/bin/env bash\n'
+                  '# Replay every navi command captured in navi Ensemble tagging log.\n'
+                  '# Generated for cron — e.g.:  0 * * * * /path/to/navi-tags-from-log.sh >> /var/log/navi-tags.log 2>&1\n'
+                  '# Requires the navi CLI on PATH (or export NAVI_BIN) with API keys configured.\n'
+                  + "".join("# " + x + "\n" for x in acr_note)
+                  + 'set -uo pipefail\n'
+                  'NAVI="${NAVI_BIN:-navi}"\n\n'
+                  + lines + ("\n\n" if lines else "\n")
+                  + 'echo "replayed ' + str(n) + ' navi command(s)"\n')
+        fn = "navi-tags-from-log.sh"
+    return {"ok": True, "format": ("py" if fmt in ("py", "python") else "sh"),
+            "count": n, "filename": fn, "script": script, "acr_included": n_acr,
+            "acr_left_out": skipped_acr}, 200
+
+
+def verify_tags(p):
+    """Confirm applied tags actually LANDED in the tenant by cross-checking each
+    tag job against the LIVE tag list (`navi explore info tags`, straight from the
+    Tenable API). For every 'tag' job, report whether its category:value now shows
+    up live. Tags take up to ~30 min to propagate, so 'not yet' is expected right
+    after applying — re-verify later.
+
+    Payload (all optional):
+      jobs   -> a list of {category,value,op,ok} to check; defaults to the live
+                background tag queue (this session's applied tags).
+    Read-only; no write gate."""
+    lt = navi_cli.list_tags()
+    live = {((t.get("category") or "").strip(), (t.get("value") or "").strip())
+            for t in lt.get("tags", []) if t.get("category") and t.get("value")}
+    jobs = (p or {}).get("jobs")
+    if not jobs:
+        try:
+            from core import tagq
+            jobs = tagq.list_jobs()
+        except Exception:
+            jobs = []
+    results, seen = [], set()
+    for j in jobs:
+        cat = (j.get("category") or "").strip()
+        val = (j.get("value") or "").strip()
+        if not cat or not val:
+            continue
+        op = j.get("op", "tag")
+        key = (cat, val, op)
+        if key in seen:
+            continue
+        seen.add(key)
+        present = (cat, val) in live
+        if op == "remove":
+            # -remove strips a tag's assets but the value can persist in the tenant,
+            # so `info tags` presence can't confirm a removal. Mark it inconclusive.
+            verdict = "removed" if not present else "still-present"
+        elif j.get("ok") is False:
+            verdict = "failed"
+        else:
+            verdict = "landed" if present else "pending"
+        results.append({"id": j.get("id"), "category": cat, "value": val, "op": op,
+                        "ok": j.get("ok"), "live_present": present, "verdict": verdict})
+    landed = sum(1 for r in results if r["verdict"] == "landed")
+    pending = sum(1 for r in results if r["verdict"] == "pending")
+    return {"ok": True, "live_ok": bool(lt.get("ok")),
+            "source": lt.get("source", "navi explore info tags"),
+            "live_count": len(live),
+            "message": lt.get("message") or lt.get("stderr") or "",
+            "summary": {"checked": len(results), "landed": landed, "pending": pending},
+            "results": results}, 200
+
+
+def activity(p):
+    """'Done so far' for one hound: its runs + writes (Hounds log) and what of that is on
+    assets now (navi.db). Live — never cached. See core/activity.py."""
+    from core import activity as _act
+    return _act.summary(p.get("agent", "")), 200
+
+
+ACTIONS = {"activity": activity, "asset": asset, "vuln": vuln, "cert_month": cert_month, "applied": applied,
+           "tags_compare": tags_compare, "verify_tags": verify_tags,
+           "nl_query": nl_query, "nl_translate": nl_translate, "run_sql": run_sql,
+           "columns": columns, "which_agent": which_agent,
+           "schema": schema, "advanced_translate": advanced_translate,
+           "navi_refresh": navi_refresh, "navi_optimize": navi_optimize,
+           "tag_workers": tag_workers,
+           "tag_jobs": tag_jobs, "tag_job_output": tag_job_output, "tag_clear": tag_clear, "tag_export": tag_export,
+           "tag_series": tag_series, "tag_retry": tag_retry, "tag_cancel": tag_cancel}

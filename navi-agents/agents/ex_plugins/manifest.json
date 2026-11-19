@@ -1,0 +1,17 @@
+{
+  "id": "ex_plugins",
+  "name": "Explorer › Plugins",
+  "icon": "🔎",
+  "order": 22,
+  "category": "Explore",
+  "codename": "",
+  "summary": "Every distinct plugin in navi.db — search by ID, name, or family. Read-only navi.db search via the UI.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "search"
+  ],
+  "hero": false,
+  "mission": "Platform",
+  "grid": false
+}

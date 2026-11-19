@@ -1,0 +1,35 @@
+{
+  "id": "cisakev",
+  "name": "CISA KEV",
+  "icon": "🛡️",
+  "order": 12,
+  "category": "Tagging",
+  "summary": "Laelaps — CISA Known Exploited Vulnerabilities on your assets, joined to CISA's catalog: remediation due dates (overdue / due soon), ransomware use, crown jewels and vendors. Tags assets CISA KEV:Vulnerable (xref), by catalog date added, by CISA due date (CISA KEV Due:<YYYY-MM-DD>) and CISA KEV:Ransomware. Plus an NL→SQL to hunt KEV in navi.db / tags.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "source",
+    "run",
+    "tag_vulnerable",
+    "tag_dates",
+    "tag_due",
+    "tag_ransomware",
+    "nl"
+  ],
+  "codename": "Laelaps",
+  "tag_scope": {
+    "actions": [
+      "run",
+      "tag_vulnerable",
+      "tag_dates",
+      "tag_due",
+      "tag_ransomware"
+    ],
+    "ignore": [
+      "source",
+      "nl"
+    ]
+  },
+  "hero": true,
+  "mission": "Exploited Now"
+}

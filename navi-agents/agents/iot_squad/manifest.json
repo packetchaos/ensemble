@@ -1,0 +1,21 @@
+{
+  "id": "iot_squad",
+  "name": "Device Discovery",
+  "icon": "📡",
+  "order": 2,
+  "category": "Discovery",
+  "summary": "Four cooperating agents: discover IoT devices, harvest carrier plugins, cross-term hunt the population, and learn new detections (HITL).",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "run",
+    "tags_apply",
+    "tag_candidate",
+    "detections_decide",
+    "detections_export",
+    "registry"
+  ],
+  "codename": "Argos",
+  "hero": true,
+  "mission": "OT, IoT & Unmanaged"
+}

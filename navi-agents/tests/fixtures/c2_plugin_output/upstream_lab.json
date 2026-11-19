@@ -1,0 +1,28 @@
+{
+ "id": "upstream_lab",
+ "provenance": "lab navi.db plugin 200044 output, verbatim (binary / upstream-version check)",
+ "real_sample": false,
+ "fam": "deb",
+ "shape": "upstream_version",
+ "plugin_name": "OpenSSL 1.1.1 < 1.1.1w Multiple Vulnerabilities",
+ "plugin_family": "General",
+ "solution": "Upgrade to OpenSSL version 1.1.1w or later. Update the affected openssl package.",
+ "os": "Ubuntu 20.04.6 LTS",
+ "output": "Path : /usr/lib/x86_64-linux-gnu/libssl.so.1.1\n  Installed version : 1.1.1f\n  Fixed version : 1.1.1w\n",
+ "expect": {
+  "pairs": [],
+  "upstream": [
+   [
+    "/usr/lib/x86_64-linux-gnu/libssl.so.1.1",
+    "1.1.1f",
+    "1.1.1w"
+   ]
+  ],
+  "packages": [
+   "openssl"
+  ],
+  "fixed_source": "upstream",
+  "kernel": false,
+  "family": "apt"
+ }
+}

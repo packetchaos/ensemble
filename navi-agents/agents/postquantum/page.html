@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Heimdall · Post-Quantum — navi Ensemble</title>
+<link rel="stylesheet" href="/static/console.css"/>
+<style>.plink{color:var(--accent);text-decoration:none}.plink:hover{text-decoration:underline}
+:root{--q-rsa:#e5484d;--q-ecc:#e0913a;--q-dsa:#9b2c30;--q-pqc:#30a46c;--q-oth:#8b95a7;
+  --l-exp:#8b95a7;--l-26:#f2c46d;--l-27:#e0913a;--l-30:#e5484d;--l-33:#9b2c30;
+  --t-leg:#e5484d;--t-upg:#e0913a;--t-rdy:#30a46c}
+/* 📊 At a glance: the shared renderGlance template (console.js / console.css) */
+.fchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:3px 10px;font-size:12px}
+.fchip button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:13px;padding:0}
+.pill{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+</style>
+</head><body>
+<div class="wrap">
+  <header class="top" id="app-header"></header>
+
+  <section class="card">
+    <div class="toolbar"><div><h2 style="margin:0">⚛️ Post-Quantum</h2>
+      <p class="sub" style="margin:2px 0 0">Heimdall finds the crypto that won't survive a quantum computer. <b>RSA, ECC and DSA are broken by Shor's algorithm, whatever the key length.</b> It reads certificates, TLS/SSH key exchange, OpenSSH/OpenSSL versions and Tenable's Post-Quantum plugins (277650 / 277652 / 277653), weights each asset by ACR and CISA KEV, and ranks the migration. It tags <b>the assets</b> under <span class="tagval">Post-Quantum</span>, <span class="tagval">PQC Priority</span>, <span class="tagval">PQC Risk</span>, <span class="tagval">PQC Harvest-Now</span>, <span class="tagval">PQC Transport</span> and <span class="tagval">PQC Agility</span>. Writes are gated and tracked in the <a href="/web/tags-log.html">Tagging log</a>.</p></div>
+      <button class="btn run sm" id="run" data-run style="margin-left:auto">▶ Run</button></div>
+    <div id="flash" class="flash"></div>
+  </section>
+
+  <section class="card" id="secGlance" data-nav="At a glance" data-nav-icon="📊">
+    <h2 style="margin:0 0 2px;font-size:17px">📊 At a glance</h2>
+    <div id="metrics"><div class="setupcard"><div class="big">Press ▶ Run</div><p class="sub">One pass over navi.db: how much of the estate is quantum-vulnerable, which certificates outlive the CNSA 2.0 deadlines, what's on the wire, which crypto stacks can be upgraded, and which crown jewels to migrate first.</p></div></div>
+  </section>
+
+  <section class="card" id="secRoad" data-nav="Migration roadmap" data-nav-icon="🎯">
+    <h2>Migration roadmap <span class="sub" id="roadCount"></span></h2>
+    <p class="sub">Every quantum-exposed asset, ranked. Priority = ACR × 2 + broken certs + longest-lived cert + transport signals + legacy crypto stack + CISA KEV. Click a metric card above to filter.</p>
+    <div class="toolbar"><span id="filt"></span>
+      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost sm" id="roadCsv">⬇ Export CSV</button>
+        <button class="btn sm" id="tagShown" disabled>🏷️ Tag shown → PQC Priority : Migrate</button>
+        <button class="btn sm" id="tagCrown" disabled>🏷️ Tag crown jewels → PQC Priority : Crown Jewel</button>
+        <button class="btn ghost sm" id="acrHint">⚖ Raise ACR…</button></span></div>
+    <table id="roadTbl"><thead><tr><th>Host</th><th>ACR</th><th>Cert risk</th><th>Valid past</th><th>Transport</th><th>Crypto stack</th><th>KEV</th><th>Priority</th><th></th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="card" id="secInv" data-nav="Algorithm inventory" data-nav-icon="🔐">
+    <h2>Certificate algorithm inventory <span class="sub" id="invCount"></span></h2>
+    <p class="sub">Every signature algorithm in use and its post-quantum verdict. Tag the assets using a broken family as <span class="tagval">PQC Risk : Vulnerable : &lt;family&gt;</span> to build the migration backlog.</p>
+    <table id="invTbl"><thead><tr><th>Signature algorithm</th><th>Verdict</th><th>Key sizes</th><th>Certs</th><th>Assets</th><th></th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="card" id="secHn" data-nav="Harvest-now" data-nav-icon="🌾">
+    <div class="toolbar"><div><h2 style="margin:0">Harvest-now, decrypt-later hit-list <span class="sub" id="hnCount"></span></h2>
+      <p class="sub" style="margin:2px 0 0">Quantum-vulnerable certificates with the longest remaining validity on the highest-value assets. Traffic recorded today can be decrypted once a quantum computer exists, so long-lived keys go first. Urgency = years left × ACR.</p></div>
+      <span style="margin-left:auto;display:flex;gap:6px;align-items:center"><span class="sub">Show</span><select id="hz" class="fld" style="padding:6px;border-radius:7px"><option value="3">valid &gt; 3 yrs</option><option value="5">valid &gt; 5 yrs</option><option value="2030">valid into 2030</option><option value="2033">valid into 2033</option><option value="0">all still valid</option></select></span></div>
+    <div class="toolbar" style="margin:4px 0"><button class="btn sm" id="tagHn" disabled>🏷️ Tag shown → PQC Harvest-Now : Priority</button><span class="chip" id="hnSel"></span></div>
+    <table id="hnTbl"><thead><tr><th>Host</th><th>Common name</th><th>Algorithm</th><th>Key</th><th>Expires</th><th>Yrs left</th><th>ACR</th><th>Urgency</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="card" id="secTr" data-nav="Transport crypto" data-nav-icon="🔀">
+    <h2>Quantum-weak transport crypto <span class="sub" id="trCount"></span></h2>
+    <p class="sub">Crypto negotiated on the wire: TLS/SSH key exchange with no post-quantum group, SHA-1 MACs, deprecated TLS. Tag the affected assets <span class="tagval">PQC Transport : &lt;signal&gt;</span>.</p>
+    <table id="trTbl"><thead><tr><th>Signal</th><th>Severity</th><th>Assets</th><th></th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="card" id="secAg" data-nav="Crypto agility" data-nav-icon="🧬">
+    <h2>Crypto agility — can the stack do PQC? <span class="sub" id="agCount"></span></h2>
+    <p class="sub">From detected OpenSSH / OpenSSL versions. <b>PQC-ready</b> (OpenSSH ≥ 9, OpenSSL ≥ 3.2) can turn on hybrid key exchange today; <b>Upgradable</b> is one version away; <b>Legacy</b> must be upgraded first. Tag as <span class="tagval">PQC Agility : &lt;tier&gt;</span>.</p>
+    <div class="toolbar"><span class="filterbtns" id="agF"><button data-t="" class="on">All</button><button data-t="Legacy">Legacy</button><button data-t="Upgradable">Upgradable</button><button data-t="PQC-ready">PQC-ready</button></span>
+      <button class="btn sm" id="tagAg" style="margin-left:auto" disabled>🏷️ Tag shown → PQC Agility : &lt;tier&gt;</button></div>
+    <table id="agTbl"><thead><tr><th>Host</th><th>OpenSSH</th><th>OpenSSL</th><th>Readiness</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="card" id="secSrc" data-nav="Sources" data-nav-icon="⚛️">
+    <h2>Where the exposure comes from <span class="sub" id="srcCount"></span></h2>
+    <p class="sub">Every source in navi.db that contributes to the quantum-vulnerable surface. Tag the whole surface <span class="tagval">Post-Quantum : Cipher Analysis</span> (certificates by query, Tenable PQC plugins by <span class="mono">--plugin</span>).</p>
+    <div class="toolbar"><button class="btn sm" id="tagSurface" disabled>🏷️ Tag surface → Post-Quantum : Cipher Analysis</button></div>
+    <table id="srcTbl"><thead><tr><th>Source</th><th>What it finds</th><th>Assets</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="card" id="secCnsa" data-nav="CNSA 2.0 timeline" data-nav-icon="📅">
+    <h2>CNSA 2.0 / NIST PQC deadlines</h2>
+    <p class="sub">Reference milestones. The certificate lifetime bar at the top lines your quantum-vulnerable certificates up against them.</p>
+    <table class="nopage"><thead><tr><th>By</th><th>Milestone (NSA CNSA 2.0 / NIST)</th><th>Your vulnerable certs still valid then</th></tr></thead><tbody id="cnsaBody">
+      <tr><td class="mono">2025–2026</td><td>Begin PQC adoption; ML-KEM / ML-DSA (FIPS 203/204) final. Inventory quantum-vulnerable crypto now.</td><td class="sub">—</td></tr>
+    </tbody></table>
+  </section>
+
+  <footer>Heimdall · Post-Quantum Cipher Analysis + crown-jewel migration roadmap · reads navi.db · gated navi enrich tag · tracked in the Tagging log</footer>
+</div>
+<script src="/static/brand.js"></script>
+<script src="/static/console.js"></script>
+<script>
+const API=agentApi('postquantum');
+let R=null, WRITES=false, FILTER=null, AGT='';
+const N=v=>(v==null?0:v).toLocaleString();
+const FAMC={RSA:'var(--q-rsa)',ECC:'var(--q-ecc)',DSA:'var(--q-dsa)',PQC:'var(--q-pqc)',Other:'var(--q-oth)'};
+const TIERC={'Legacy':'var(--t-leg)','Upgradable':'var(--t-upg)','PQC-ready':'var(--t-rdy)'};
+const LIFEC=['var(--l-exp)','var(--l-26)','var(--l-27)','var(--l-30)','var(--l-33)'];
+const rows=()=> (R&&R.roadmap&&R.roadmap.rows)||[];
+const FILTERS={
+  cert:['Quantum-vulnerable certificates',p=>p.brokenCerts>0], transport:['Quantum-weak transport',p=>p.transport.length>0],
+  p2030:['Cert valid into 2030',p=>p.past2030], p2033:['Cert valid into 2033',p=>p.past2033],
+  legacy:['Legacy crypto stack',p=>p.agility==='Legacy'], crown:['Crown jewels (ACR ≥ 7)',p=>p.acr>=7],
+  crown2030:['Crown jewels with a cert valid into 2030',p=>p.acr>=7&&p.past2030], kex:['Classical-only key exchange',p=>new Set((R.metrics||{}).kex_uuids||[]).has(p.uuid)], kev:['Also carry a CISA KEV',p=>p.kev],
+  legacycrown:['Crown jewels on a legacy stack',p=>p.acr>=7&&p.agility==='Legacy'] };
+
+async function run(){
+  const b=document.getElementById('run'); b.disabled=true;
+  flash('flash','<span class="spin"></span> reading certificates, TLS/SSH key exchange and crypto stacks from navi.db…','run');
+  let o; try{ o=await API.post('run'); }catch(e){ o={ok:false,error:e.message}; }
+  b.disabled=false;
+  if(!o||!o.ok){ flash('flash','✗ '+esc((o&&(o.error||o.message))||'failed'),'crit'); return; }
+  R=o.result||{}; FILTER=null; AGT='';
+  ['roadTbl','invTbl','hnTbl','trTbl','agTbl','srcTbl'].forEach(hPageReset);
+  flashClear('flash');
+  if(R.overview_error) flash('flash','⚠ '+esc(R.overview_error),'warn');
+  else if(R.note) flash('flash','ℹ '+esc(R.note),'warn');
+  else if(!R.assets) flash('flash',tagScope()?'No quantum-vulnerable crypto found on the assets tagged '+esc(tagScopeLabel())+'.':'No quantum-vulnerable crypto found in navi.db yet. Refresh navi.db after a scan that collects certificates and TLS/SSH plugins.','warn');
+  render();
+}
+
+function renderMetrics(){
+  const m=R.metrics||{}, fam=R.families||[], life=R.lifetime||[];
+  const LSEV=['none','low','med','high','crit'];
+  document.getElementById('metrics').innerHTML='<p class="sub" style="margin:2px 0 0">Click a number to filter the roadmap.</p><div id="glxPq"></div>';
+  renderGlance('glxPq', [
+    {title:'Exposure',
+     hero:{v:N(m.exposed), l:'quantum-vulnerable assets', u:(m.exposed_pct!=null?m.exposed_pct+'% · ':'')+(tagScope()?`of the ${N(m.assets_total)} assets tagged ${tagScopeLabel()}`:`of ${N(m.assets_total)} assets in navi.db`), t:'union of certificate, transport and Tenable PQC-plugin findings', sev:'crit', href:'#secRoad'},
+     chips:[{v:N(m.cert_assets), l:'via certificates', u:'RSA / ECC / DSA signatures', sev:'crit', filter:'cert'},
+            {v:N(m.transport_assets), l:'via transport crypto', u:'TLS / SSH on the wire', sev:'high', filter:'transport'},
+            {v:N(m.ready_assets), l:'assets with PQC in place', u:`${N(m.ready_plugin)} PQ ciphers (277653) · ${N(m.ready_stack)} PQC-ready stacks · ${N(m.ready_cert)} PQ certs`, sev:'ok', zero:false, href:'#secAg'}]},
+    {title:'Certificates vs the CNSA 2.0 deadlines', t:'Bar: certificates by algorithm family — red / orange are broken by Shor; green is post-quantum. List: quantum-vulnerable certificates by expiry — anything valid into 2030 / 2033 crosses a CNSA 2.0 deadline; reissue it on a PQ-capable CA.',
+     hero:{v:N(m.broken_certs), l:'certificates quantum-vulnerable', u:`of ${N(m.certs)}`+(m.broken_pct!=null?` · ${m.broken_pct}% of ${tagScope()?'this tag\'s ':''}certificates · ${N(m.safe_certs)} PQ-safe`:''), sev:'crit', href:'#secInv'},
+     bar:fam.map(f=>({label:f.fam+(f.verdict==='safe'?' (PQ-safe)':''), value:f.certs, color:FAMC[f.fam]||FAMC.Other})),
+     chips:[{v:N(m.past2030_certs), l:'still valid in 2030', u:`on ${N(m.past2030_assets)} assets · PQC required for signing`, sev:'high', filter:'p2030'},
+            {v:N(m.past2033_certs), l:'still valid in 2033', u:`on ${N(m.past2033_assets)} assets · RSA / ECC deprecated`, sev:'crit', filter:'p2033'},
+            {v:N(m.harvest_5y), l:'harvest-now certs (≥ 5 yrs left)', u:'long-lived keys worth recording today', href:'#secHn'}],
+     ranked:{title:'Quantum-vulnerable certificates by expiry', items:life.some(x=>x.certs)?life.map((x,i)=>({label:x.label, value:x.certs, sev:LSEV[i]||'none'})):[], empty:fam.length?'No quantum-vulnerable certificates.':(tagScope()?'No certificates on the assets of this tag.':'No certificates in navi.db.')}},
+    {title:'Transport and crypto stacks', t:'Bar: hosts whose OpenSSH / OpenSSL can (or can\'t yet) negotiate hybrid post-quantum key exchange.',
+     hero:{v:N(m.kex_assets), l:'assets with classical-only key exchange', u:'no ML-KEM / hybrid group on TLS or SSH', sev:'crit', filter:'kex'},
+     bar:(m.legacy+m.upgradable+m.ready)?[{label:'Legacy',value:m.legacy,color:TIERC.Legacy},{label:'Upgradable',value:m.upgradable,color:TIERC.Upgradable},{label:'PQC-ready',value:m.ready,color:TIERC['PQC-ready']}]:null,
+     chips:[{v:N(m.weak_assets!=null?m.weak_assets:m.sha1_assets+m.oldtls_assets), l:'assets with a weak MAC or old TLS', u:`${N(m.sha1_assets)} SSH SHA-1 MAC · ${N(m.oldtls_assets)} TLS 1.0/1.1`, sev:'med', href:'#secTr'},
+            {v:N(m.legacy), l:'legacy crypto stacks', u:'must upgrade before PQC', sev:'high', filter:'legacy'},
+            {v:`${N(m.upgradable)} / ${N(m.ready)}`, l:'upgradable / PQC-ready stacks', u:'OpenSSH ≥ 9 · OpenSSL ≥ 3.2 = ready', zero:!(m.upgradable||m.ready), href:'#secAg'}]},
+    {title:'Priority',
+     hero:{v:N(m.crown), l:'crown jewels exposed', u:'ACR ≥ 7', sev:'crit', filter:'crown'},
+     chips:[{v:N(m.crown_past2030), l:'crown jewels with a cert valid into 2030', u:'migrate before the deadline', sev:'high', filter:'crown2030'},
+            {v:N(m.kev), l:'quantum-vulnerable and CISA KEV', u:'exploited today and next', sev:'crit', filter:'kev'},
+            {v:N(m.legacy_crown), l:'crown jewels on a legacy stack', sev:'high', filter:'legacycrown'}]}
+  ], {active:FILTER, onFilter:(f,_el,on)=>{ FILTER=on?f:null; hPageReset('roadTbl'); renderMetrics(); renderRoad();
+    if(FILTER) document.getElementById('secRoad').scrollIntoView({behavior:'smooth',block:'start'}); }});
+}
+
+const agPill=t=>t?`<span class="pill" style="color:${TIERC[t]||'var(--mut)'}">${esc(t)}</span>`:'<span class="sub">—</span>';
+const host=(u,t)=>u?`<a class="plink" href="/agents/argos/page.html?target=${encodeURIComponent(u)}">${esc(t)}</a>`:esc(t);
+function roadShown(){ let r=rows(); if(FILTER) r=r.filter(FILTERS[FILTER][1]); return r; }
+function renderRoad(){
+  const all=rows(), r=roadShown();
+  const fe=document.getElementById('filt');
+  fe.innerHTML=FILTER?`<span class="fchip">${esc(FILTERS[FILTER][0])}<button id="clrF" title="Clear">✕</button></span>`:'';
+  const c=document.getElementById('clrF'); if(c) c.onclick=()=>{ FILTER=null; hPageReset('roadTbl'); renderMetrics(); renderRoad(); };
+  document.getElementById('roadCount').textContent=FILTER?`(${N(r.length)} of ${N(all.length)})`:`(${N(all.length)})`;
+  setNavCount('secRoad', N(all.length));
+  document.getElementById('tagShown').disabled=!r.length;
+  document.getElementById('tagCrown').disabled=!all.some(p=>p.acr>=7);
+  hPaginate('roadTbl', r, p=>{
+    const cert=p.brokenCerts?`<b>${N(p.brokenCerts)}</b> · ${esc((p.algoList||[]).join('/'))}${p.maxYears>=1?' · '+Math.round(p.maxYears)+' y':''}`:'<span class="sub">—</span>';
+    const vp=p.past2033?'<span class="pill" style="color:var(--l-33)">2033</span>':p.past2030?'<span class="pill" style="color:var(--l-30)">2030</span>':'<span class="sub">—</span>';
+    const tr=p.transport.length?`${N(p.transport.length)}${p.transportHigh?` <span class="pill" style="color:var(--crit)">${p.transportHigh} high</span>`:''}`:'<span class="sub">—</span>';
+    return `<tr><td><b>${host(p.uuid,p.host)}</b></td><td>${p.acr>=7?`<b style="color:var(--crit)">${p.acr}</b>`:(p.acr||'<span class="sub">—</span>')}</td>`+
+      `<td title="${esc((p.algoList||[]).join(', '))}">${cert}</td><td>${vp}</td><td title="${esc(p.transport.join(' · '))}">${tr}</td><td>${agPill(p.agility)}</td>`+
+      `<td>${p.kev?'<span class="pill" style="color:var(--crit)">KEV</span>':'<span class="sub">—</span>'}</td><td><b>${p.score}</b></td>`+
+      `<td><button class="btn ghost sm" data-u="${esc(p.uuid)}" title="Tag PQC Priority : Migrate">🏷️ Tag</button></td></tr>`; },
+    {cols:9, empty:'<tr><td colspan="9" class="sub">'+(all.length?'Nothing matches the filter.':'No quantum-exposed assets — needs broken certs, quantum-weak transport, or legacy crypto stacks in navi.db.')+'</td></tr>',
+     wire:tb=>tb.querySelectorAll('button[data-u]').forEach(b=>b.onclick=()=>tagUuids('PQC Priority','Migrate',[b.dataset.u],b,{kind:'asset',uuid:b.dataset.u}))});
+}
+
+function renderInv(){
+  const inv=(R.cert||{}).inventory||[];
+  document.getElementById('invCount').textContent=`(${N(inv.length)})`; setNavCount('secInv', N(inv.length));
+  const VC={broken:'var(--crit)',unknown:'var(--l-26)',safe:'var(--q-pqc)'};
+  hPaginate('invTbl', inv, r=>`<tr><td class="mono" style="font-size:12px">${esc(r.algo)}</td><td><span class="pill" style="color:${VC[r.verdict]||'var(--mut)'}">${esc(r.verdict)}</span> <span class="sub">${esc(r.fam)}</span></td>`+
+      `<td class="mono">${esc((r.keys||[]).join(', ')||'—')}</td><td>${N(r.certs)}</td><td>${N(r.assets)}</td>`+
+      `<td>${r.verdict==='broken'?`<button class="btn ghost sm" data-a="${esc(String(r.algo))}">🏷️ Tag ${esc(r.fam)}</button>`:''}</td></tr>`,
+    {cols:6, empty:'<tr><td colspan="6" class="sub">No certificates in navi.db.</td></tr>',
+     wire:tb=>tb.querySelectorAll('button[data-a]').forEach(b=>b.onclick=()=>{ const r=inv.find(x=>String(x.algo)===b.dataset.a); if(r) tagUuids('PQC Risk','Vulnerable : '+r.fam,r.uuids,b,{kind:'algo',algo:String(r.algo)}); })});
+}
+
+function hnShown(){ const hz=+document.getElementById('hz').value, hn=(R.cert||{}).harvest_now||[];
+  return hz>=2000?hn.filter(h=>h.exp_year&&h.exp_year>=hz):hn.filter(h=>h.years>hz); }
+function renderHn(){
+  const hn=hnShown(), all=(R.cert||{}).harvest_now||[];
+  document.getElementById('hnCount').textContent=`(${N(hn.length)} of ${N(all.length)} still valid)`; setNavCount('secHn', N(all.length));
+  const uu=new Set(hn.map(h=>h.uuid));
+  document.getElementById('hnSel').textContent=`${N(hn.length)} cert(s) · ${N(uu.size)} asset(s)`;
+  document.getElementById('tagHn').disabled=!uu.size;
+  hPaginate('hnTbl', hn, h=>`<tr><td><b>${host(h.uuid,h.host)}</b></td><td class="mono" style="font-size:11.5px">${esc(h.cn||'—')}</td><td><span class="pill" style="color:${FAMC[h.fam]||'var(--mut)'}">${esc(h.fam)}</span></td>`+
+      `<td class="mono">${esc(String(h.key||''))}</td><td class="mono" style="font-size:11.5px">${esc(h.expiry||'')}</td><td>${h.years}</td><td>${h.acr>=7?`<b style="color:var(--crit)">${h.acr}</b>`:(h.acr||'—')}</td><td><b>${N(h.urgency)}</b></td></tr>`,
+    {cols:8, empty:'<tr><td colspan="8" class="sub">No quantum-vulnerable certificates in this window.</td></tr>'});
+}
+
+function renderTransport(){
+  const sig=((R.transport||{}).signals||[]).filter(s=>s.assets);
+  document.getElementById('trCount').textContent=`(${N(sig.length)} signal${sig.length===1?'':'s'})`; setNavCount('secTr', N(sig.length));
+  hPaginate('trTbl', sig, s=>`<tr><td><b>${esc(s.key)}</b><br><span class="sub" style="font-size:11px">${esc(s.note)}</span></td><td><span class="pill" style="color:${s.sev==='high'?'var(--crit)':'var(--l-27)'}">${esc(s.sev)}</span></td><td>${N(s.assets)}</td>`+
+      `<td><button class="btn ghost sm" data-s="${esc(s.key)}">🏷️ Tag</button></td></tr>`,
+    {cols:4, empty:'<tr><td colspan="4" class="sub">No quantum-weak transport signals found.</td></tr>',
+     wire:tb=>tb.querySelectorAll('button[data-s]').forEach(b=>b.onclick=()=>{ const s=sig.find(x=>x.key===b.dataset.s); if(s) tagSignal(s,b); })});
+}
+
+function agShown(){ const h=((R.transport||{}).agility||{}).hosts||[]; return AGT?h.filter(x=>x.tier===AGT):h; }
+function renderAg(){
+  const all=((R.transport||{}).agility||{}).hosts||[], h=agShown();
+  document.getElementById('agCount').textContent=`(${N(all.length)} host${all.length===1?'':'s'})`; setNavCount('secAg', N(all.length));
+  const tb=document.getElementById('tagAg'); tb.disabled=!AGT||!h.length; tb.textContent=AGT?`🏷️ Tag shown → PQC Agility : ${AGT}`:'🏷️ Tag shown → PQC Agility : pick a tier';
+  hPaginate('agTbl', h, x=>`<tr><td><b>${host(x.uuid,x.host)}</b></td><td class="mono">${esc(x.ssh||'—')}</td><td class="mono">${esc(x.ssl||'—')}</td><td>${agPill(x.tier)}</td></tr>`,
+    {cols:4, empty:'<tr><td colspan="4" class="sub">No OpenSSH / OpenSSL versions detected.</td></tr>'});
+}
+
+function renderSrc(){
+  const KIND={cert:'🔐',transport:'🔀',plugin:'⚛️'}, src=R.plugins||[];
+  document.getElementById('srcCount').textContent=`(${N(R.assets)} asset(s))`; setNavCount('secSrc', N(R.assets));
+  document.getElementById('tagSurface').disabled=!R.assets;
+  hPaginate('srcTbl', src, p=>`<tr><td>${KIND[p.kind]||''} <b>${esc(p.plugin_name)}</b> ${p.kind==='plugin'?'<span class="mono sub">#'+esc(p.plugin_id)+'</span>':''}</td><td class="sub">${esc(p.role)}</td><td>${N(p.assets)}</td></tr>`, {cols:3});
+}
+
+function renderCnsa(){
+  const hn=(R.cert||{}).harvest_now||[], now=new Date().getFullYear();
+  const at=y=>{ const r=hn.filter(h=>h.exp_year&&h.exp_year>=y); return r.length?`<b>${N(r.length)}</b> cert(s) on <b>${N(new Set(r.map(h=>h.uuid)).size)}</b> asset(s)`:'<span class="sub">none</span>'; };
+  document.getElementById('cnsaBody').innerHTML=`<tr><td class="mono">2025–2026</td><td>Begin PQC adoption; ML-KEM / ML-DSA (FIPS 203/204) final. Inventory quantum-vulnerable crypto now.</td><td>${(R.metrics||{}).broken_certs?`<b>${N((R.metrics||{}).broken_certs)}</b> vulnerable cert(s) in inventory`:'<span class="sub">—</span>'}</td></tr>`+
+    (R.cnsa||[]).map(c=>`<tr><td class="mono">${c.year}</td><td>${esc(c.milestone)}</td><td>${c.year>now?at(c.year):'<span class="sub">—</span>'}</td></tr>`).join('');
+}
+
+function render(){ if(!R) return; renderMetrics(); renderRoad(); renderInv(); renderHn(); renderTransport(); renderAg(); renderSrc(); renderCnsa(); }
+
+/* ---- gated writes: one line of feedback; detail lives in the Tagging log ---- */
+async function gated(btn, label, call, okMsg, ask){   /* ask: plain-text question naming the exact tag + count */
+  if(btn&&btn.disabled) return null;
+  await testRunStatus();
+  if(!confirm((typeof ask==='function'?ask():ask)+(WRITES?'':'\n\nWrites are gated (NAVI_ALLOW_WRITES not set) — the job queues but is blocked.'))) return null;
+  if(btn&&btn.disabled) return null;
+  const fb=document.getElementById('flash'); const scroll=()=>{ if(fb) fb.scrollIntoView({behavior:'smooth',block:'center'}); };
+  if(btn){ btn.dataset.label=btn.dataset.label||btn.textContent; btn.disabled=true; btn.textContent='⏳'; }
+  flash('flash','<span class="spin"></span> '+label+'…','run'); scroll();
+  let o; try{ o=await call(); }catch(e){ o={ok:false,error:e.message}; }
+  if(btn){ btn.disabled=false; btn.textContent=btn.dataset.label; }
+  const r=(o&&o.result)||{};
+  if(!o||!o.ok||r.ok===false){ flash('flash','✗ '+esc((o&&(o.error||o.message))||r.message||r.error||'failed'),'crit'); scroll(); return o; }
+  flash('flash','✓ '+okMsg(o)+' — sent to the <a href="/web/tags-log.html">Tagging log</a>.'+(o.writes_enabled===false?' Writes are gated, so nothing reaches Tenable until NAVI_ALLOW_WRITES=1.':' Tags take ~30 min to land in Tenable.'),'ok'); scroll();
+  return o;
+}
+function tagSignal(s,btn){   // the server tags by the signal's own SQL — no UUID list is sent
+  return gated(btn,`queuing ${esc('PQC Transport')} : ${esc(s.key)}`,()=>API.post('tag_signal',{key:s.key,confirm:true}),
+    o=>`queued <span class="tagval">${esc(tagCat('PQC Transport'))} : ${esc(s.key)}</span> on ${N(o.count)} asset(s)`,
+    ()=>`Tag ${tagCat('PQC Transport')} : ${s.key} on ${N(s.assets)} asset${s.assets===1?'':'s'}${tagScopeNote()}?`);
+}
+/* sel: what the button stands for. In a tag view the page sends ONLY that — the server
+   re-reads the set from navi.db inside the tag; the shown UUIDs are just the count to confirm. */
+function tagUuids(cat,val,uuids,btn,sel){
+  const uu=[...new Set((uuids||[]).filter(Boolean))]; if(!uu.length){ flash('flash','Nothing to tag.','warn'); return; }
+  const body=tagScope()?{category:cat,value:val,select:sel||null,confirm:true}:{category:cat,value:val,uuids:uu,confirm:true};
+  return gated(btn,`queuing ${esc(cat)} : ${esc(val)}`,()=>API.post('tag_uuids',body),
+    o=>`queued <span class="tagval">${esc(cat)} : ${esc(val)}</span> on ${N(o.count)} asset(s)${esc(tagScopeNote())}`,
+    ()=>`Tag ${tagCat(cat)} : ${val} on ${uu.length} asset${uu.length===1?'':'s'}${tagScopeNote()}?`);
+}
+document.getElementById('tagShown').onclick=function(){ tagUuids('PQC Priority','Migrate',roadShown().map(p=>p.uuid),this,{kind:'roadmap',filter:FILTER||null}); };
+document.getElementById('tagCrown').onclick=function(){ tagUuids('PQC Priority','Crown Jewel',rows().filter(p=>p.acr>=7).map(p=>p.uuid),this,{kind:'roadmap',filter:'crown'}); };
+document.getElementById('acrHint').onclick=()=>flash('flash','⚖ To raise ACR, tag first, then add an <a href="/agents/contract/page.html">Automation</a> rule such as <b>PQC Priority : Crown Jewel → set ACR 9</b> or <b>PQC Harvest-Now : Priority → set ACR 9</b>. The contract applies it on its next armed cycle.','warn');
+document.getElementById('tagHn').onclick=function(){ tagUuids('PQC Harvest-Now','Priority',hnShown().map(h=>h.uuid),this,{kind:'harvest',hz:+document.getElementById('hz').value}); };
+document.getElementById('tagAg').onclick=function(){ if(AGT) tagUuids('PQC Agility',AGT,agShown().map(h=>h.uuid),this,{kind:'agility',tier:AGT}); };
+document.getElementById('tagSurface').onclick=function(){ gated(this,'queuing Post-Quantum : Cipher Analysis',()=>API.post('tag',{confirm:true}),
+  o=>`queued ${N(o.queued)} Post-Quantum : Cipher Analysis job(s)${o.scope?' on '+N(o.count)+' asset(s)'+esc(tagScopeNote()):''}`,
+  ()=>tagScope()?`Tag ${tagCat('Post-Quantum')} : Cipher Analysis on the quantum-vulnerable certificate + PQC-plugin assets${tagScopeNote()}? The set is re-read from navi.db inside the tag.`
+    :`Tag ${tagCat('Post-Quantum')} : Cipher Analysis on the quantum-vulnerable surface (${N((R&&R.assets)||0)} asset(s); the cert-set query + one selector per PQC plugin present)?`); };
+document.getElementById('roadCsv').onclick=()=>{ const r=roadShown(); downloadCSV('pqc-migration-roadmap.csv',
+  ['priority','host','ip','acr','broken_certs','cert_algorithms','longest_cert_years','valid_into_2030','valid_into_2033','transport_signals','crypto_stack','kev'],
+  r.map(p=>({priority:p.score,host:p.host,ip:p.ip,acr:p.acr,broken_certs:p.brokenCerts,cert_algorithms:(p.algoList||[]).join('|'),
+    longest_cert_years:Math.round(p.maxYears),valid_into_2030:p.past2030?'yes':'',valid_into_2033:p.past2033?'yes':'',
+    transport_signals:p.transport.join('|'),crypto_stack:p.agility||'',kev:p.kev?'yes':''}))); };
+document.getElementById('hz').onchange=()=>{ hPageReset('hnTbl'); renderHn(); };
+document.querySelectorAll('#agF button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('#agF button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); AGT=b.dataset.t; hPageReset('agTbl'); renderAg(); });
+document.getElementById('run').onclick=run;
+mountAgentHeader({id:'postquantum',icon:'⚛️',name:'Post-Quantum Cipher Analysis',sub:'Heimdall · quantum-vulnerable crypto · CNSA 2.0 deadlines · migration roadmap'});
+mountTagScope({agent:'postquantum', note:'the certificates, TLS/SSH signals and crypto stacks on those assets; each asset keeps its whole-estate priority'});
+if(tagScope()){ const sc=document.querySelector('#metrics .setupcard .sub'); if(sc) sc.textContent='One pass over the assets tagged '+tagScopeLabel()+': how many are quantum-vulnerable, which certificates outlive the CNSA 2.0 deadlines, what\'s on the wire, which crypto stacks can be upgraded, and which crown jewels to migrate first.'; }
+mountSectionNav();
+try{ hMailAuto(); }catch(e){}
+jget('/api/health').then(h=>{WRITES=!!h.writes_enabled;}).catch(()=>{});
+/* no auto-run — user clicks ▶ Run */
+</script>
+</body></html>

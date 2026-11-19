@@ -1,0 +1,34 @@
+{
+ "codename": "",
+ "discipline": "Explorer › Plugins",
+ "category": "Explore",
+ "tagline": "See every plugin in your estate — and how many assets each touches.",
+ "lore": "",
+ "problem": "Thousands of plugins fire across an estate. Knowing which ones, in which family, on how many assets, is the starting point for any remediation plan — and it shouldn't take a query.",
+ "does": "Explorer › Plugins lists every distinct plugin in navi.db with its family and the number of assets it fires on, searchable by ID, name or family. Any plugin on assets can be handed to Remote Remediation for a remediation plan.",
+ "glance": {
+  "caption": "Explorer › Plugins's results: each plugin's ID, name, family and asset count, with a Fix button to plan the remediation in Remote Remediation."
+ },
+ "capabilities": [
+  [
+   "Every distinct plugin",
+   "ID, name and family, with how many assets it fires on."
+  ],
+  [
+   "Search",
+   "by ID, name or family."
+  ],
+  [
+   "Open the detail",
+   "a linked row opens the plugin's full detail."
+  ],
+  [
+   "Fix from here",
+   "Fix sends the plugin to Remote Remediation's remediation planner, pre-filled."
+  ]
+ ],
+ "how": "Explorer › Plugins runs a read-only search over the plugins in your local navi.db; results page on the server, 20 rows a page (up to 50).",
+ "who": "Remediation planners sizing a fix, and analysts exploring what the scanner sees.",
+ "better": "Part of the search pack. Dashboard Builder's \"top reduction plugins\" and Explorer › Plugins's asset counts point at the same fixes; Remote Remediation carries them out.",
+ "cta": "Flush out the plugins that matter — and fix them from the same row."
+}

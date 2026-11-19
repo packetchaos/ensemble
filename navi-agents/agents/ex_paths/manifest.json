@@ -1,0 +1,17 @@
+{
+  "id": "ex_paths",
+  "name": "Explorer › Paths",
+  "icon": "🔎",
+  "order": 24,
+  "category": "Explore",
+  "codename": "",
+  "summary": "Filesystem paths discovered on assets (vuln_paths) — search by path text. Read-only navi.db search via the UI.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "search"
+  ],
+  "hero": false,
+  "mission": "Platform",
+  "grid": false
+}

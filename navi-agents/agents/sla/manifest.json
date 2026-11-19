@@ -1,0 +1,18 @@
+{
+  "id": "sla",
+  "name": "SLA Tracker",
+  "icon": "⏱",
+  "order": 8,
+  "category": "Risk",
+  "codename": "",
+  "summary": "SLA Tracker — remediation adherence + open-vuln aging vs the SLA clock, segmented by owner/tag. Emailable dashboard; records a daily snapshot for trending.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "run",
+    "snapshot",
+    "history"
+  ],
+  "hero": false,
+  "mission": "Ownership & SLA"
+}

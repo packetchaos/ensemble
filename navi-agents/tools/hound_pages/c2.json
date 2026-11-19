@@ -1,0 +1,56 @@
+{
+ "codename": "",
+ "discipline": "Remote Remediation",
+ "category": "Operationalize",
+ "tagline": "Take a finding to a fix — one gated, logged command at a time.",
+ "lore": "",
+ "problem": "The Ensemble can tell you what is wrong; fixing it still means logging into hosts one by one, guessing why a scan credential failed, and patching from a plugin's solution text by hand. That work is slow, error-prone, and rarely logged.",
+ "does": "Remote Remediation checks Linux hosts read-only — health, login, \"does this path exist?\" and a strict pre-flight — and turns Tenable's own solution text into a remediation plan you review, then deploys it to one canary host and, after a separate click, rolls it out to the rest. Every button acts on one Target set and shows what will happen before you confirm. Every command on every host lands in a hash-chained log.",
+ "glance": {
+  "caption": "Remote Remediation's At a glance: commands run (today, 7 days, hosts touched), problems in the last 7 days (failures, auth failures, host keys changed now, commands on hosts not in navi.db) and remediation readiness (plans not yet deployed, Linux hosts, runs in progress, hash chain check)."
+ },
+ "capabilities": [
+  [
+   "One Target set",
+   "every action uses the same host list shown in a bar at the top; a preview built from the exact request lists the hosts, the policy and the undo story."
+  ],
+  [
+   "Inspect (read-only)",
+   "one-confirm pre-flight with strict host keys — login, sudo, live OS group, package-manager lock and holds, installed → candidate vs fixed for every package, reboot state and whether a downgrade is still possible — plus health checks with a health verdict, login test and path check."
+  ],
+  [
+   "Remediation plan from Tenable's text",
+   "the plugin's solution and output (rpm and dpkg package pairs, kernels, upstream versions) become one plan per OS group — every affected package in one transaction — checked by a deterministic allow-list validator."
+  ],
+  [
+   "Canary, then roll out",
+   "two confirmed clicks: one non-crown canary first; roll out unlocks only when the canary reads Fixed. Crown jewels always run last."
+  ],
+  [
+   "Plain verdicts",
+   "Fixed only when every package reaches its distro fixed build; otherwise Upgraded (fix not proven or still vulnerable), No change, Already fixed, Not installed, Held, Package manager busy, Step failed or Unknown state — with reboot and service-restart flags."
+  ],
+  [
+   "Commands and files",
+   "free-form commands and file copies on the Target set, with a typed host count for any multi-host run and an abort switch."
+  ]
+ ],
+ "how": "Remote Remediation drives `navi action push` (SSH to one Linux host per call) and reads plans from your local navi.db. Every remote action needs writes enabled, remote execution separately enabled (NAVI_REMOTE_CODE_EXECUTION) and a confirm; the server re-checks the confirmed host count. Tabs: Overview, Inspect, Remediate, Command & files, Activity.",
+ "who": "Linux and infrastructure teams who remediate, scan engineers chasing credential failures, and VM leads who want fixes that are reviewed, staged and logged.",
+ "better": "Asset Dossier and the explorers hand a finding to Remote Remediation as a proposal — never merged, never auto-run. Scan Health shows which hosts failed credentials; Remote Remediation tells you why. After a fix, Sync navi.db pulls the new scan state so SLA Tracker and Exposure Score can count it.",
+ "different": [
+  [
+   "Source of truth first",
+   "plans start from Tenable's own solution text, not a model's guess."
+  ],
+  [
+   "A validator, not a second model",
+   "an allow-list and deny-list decide what can deploy; a model talked into `curl | sh` still can't ship it."
+  ],
+  [
+   "Nothing unlogged",
+   "every command on every host lands in a tamper-evident log."
+  ]
+ ],
+ "cta": "Send Remote Remediation after the finding — reviewed, staged, logged."
+}

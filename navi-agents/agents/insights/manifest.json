@@ -1,0 +1,18 @@
+{
+  "id": "insights",
+  "name": "Ensemble Report",
+  "icon": "📰",
+  "order": 0,
+  "category": "Overview",
+  "summary": "Ensemble Report — the estate brain, built from Run the Ensemble. Summarises every specialist's released result (page cache + the Exposure Score / Exposure Routes / SLA Tracker snapshots) into one story: how exposed the estate is and what the risk is made of, where it concentrates (by specialist, on assets, in time), the cross-specialist overlaps no single specialist sees, blind spots, ranked next moves and which specialists the picture was built from. Every number links to the specialist that owns it. Needs a release; reads caches only, never navi.db.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "scent",
+    "board",
+    "run"
+  ],
+  "codename": "",
+  "hero": false,
+  "mission": "Platform"
+}

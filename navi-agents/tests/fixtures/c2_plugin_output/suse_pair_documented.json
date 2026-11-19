@@ -1,0 +1,27 @@
+{
+ "id": "suse_pair_documented",
+ "provenance": "documented rpm format on SUSE (package name with an underscore); NOT a real sample",
+ "real_sample": false,
+ "fam": "rpm",
+ "shape": "single_pair",
+ "plugin_name": "SUSE SLES15 Security Update : openssl-1_1 (SUSE-SU-2024:0001-1)",
+ "plugin_family": "SuSE Local Security Checks",
+ "solution": "Update the affected openssl-1_1 package.",
+ "os": "SUSE Linux Enterprise Server 15 SP5",
+ "output": "\n  Remote package installed : openssl-1_1-1.1.1l-150400.7.25.1\n  Should be                : openssl-1_1-1.1.1l-150400.7.28.1\n",
+ "expect": {
+  "pairs": [
+   [
+    "openssl-1_1",
+    "1.1.1l-150400.7.25.1",
+    "1.1.1l-150400.7.28.1",
+    "distro"
+   ]
+  ],
+  "packages": [
+   "openssl-1_1"
+  ],
+  "kernel": false,
+  "family": "zypper"
+ }
+}

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Compliance Drill-down — navi Ensemble</title>
+<link rel="stylesheet" href="/static/console.css"/>
+<style>
+.seclbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px}
+.applink{color:var(--accent);text-decoration:none;font-weight:600}.applink:hover{text-decoration:underline}
+.st{display:inline-block;padding:1px 8px;border-radius:100px;font-size:10.5px;font-weight:700;font-family:var(--mono);text-transform:uppercase}
+.st-passed{background:var(--panel-2);color:var(--ok)}.st-failed{background:var(--crit-bg);color:var(--crit)}.st-warning{background:var(--med-bg);color:var(--med)}.st-unknown{background:var(--panel-2);color:var(--ink-3)}
+.sv{display:inline-block;padding:1px 7px;border-radius:100px;font-size:10px;font-weight:700;font-family:var(--mono);text-transform:uppercase}
+.sv-critical{background:var(--crit-bg);color:var(--crit)}.sv-high{background:var(--high-bg);color:var(--high)}.sv-medium{background:var(--med-bg);color:var(--med)}.sv-low{background:var(--panel-2);color:var(--low)}.sv-info{background:var(--panel-2);color:var(--ink-3)}
+.fwchip{font-size:11px;background:var(--panel-2);border:1px solid var(--line);border-radius:100px;padding:2px 8px;color:var(--ink-2)}
+/* correlation cards */
+.corr{border-left:3px solid var(--accent)}
+.chd{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.chd .cico{font-size:20px}.chd b{font-size:15px}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:640px){.cgrid{grid-template-columns:1fr}}
+.clist{display:flex;flex-direction:column;gap:5px}
+.cli{font-size:12.5px;color:var(--ink-2);display:flex;gap:7px;align-items:baseline}
+/* checks filter */
+.segbar{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:2px 0 10px}
+.seg{background:var(--panel);border:0;border-right:1px solid var(--line);padding:6px 11px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit;display:inline-flex;gap:6px;align-items:center}
+.seg:last-child{border-right:0}.seg.on{background:var(--accent);color:#fff}.seg.on b{color:#fff}.seg b{font-family:var(--mono);font-size:11px;color:var(--ink-3)}.seg:hover:not(.on){background:var(--panel-2)}
+#ctbl{table-layout:fixed;width:100%}#ctbl td,#ctbl th{overflow:hidden;text-overflow:ellipsis}
+.cname{color:var(--accent);cursor:pointer}.cname:hover{text-decoration:underline}
+#ctbl tbody tr.hid{display:none}
+/* modal */
+.omodal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:60;padding:24px}
+.obox{background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:820px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 18px 60px rgba(0,0,0,.4)}
+.ohead{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
+.ohead .ot{font-size:14px;font-weight:700;flex:1}
+.obody{overflow:auto;padding:14px 16px}
+.opre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:12px;line-height:1.5;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:4px 0 0;color:var(--ink-2)}
+.olbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin:14px 0 2px}
+.gatebar{background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--cx-e7c66b);border-radius:8px;padding:9px 12px;font-size:12.5px;color:var(--ink-2);margin:2px 0 12px}
+.tres{font-size:12px;display:block;margin-top:6px}
+.lensgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}@media(max-width:900px){.lensgrid{grid-template-columns:1fr}}
+.afrow{cursor:pointer}.afrow:hover{background:var(--panel-2)}
+.aftbl{width:100%}.aftbl td,.aftbl th{padding:6px 9px}
+/* cohort banner — the Compliance Overview widget this page was opened from */
+.cohort{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:9px;padding:9px 12px;font-size:12.5px}
+.cohort .capps{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+.capp{font-size:12px;border:1px solid var(--line);border-radius:100px;padding:3px 10px;color:var(--ink-2);text-decoration:none;background:var(--panel)}
+.capp:hover{border-color:var(--accent);color:var(--ink)}.capp.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.capp b{font-family:var(--mono);font-size:10.5px;margin-left:4px}
+tr.hl td{background:var(--crit-bg)}
+</style>
+</head><body data-autorun>
+<div class="wrap">
+  <header class="top" id="app-header"></header>
+  <section class="card">
+    <div class="toolbar"><div><h2 style="margin:0">🔍 Compliance Drill-down <span class="sub" style="font-weight:400">· Compliance Drill-down investigates</span></h2>
+      <p class="sub" id="lensSub" style="margin:2px 0 0">One asset in full: every audit check it passed, failed or warned — and the inferred link between a failed control and the real findings backing it.</p></div>
+      <a class="btn ghost sm" href="/agents/compliance/page.html" style="margin-left:auto" title="Back to the compliance overview">← Overview</a></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px">
+      <div class="segbar" id="lensSeg" style="margin:0">
+        <button class="seg on" data-lens="asset">🖥 By Asset</button>
+        <button class="seg" data-lens="audit">📄 By Audit File</button></div>
+      <span id="assetPick" style="display:inline-flex;gap:6px;align-items:center">
+        <label class="sub" for="asel" style="margin:0">Asset</label>
+        <select class="fld" id="asel" style="min-width:200px;max-width:320px"></select></span>
+      <span id="auditPick" style="display:none;gap:6px;align-items:center">
+        <label class="sub" for="afsel" style="margin:0">Audit file</label>
+        <select class="fld" id="afsel" style="min-width:220px;max-width:360px"></select></span>
+    </div>
+    <div id="cohort" style="display:none;margin-top:10px"></div>
+    <div id="flash" class="flash" style="margin-top:8px"></div>
+  </section>
+  <div id="body"></div>
+  <footer>Compliance Deep-Dive · Compliance Drill-down · read-only navi.db · audit↔vuln links inferred by topic on the same asset</footer>
+</div>
+<div id="omodal" class="omodal" style="display:none">
+  <div class="obox">
+    <div class="ohead"><span id="ostat"></span><div class="ot" id="otitle"></div><button class="btn ghost sm" id="oclose">✕</button></div>
+    <div class="obody" id="obody"></div>
+  </div>
+</div>
+<script src="/static/brand.js"></script>
+<script src="/static/console.js"></script>
+<script>
+const API=agentApi('compliance_asset');
+let DET=null, APPS=[], CURR=null, WRITES=null, CFILTER='all';
+let LENS='asset', AUD=null, AFILE='';
+/* ?f=<cohort> — opened from a Compliance Overview widget (st:failed, check:<id>, fw:<name>, audit:<file>,
+   pct:lt50): the server narrows the asset list to it and opens its worst asset first. */
+let COHF=q('f'), COH=null;
+function setURL(){ const p=new URLSearchParams(); if(CURR) p.set('asset',CURR); if(COHF) p.set('f',COHF);
+  try{ history.replaceState(null,'','?'+p.toString()); }catch(_){} }
+const STAT=[['all','All'],['failed','Failed'],['warning','Warning'],['passed','Passed']];
+const SEVO=['critical','high','medium','low','info'];
+const fnum=n=>(n==null?'—':Number(n).toLocaleString());
+function q(k){ return new URLSearchParams(location.search).get(k)||''; }
+function kpi(v,l,c){ return `<div class="k"><div class="v"${c?' style="color:'+c+'"':''}>${v}</div><div class="l">${esc(l)}</div></div>`; }
+function stpill(s){ s=String(s||'unknown').toLowerCase(); return `<span class="st st-${esc(s.replace(/[^a-z0-9_-]/g,''))}">${esc(s)}</span>`; }
+function svpill(s){ s=String(s||'info').toLowerCase(); if(!SEVO.includes(s))s='info'; return `<span class="sv sv-${s}">${esc(s)}</span>`; }
+function ctrlShort(n){ return String(n||'').replace(/\s+/g,' ').trim(); }
+
+async function load(au){
+  CURR=au||q('asset')||q('target')||'';
+  flash('flash','<span class="spin"></span> investigating the asset…','run');
+  let o; try{ o=await API.post('detail',{asset_uuid:CURR,f:COHF||undefined}); }catch(e){ o={ok:false,error:e.message}; }
+  if(!o||!o.ok){ flash('flash','✗ '+esc((o&&o.error)||'failed'),'crit'); return; }
+  flashClear('flash'); const r=o.result||{}; DET=r.detail||{}; APPS=r.assets||[]; WRITES=o.writes||null; COH=r.cohort||null;
+  if(COHF&&!COH) COHF='';      // unknown cohort → plain view
+  CURR=(DET.asset&&DET.asset.uuid)||CURR;
+  // a failure cohort opens on the failing checks; a warning cohort on the warnings
+  // a failure cohort opens on the failing checks, a warning cohort on the warnings — but only
+  // for an asset IN the cohort (one opened from elsewhere shows all its checks)
+  const inCoh=COH&&APPS.some(a=>a.asset_uuid===CURR);
+  CFILTER=inCoh?((COH.kind==='st'&&COH.key==='warning')?'warning':(COH.kind==='st'&&COH.key==='clean'?'all':'failed')):'all';
+  setURL(); renderAsset();
+}
+function cohortBar(){
+  const el=document.getElementById('cohort');
+  if(!COH||LENS!=='asset'){ el.style.display='none'; el.innerHTML=''; return; }
+  const CAP=30; el.style.display='block';
+  el.innerHTML=`<div class="cohort"><span>⚖️ From Compliance: <b>${esc(COH.label)}</b> — <b>${fnum(COH.count)}</b> asset${COH.count===1?'':'s'}</span>`
+    +`<a class="applink" href="#" id="cohortClear" style="margin-left:auto">show all assets</a>`
+    +(APPS.length?`<div class="capps">${APPS.slice(0,CAP).map(a=>`<a class="capp${a.asset_uuid===CURR?' on':''}" href="#" data-au="${esc(a.asset_uuid)}" title="${esc(a.ip||'')}">${esc(a.hostname||a.ip||String(a.asset_uuid).slice(0,10))}${a.failed?'<b>'+a.failed+' fail</b>':''}</a>`).join('')}${APPS.length>CAP?`<span class="sub">+${APPS.length-CAP} more in the Asset list</span>`:''}</div>`:'<div class="sub">No asset in navi.db matches this group any more.</div>')+'</div>';
+  document.getElementById('cohortClear').onclick=e=>{ e.preventDefault(); COHF=''; COH=null; load(CURR); };
+  el.querySelectorAll('[data-au]').forEach(x=>x.onclick=e=>{ e.preventDefault(); load(x.getAttribute('data-au')); });
+}
+function assetOptions(){
+  const sel=document.getElementById('asel');
+  const cur=(!APPS.some(a=>a.asset_uuid===CURR)&&DET&&DET.asset&&DET.asset.uuid)?   // opened outside the cohort
+    `<option value="${esc(CURR)}" selected>${esc(DET.asset.hostname||DET.asset.ip||String(CURR).slice(0,12))} · (outside this group)</option>`:'';
+  if(!APPS.length&&!cur){ sel.innerHTML='<option value="">(no assets)</option>'; return; }
+  sel.innerHTML=cur+APPS.map(a=>{ const nm=a.hostname||a.ip||(String(a.asset_uuid).slice(0,12)+'…');
+    return `<option value="${esc(a.asset_uuid)}"${a.asset_uuid===CURR?' selected':''}>${esc(nm)} · ${a.failed} fail</option>`; }).join('');
+}
+function renderAsset(){
+  assetOptions(); cohortBar();
+  const B=document.getElementById('body');
+  if(!DET.available){ B.innerHTML=DET.empty_cohort
+      ?'<section class="card"><p class="sub">'+esc(DET.reason)+' <a class="applink" href="#" id="emptyAll">Show all assets</a>.</p></section>'
+      :'<section class="card"><p class="sub">No compliance data. Populate with <span class="mono">navi config update compliance</span>.</p></section>';
+    const ea=document.getElementById('emptyAll'); if(ea) ea.onclick=e=>{ e.preventDefault(); COHF=''; COH=null; load(''); };
+    return; }
+  const a=DET.asset||{}, bs=DET.by_status||{}, corr=DET.correlations||[], sev=DET.vuln_severity||{};
+  const nm=a.hostname||a.ip||(String(a.uuid||'').slice(0,14)+'…');
+  let h='';
+  // identity + KPIs
+  h+='<section class="card"><div class="toolbar" style="margin-bottom:6px"><div><h3 style="margin:0">'+esc(nm)+'</h3>'
+    +'<p class="sub" style="margin:2px 0 0">'+(a.ip?esc(a.ip)+' · ':'')+'<span class="mono" style="font-size:11px">'+esc(String(a.uuid||'').slice(0,18))+'…</span></p></div>'
+    +'<a class="btn ghost sm" href="/agents/argos/page.html?target='+encodeURIComponent(a.uuid||'')+'" style="margin-left:auto" title="Full VM asset dossier">🔦 Asset Dossier dossier →</a></div>'
+    +'<div class="kpi">'+kpi(fnum(bs.passed),'Passed','var(--ok)')+kpi(fnum(bs.failed),'Failed','var(--crit)')+kpi(fnum(bs.warning),'Warning','var(--med)')
+    +kpi(DET.pass_pct!=null?DET.pass_pct+'%':'—','Pass rate')+kpi(fnum(DET.vulns_total),'Vulns on asset')+'</div></section>';
+
+  // ---- audit <-> vuln correlations (headline) ----
+  h+='<section class="card" style="margin-top:16px"><div class="toolbar"><div><h3 style="margin:0">🧩 Audit ↔ Vuln correlations</h3>'
+    +'<p class="sub" style="margin:2px 0 0">Where a failed/warning control and a real finding on this asset point at the same weakness. Inferred by topic — tag the link to route it.</p></div></div>';
+  if(!corr.length){ h+='<p class="sub">No inferred links — either this asset has no vulns, or its failing controls don\'t overlap with any findings by topic.</p>'; }
+  else { h+=corr.map(corrCard).join(''); }
+  h+='</section>';
+
+  // ---- audit checks (filterable) ----
+  const checks=DET.checks||[];
+  const counts={all:checks.length}; ['failed','warning','passed'].forEach(k=>counts[k]=checks.filter(c=>c.status===k).length);
+  h+='<section class="card" id="ccard" style="margin-top:16px"><div class="toolbar"><div><h3 style="margin:0">Audit checks</h3>'
+    +'<p class="sub" style="margin:2px 0 0">Click a control for actual vs expected, the fix, and its framework mappings.</p></div>'
+    +'<span class="chip" style="margin-left:auto" id="ccount"></span></div>'
+    +'<div class="segbar" id="cseg">'+STAT.map(([k,l])=>`<button class="seg${k===CFILTER?' on':''}" data-st="${k}">${l} <b>${counts[k]||0}</b></button>`).join('')+'</div>'
+    +'<div style="overflow-x:auto"><table id="ctbl" class="nocsv"><colgroup><col style="width:86px"><col><col style="width:120px"></colgroup>'
+    +'<thead><tr><th>Status</th><th>Control</th><th>Frameworks</th></tr></thead><tbody>'
+    +(checks.length?checks.map((c,i)=>`<tr data-st="${esc(c.status)}"${COH&&COH.kind==='check'&&String(c.check_id)===COH.key?' class="hl" title="the control you came from"':''}><td>${stpill(c.status)}</td>`
+      +`<td title="${esc(c.check_name)}"><a class="cname" data-i="${i}">${esc(ctrlShort(c.check_name))}</a></td>`
+      +`<td class="mono" style="color:var(--ink-3)">${(c.frameworks||[]).length||'—'}</td></tr>`).join('')
+      +'<tr id="crow-empty" style="display:none"><td colspan="3" class="sub">No checks match this filter.</td></tr>'
+      :'<tr><td colspan="3" class="sub">No audit checks on this asset.</td></tr>')+'</tbody></table></div></section>';
+
+  B.innerHTML=h;
+  // wire correlation tag buttons
+  B.querySelectorAll('.ctag').forEach(btn=>btn.onclick=()=>corrTag(btn));
+  // wire checks filter + row click
+  document.querySelectorAll('#cseg .seg').forEach(s=>s.onclick=()=>{ CFILTER=s.getAttribute('data-st'); applyCFilter(); });
+  const tb=document.querySelector('#ctbl tbody'); if(tb)tb.addEventListener('click',e=>{ const l=e.target.closest('.cname'); if(l){ openCheck(+l.getAttribute('data-i')); } });
+  applyCFilter();
+}
+function corrCard(c){
+  return '<section class="card corr" style="margin:12px 0 0">'
+    +'<div class="chd"><span class="cico">'+esc(c.icon||'🧩')+'</span><b>'+esc(c.topic)+'</b>'
+    +'<span class="sub">'+c.check_count+' control'+(c.check_count===1?'':'s')+' ↔ '+c.vuln_count+' finding'+(c.vuln_count===1?'':'s')+'</span>'
+    +'<button class="btn sm ctag" data-topic="'+esc(c.topic)+'" style="margin-left:auto">🏷️ Tag link</button></div>'
+    +'<div class="cgrid"><div><div class="olbl">failing controls</div><div class="clist">'
+    +(c.checks||[]).map(k=>'<div class="cli">'+stpill(k.status)+'<span title="'+esc(k.check_name)+'">'+esc(ctrlShort(k.check_name))+'</span></div>').join('')+'</div></div>'
+    +'<div><div class="olbl">backed by findings</div><div class="clist">'
+    +(c.vulns||[]).map(v=>'<div class="cli">'+svpill(v.severity)+'<span title="'+esc((v.family||''))+'">'+esc(v.plugin_name||('plugin '+v.plugin_id))+'</span></div>').join('')+'</div></div></div>'
+    +'<span class="tres"></span></section>';
+}
+function applyCFilter(){
+  const rows=[...document.querySelectorAll('#ctbl tbody tr[data-st]')]; let shown=0;
+  rows.forEach(tr=>{ const vis=CFILTER==='all'||tr.getAttribute('data-st')===CFILTER; tr.classList.toggle('hid',!vis); if(vis)shown++; });
+  const er=document.getElementById('crow-empty'); if(er)er.style.display=(rows.length&&!shown)?'':'none';
+  const cc=document.getElementById('ccount'); if(cc)cc.textContent=shown+' shown';
+  document.querySelectorAll('#cseg .seg').forEach(s=>s.classList.toggle('on',s.getAttribute('data-st')===CFILTER));
+}
+/* ---- check detail modal ---- */
+function openCheck(i){
+  const c=(DET.checks||[])[i]; if(!c)return;
+  document.getElementById('omodal').style.display='flex';
+  const st=document.getElementById('ostat'); st.className='st st-'+c.status; st.textContent=c.status;
+  document.getElementById('otitle').textContent=ctrlShort(c.check_name);
+  const P=[];
+  if(c.info)P.push('<div class="olbl">what it checks</div><div class="opre">'+esc(c.info)+'</div>');
+  if(c.expected)P.push('<div class="olbl">expected</div><div class="opre">'+esc(c.expected)+'</div>');
+  if(c.actual)P.push('<div class="olbl">actual (found)</div><div class="opre">'+esc(c.actual)+'</div>');
+  if(c.solution)P.push('<div class="olbl">remediation</div><div class="opre">'+esc(c.solution)+'</div>');
+  if((c.frameworks||[]).length){ P.push('<div class="olbl">framework mappings</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'
+    +c.frameworks.map(f=>'<span class="fwchip">'+esc(f.framework)+(f.control?' '+esc(f.control):'')+'</span>').join('')+'</div>'); }
+  if(c.audit_file)P.push('<p class="sub" style="margin:14px 0 0">benchmark: <span class="mono">'+esc(c.audit_file)+'</span>'+(c.see_also?(safeUrl(c.see_also,'')?' · <a class="applink" href="'+esc(safeUrl(c.see_also))+'" target="_blank" rel="noopener noreferrer">reference ↗</a>':' · <span class="mono sub">'+esc(c.see_also)+'</span>'):'')+'</p>');
+  document.getElementById('obody').innerHTML=P.join('')||'<p class="sub">No further detail recorded.</p>';
+}
+function closeCheck(){ document.getElementById('omodal').style.display='none'; }
+/* ---- tag a correlation (Audit-Vuln Link) ---- */
+async function corrTag(btn){
+  const topic=btn.getAttribute('data-topic'), card=btn.closest('.corr'), res=card.querySelector('.tres');
+  if(WRITES&&WRITES.reason){ res.innerHTML='<span style="color:var(--cx-e7c66b)">🔒 '+esc(WRITES.reason)+'</span>'; return; }
+  if(btn.disabled) return;
+  await testRunStatus();
+  const da=(DET&&DET.asset)||{}, host=da.hostname||da.ip||CURR;
+  if(!confirm('Tag '+tagCat('Audit-Vuln Link')+' : '+topic+' on 1 asset ('+host+')?'
+    +((WRITES&&WRITES.enabled)?'':'\n\nWrites are gated (NAVI_ALLOW_WRITES not set) — the job queues but is blocked.'))) return;
+  btn.disabled=true; btn.textContent='⏳ tagging…'; res.innerHTML='';
+  let o; try{ o=await API.post('tag',{confirm:true,asset_uuid:CURR,topic}); }catch(e){ o={ok:false,error:e.message}; }
+  if(o&&o.ok&&o.queued){ res.innerHTML='<span style="color:var(--ok)">✓ queued — Audit-Vuln Link: '+esc(o.value)+' on this asset'+(o.write_gate_reason?'':' · track in Tagging log')+'</span>'; btn.textContent='✓ queued';
+    if(o.write_gate_reason)res.innerHTML='<span style="color:var(--cx-e7c66b)">queued but gated — '+esc(o.write_gate_reason)+'</span>'; }
+  else if(o&&o.blocked){ res.innerHTML='<span style="color:var(--cx-e7c66b)">🔒 '+esc(o.message||'writes disabled')+'</span>'; btn.disabled=false; btn.textContent='🏷️ Tag link'; }
+  else { res.innerHTML='<span style="color:var(--crit)">✗ '+esc((o&&(o.error||o.message))||'failed')+'</span>'; btn.disabled=false; btn.textContent='🏷️ Tag again'; }
+}
+document.getElementById('oclose').onclick=closeCheck;
+document.getElementById('omodal').addEventListener('click',e=>{ if(e.target.id==='omodal')closeCheck(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape')closeCheck(); });
+document.getElementById('asel').onchange=e=>{ load(e.target.value); };
+
+/* ================= AUDIT-FILE LENS ================= */
+function bandColor(p){ return p==null?'var(--ink-3)':(p>=80?'var(--ok)':(p>=50?'var(--med)':'var(--crit)')); }
+function setLens(lens){
+  LENS=lens;
+  document.querySelectorAll('#lensSeg .seg').forEach(s=>s.classList.toggle('on',s.getAttribute('data-lens')===lens));
+  document.getElementById('assetPick').style.display=(lens==='asset')?'inline-flex':'none';
+  document.getElementById('auditPick').style.display=(lens==='audit')?'inline-flex':'none';
+  document.getElementById('lensSub').textContent = (lens==='asset')
+    ? 'One asset in full: every audit check it passed, failed or warned — and the inferred link between a failed control and the real findings backing it.'
+    : 'The same estate through the audit file: adherence, the checks and assets a file covers, and the real vulns backing its failing controls — aggregate and per file.';
+  if(lens==='asset'){ document.getElementById('body').innerHTML=''; load(CURR); }
+  else { cohortBar(); loadAudit(); }
+}
+async function loadAudit(){
+  flash('flash','<span class="spin"></span> rolling the estate up by audit file…','run');
+  let o; try{ o=await API.post('audit_files'); }catch(e){ o={ok:false,error:e.message}; }
+  if(!o||!o.ok){ flash('flash','✗ '+esc((o&&o.error)||'failed'),'crit'); return; }
+  flashClear('flash'); AUD=(o.result||{}); afOptions(); renderAudit();
+}
+function afOptions(){
+  const sel=document.getElementById('afsel'), files=(AUD&&AUD.files)||[];
+  sel.innerHTML='<option value="">— All audit files (aggregate) —</option>'+files.map(f=>
+    `<option value="${esc(f.audit_file)}"${f.audit_file===AFILE?' selected':''}>${esc(f.audit_file||'(none)')} · ${f.failed} fail</option>`).join('');
+  sel.value=AFILE;
+}
+async function renderAudit(){
+  try{ const p=new URLSearchParams(); if(AFILE) p.set('audit',AFILE); if(COHF) p.set('f',COHF);   // keep the cohort on reload/share
+    history.replaceState(null,'', p.toString()?('?'+p.toString()):location.pathname); }catch(_){}
+  if(!AUD||!AUD.available){ document.getElementById('body').innerHTML='<section class="card"><p class="sub">No compliance data. Populate with <span class="mono">navi config update compliance</span>.</p></section>'; return; }
+  if(!AFILE){ renderAuditAggregate(); return; }
+  flash('flash','<span class="spin"></span> opening '+esc(AFILE)+'…','run');
+  let o; try{ o=await API.post('audit_file',{audit_file:AFILE}); }catch(e){ o={ok:false,error:e.message}; }
+  flashClear('flash'); renderAuditDetail((o&&o.result)||{});
+}
+function auditLeaderboard(files){
+  return '<div style="overflow-x:auto"><table class="nocsv aftbl"><thead><tr><th>Audit file</th><th>Pass %</th><th>Failed</th><th>Checks</th><th>Assets</th><th>Frameworks</th></tr></thead><tbody>'
+    +files.map(f=>'<tr class="afrow" data-af="'+esc(f.audit_file)+'"><td><a class="cname">'+esc(f.audit_file||'(none)')+'</a></td>'
+      +'<td style="color:'+bandColor(f.pass_pct)+';font-weight:700">'+(f.pass_pct==null?'—':f.pass_pct+'%')+'</td>'
+      +'<td class="mono" style="color:var(--crit)">'+f.failed+'</td><td class="mono">'+f.checks+'</td><td class="mono">'+f.assets+'</td>'
+      +'<td class="sub" style="font-size:11px">'+esc((f.frameworks||[]).join(', '))+'</td></tr>').join('')
+    +'</tbody></table></div>';
+}
+function corrCardAgg(c){
+  return '<section class="card corr" style="margin:12px 0 0">'
+    +'<div class="chd"><span class="cico">'+esc(c.icon||'🧩')+'</span><b>'+esc(c.topic)+'</b>'
+    +'<span class="sub">'+c.check_count+' control'+(c.check_count===1?'':'s')+' ↔ '+c.vuln_count+' finding'+(c.vuln_count===1?'':'s')+' · '+c.asset_count+' asset'+(c.asset_count===1?'':'s')+'</span></div>'
+    +'<div class="cgrid"><div><div class="olbl">failing controls</div><div class="clist">'
+    +(c.checks||[]).map(k=>'<div class="cli">'+stpill(k.status)+'<span title="'+esc(k.check_name)+'">'+esc(ctrlShort(k.check_name))+'</span></div>').join('')+'</div></div>'
+    +'<div><div class="olbl">backed by findings</div><div class="clist">'
+    +(c.vulns||[]).map(v=>'<div class="cli">'+svpill(v.severity)+'<span title="'+esc(v.family||'')+'">'+esc(v.plugin_name||('plugin '+v.plugin_id))+'</span></div>').join('')+'</div></div></div>'
+    +((c.assets&&c.assets.length)?('<div class="olbl" style="margin-top:12px">assets where a failed control + backing vuln co-occur</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">'
+      +c.assets.map(a=>'<span class="fwchip auj" style="cursor:pointer" data-au="'+esc(a.asset_uuid)+'" title="Open this asset\'s deep-dive">'+esc(a.hostname||a.ip||String(a.asset_uuid).slice(0,10))+'</span>').join('')
+      +(c.asset_count>c.assets.length?'<span class="sub">+'+(c.asset_count-c.assets.length)+' more</span>':'')+'</div>'):'')
+    +'</section>';
+}
+function wireAuj(){ document.querySelectorAll('.auj').forEach(x=>x.onclick=(ev)=>{ ev.stopPropagation(); CURR=x.getAttribute('data-au'); AFILE=''; COHF=''; COH=null; setLens('asset'); }); }   // a hand-picked asset leaves the cohort
+function renderAuditAggregate(){
+  const files=AUD.files||[], corr=AUD.correlations||[];
+  let h='<div class="lensgrid">'
+    +'<section class="card"><div class="toolbar" style="margin:0 0 8px"><div><h3 style="margin:0">📄 Audit files</h3>'
+    +'<p class="sub" style="margin:2px 0 0">Every benchmark, worst-first. Click a file to open its deep-dive.</p></div>'
+    +'<span class="chip" style="margin-left:auto">'+files.length+' file'+(files.length===1?'':'s')+'</span></div>'
+    +(files.length?auditLeaderboard(files):'<p class="sub">No audit files in navi.db.</p>')+'</section>'
+    +'<section class="card"><div class="toolbar" style="margin:0 0 4px"><div><h3 style="margin:0">🧩 Estate-wide Audit ↔ Vuln links</h3>'
+    +'<p class="sub" style="margin:2px 0 0">Where failing controls and the real findings backing them converge on the same assets — across every audit file.</p></div></div>'
+    +(corr.length?corr.map(corrCardAgg).join(''):'<p class="sub">No cross-file correlations surfaced.</p>')+'</section></div>';
+  document.getElementById('body').innerHTML=h;
+  document.querySelectorAll('.afrow').forEach(r=>r.onclick=()=>{ AFILE=r.getAttribute('data-af'); afOptions(); renderAudit(); });
+  wireAuj();
+}
+function renderAuditDetail(d){
+  const B=document.getElementById('body');
+  if(!d||!d.available){ B.innerHTML='<section class="card"><p class="sub">'+esc((d&&d.reason)||'no data for this audit file')+'</p></section>'; return; }
+  const corr=d.correlations||[], checks=d.checks||[], assets=d.assets||[];
+  let h='<section class="card"><div class="toolbar" style="margin-bottom:6px"><div><h3 style="margin:0">📄 '+esc(d.audit_file)+'</h3>'
+    +'<p class="sub" style="margin:2px 0 0">'+d.checks_count+' checks across '+d.assets_count+' assets'+((d.frameworks||[]).length?' · '+d.frameworks.map(f=>esc(f.framework)).join(', '):'')+'</p></div>'
+    +'<button class="btn ghost sm" id="afBack" style="margin-left:auto">← All audit files</button></div>'
+    +'<div class="kpi">'+kpi(fnum(d.passed),'Passed','var(--ok)')+kpi(fnum(d.failed),'Failed','var(--crit)')+kpi(fnum(d.warning),'Warning','var(--med)')
+    +kpi(d.pass_pct!=null?d.pass_pct+'%':'—','Pass rate')+kpi(fnum(d.assets_count),'Assets')+'</div></section>';
+  h+='<section class="card" style="margin-top:16px"><div class="toolbar"><div><h3 style="margin:0">🧩 Audit ↔ Vuln correlations</h3>'
+    +'<p class="sub" style="margin:2px 0 0">Failing controls in this file and the real findings backing them across the assets that ran it.</p></div></div>'
+    +(corr.length?corr.map(corrCardAgg).join(''):'<p class="sub">No inferred links for this file.</p>')+'</section>';
+  h+='<section class="card" style="margin-top:16px"><div class="toolbar"><div><h3 style="margin:0">Checks</h3>'
+    +'<p class="sub" style="margin:2px 0 0">Each control rolled up across every asset that ran this file.</p></div><span class="chip" style="margin-left:auto">'+checks.length+'</span></div>'
+    +'<div style="overflow-x:auto"><table class="nocsv aftbl"><thead><tr><th>Control</th><th>Pass %</th><th>Failed</th><th>Passed</th><th>Warn</th><th>Assets</th><th>Frameworks</th></tr></thead><tbody>'
+    +(checks.length?checks.map(c=>'<tr><td title="'+esc(c.check_name)+'">'+esc(ctrlShort(c.check_name))+'</td>'
+      +'<td style="color:'+bandColor(c.pass_pct)+';font-weight:700">'+(c.pass_pct==null?'—':c.pass_pct+'%')+'</td>'
+      +'<td class="mono" style="color:var(--crit)">'+c.failed+'</td><td class="mono">'+c.passed+'</td><td class="mono">'+c.warning+'</td><td class="mono">'+c.assets+'</td>'
+      +'<td class="sub" style="font-size:11px">'+esc((c.frameworks||[]).map(f=>f.framework+(f.control?' '+f.control:'')).slice(0,4).join(', '))+'</td></tr>').join('')
+      :'<tr><td colspan="7" class="sub">No checks.</td></tr>')+'</tbody></table></div></section>';
+  h+='<section class="card" style="margin-top:16px"><div class="toolbar"><div><h3 style="margin:0">Assets assessed</h3>'
+    +'<p class="sub" style="margin:2px 0 0">Every asset this file ran against, weakest first. Click one to open its deep-dive.</p></div><span class="chip" style="margin-left:auto">'+assets.length+'</span></div>'
+    +'<div style="overflow-x:auto"><table class="nocsv aftbl"><thead><tr><th>Asset</th><th>Pass %</th><th>Failed</th><th>Passed</th><th>Warn</th></tr></thead><tbody>'
+    +(assets.length?assets.map(a=>'<tr class="afrow auj" data-au="'+esc(a.asset_uuid)+'"><td><a class="cname">'+esc(a.hostname||a.ip||String(a.asset_uuid).slice(0,14)+'…')+'</a></td>'
+      +'<td style="color:'+bandColor(a.pass_pct)+';font-weight:700">'+(a.pass_pct==null?'—':a.pass_pct+'%')+'</td>'
+      +'<td class="mono" style="color:var(--crit)">'+a.failed+'</td><td class="mono">'+a.passed+'</td><td class="mono">'+a.warning+'</td></tr>').join('')
+      :'<tr><td colspan="5" class="sub">No assets.</td></tr>')+'</tbody></table></div></section>';
+  B.innerHTML=h;
+  document.getElementById('afBack').onclick=()=>{ AFILE=''; afOptions(); renderAudit(); };
+  wireAuj();
+}
+document.querySelectorAll('#lensSeg .seg').forEach(s=>s.onclick=()=>setLens(s.getAttribute('data-lens')));
+document.getElementById('afsel').onchange=e=>{ AFILE=e.target.value; renderAudit(); };
+
+mountAgentHeader({id:'compliance_asset',icon:'🔍',name:'Compliance Deep-Dive',sub:'Compliance Drill-down · audit + vuln links · by asset or audit file'});
+try{ hMailAuto(); }catch(e){}   /* pack-wide widget + dashboard email (Notify & Reports) */
+CURR=q('asset')||q('target');
+const _afq=q('audit')||q('file');
+if(_afq){ AFILE=_afq; setLens('audit'); } else { setLens('asset'); }
+</script>
+</body></html>

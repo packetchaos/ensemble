@@ -1,0 +1,27 @@
+{
+ "id": "rpm_kernel_lab",
+ "provenance": "lab navi.db (/tmp/claude-0/hp/lab_navi.db) plugin 200011 output, verbatim \u2014 Tenable's rpm local-check format (synthetic lab estate)",
+ "real_sample": false,
+ "fam": "rpm",
+ "shape": "kernel_pair",
+ "plugin_name": "RHEL 8 : kernel (RHSA-2023:7077)",
+ "plugin_family": "Red Hat Local Security Checks",
+ "solution": "Update the affected packages.",
+ "os": "Red Hat Enterprise Linux 8.6",
+ "output": "\n  Remote package installed : kernel-4.18.0-305.el8\n  Should be : kernel-4.18.0-513.el8\n",
+ "expect": {
+  "pairs": [
+   [
+    "kernel",
+    "4.18.0-305.el8",
+    "4.18.0-513.el8",
+    "distro"
+   ]
+  ],
+  "packages": [
+   "kernel"
+  ],
+  "kernel": true,
+  "family": "dnf"
+ }
+}

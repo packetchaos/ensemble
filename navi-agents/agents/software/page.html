@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Software Inventory — navi Ensemble</title>
+<link rel="stylesheet" href="/static/console.css"/>
+<style>.card{overflow-x:auto}.swl{color:var(--accent);cursor:pointer}.swal{color:var(--accent);text-decoration:none;font-weight:600;white-space:nowrap}.swal:hover{text-decoration:underline}
+.filterbtns{display:flex;gap:5px;flex-wrap:wrap}
+.filterbtns button{cursor:pointer;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg-2);color:var(--mut);font-size:12.5px}
+.filterbtns button.on{background:var(--amber);color:#eef1fb;border-color:var(--amber);font-weight:700}
+.acode{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);font-weight:700}</style>
+</head><body>
+<div class="wrap">
+  <header class="top" id="app-header"></header>
+
+  <section class="card" style="background:var(--panel)">
+    <div class="toolbar"><div><div class="acode">Software Inventory</div><h2 style="margin:0">📦 Software Inventory</h2>
+      <p class="sub" style="margin:2px 0 0">Mines the <span class="mono">software</span> table (reconciled with the <span class="mono">cpes</span> inventory) to find <b>version sprawl</b> — the same product at many versions — plus most-deployed, standardized vs fragmented, and single-install software. Check <b>lifecycle</b> (endoflife.date), flag <b>crown jewels</b>, and rank a <b>risk leaderboard</b>. Tag any product or version (gated).</p></div>
+      <button class="btn run sm" id="swRun" data-run style="margin-left:auto">▶ Run</button><button class="btn run sm" id="runAll" data-run data-run-all="swRun,swEol,swCrown,swRisk" title="Inventory → lifecycle (endoflife.date) → crown jewels → risk leaderboard">▶ Run all</button>
+      <button class="btn run sm" id="swEol" data-run style="margin-left:6px" disabled title="Enrich with endoflife.date lifecycle data (cached)">▶ Run lifecycle check</button>
+      <button class="btn run sm" id="swCrown" data-run style="margin-left:6px" disabled title="Flag assets running business-critical software and suggest an ACR">▶ Run crown jewels</button>
+      <button class="btn run sm" id="swRisk" data-run style="margin-left:6px" disabled title="Rank software by the KEV/critical exposure on the hosts that run it">▶ Run risk leaderboard</button></div>
+    <div id="swFlash" class="flash"></div>
+    <div class="kpi" id="swKpi"></div>
+    <div id="swTagRes"></div>
+  </section>
+
+  <section class="card">
+    <h3 style="margin:0 0 4px">✨ Ask — query the software inventory</h3>
+    <p class="sub" style="margin:0 0 8px">Plain-English question → one read-only SELECT over <span class="mono">software</span> joined to <span class="mono">assets</span> / <span class="mono">vulns</span>. e.g. <i>"openssl versions on assets with ACR over 8"</i> · <i>"products on hosts that have a critical CVE"</i>.</p>
+    <p class="sub" id="swNLscope" style="margin:0 0 8px;display:none"></p>
+    <div class="toolbar"><input id="swNL" placeholder="Ask across software + assets + vulns…" style="flex:1;min-width:240px;padding:9px;border-radius:8px;border:1px solid var(--accent);background:var(--bg-2);color:var(--ink)"><button class="btn sm" id="swNLgo" data-run>✨ Ask</button></div>
+    <div id="swNLflash" class="flash"></div>
+    <div id="swNLout"></div>
+  </section>
+
+  <section class="card" id="swCard" data-nav="Software inventory" data-nav-icon="📦">
+    <h2 style="margin:0 0 8px">Software inventory <span class="sub" id="swCount"></span></h2>
+    <div class="toolbar" id="swFilter"><span class="sub">View:</span>
+      <div class="filterbtns" id="swFb"><button data-f="sprawl" class="on">Version sprawl</button><button data-f="common">Most deployed</button><button data-f="single">Single-install</button><button data-f="eol">EOL / unsupported</button><button data-f="delta">Source Δ</button><button data-f="all">All products</button></div>
+      <input id="swQ" placeholder="filter product…" style="flex:1;min-width:180px;padding:7px 9px;border-radius:8px;border:1px solid var(--line);background:var(--bg-2);color:var(--ink)"></div>
+    <p class="sub" id="swHint" style="margin:6px 0"></p>
+    <div style="overflow-x:auto"><table id="swTbl" class="nopage"><thead><tr><th>Product</th><th>Versions</th><th>Assets</th><th>Installs</th><th>Newest seen</th><th>Lifecycle</th><th>Source</th><th></th></tr></thead><tbody><tr><td colspan="8" class="sub">Analyze to load…</td></tr></tbody></table></div>
+    <div class="toolbar" id="swPager"></div>
+    <div id="swDrill"></div>
+  </section>
+
+  <section class="card" id="secEol" data-nav="Lifecycle" data-nav-icon="⏳">
+    <h2 style="margin:0 0 6px">Lifecycle (endoflife.date) <span class="sub" id="eolCount"></span></h2>
+    <div id="swEolOut" class="sub">Press <b>▶ Run lifecycle check</b> (or <b>▶ Run all</b>) to match each product against endoflife.date and flag assets on end-of-life versions.</div>
+  </section>
+
+  <section class="card" id="secCrown" data-nav="Crown-jewel software" data-nav-icon="👑">
+    <h2 style="margin:0 0 6px">Crown-jewel software <span class="sub" id="crownCount"></span></h2>
+    <div id="swCrownOut"><div class="sub">Press <b>▶ Run crown jewels</b> (or <b>▶ Run all</b>) to flag assets running business-critical software — databases, hypervisors, directory, PKI, backup, security tooling — with a suggested ACR.</div></div>
+  </section>
+
+  <section class="card" id="secRisk" data-nav="Risk leaderboard" data-nav-icon="🎯">
+    <h2 style="margin:0 0 6px">Software risk leaderboard <span class="sub" id="riskCount"></span></h2>
+    <div id="swRiskOut"><div class="sub">Press <b>▶ Run risk leaderboard</b> (or <b>▶ Run all</b>) to rank products by the KEV / critical findings that name them and the exposure on the hosts that run them.</div></div>
+  </section>
+  <footer>Software Inventory · Software analyzer · reads navi.db read-only · lifecycle via endoflife.date · gated <span class="mono">navi enrich tag</span></footer>
+</div>
+<script src="/static/brand.js"></script>
+<script src="/static/console.js"></script>
+<script>
+const API=agentApi('software'); let WRITES=false; jget('/api/health').then(h=>{WRITES=!!h.writes_enabled;}).catch(()=>{});
+/* build 455 — payload contract: the analysis runs on the server (core/software.py, a port of the
+   parsers that used to run here). ▶ Run returns the KPIs + page 1 of products and a drill handle;
+   the table pages / filters / searches on the server (hDrill), and every tag sends a KEY
+   (product / version / role) — the server rebuilds the asset set from navi.db. */
+/* asset count → the Asset Explorer list of those assets (build 481: sent 500 at a time, shown 20 per page, CSV has all) */
+function swAL(name,ver,n){
+  /* build 489: Asset Explorer has no tag filter yet — in a tag view its list would be the whole
+     estate's, so the count stays plain text (it is the tag's count) */
+  if(tagScope()) return '<span title="'+esc(fmtN(n))+' asset(s) of this tag — the Asset Explorer list covers the whole estate, so it is not linked here">'+esc(fmtN(n))+'</span>';
+  const u='/agents/ex_assets/page.html?software='+encodeURIComponent(name)+(ver==null?'':'&version='+encodeURIComponent(ver));
+  return '<a class="swal" href="'+esc(u)+'" title="Open the '+esc(fmtN(n))+' asset(s) running '+esc(name+(ver==null?'':' '+(ver||'(no version)')))+' — 20 per page, ⬇ CSV has every one">'+esc(fmtN(n))+' →</a>'; }
+function verCmp(a,b){ const pa=String(a).split(/[._\-]/),pb=String(b).split(/[._\-]/); for(let i=0;i<Math.max(pa.length,pb.length);i++){ const na=parseInt(pa[i],10),nb=parseInt(pb[i],10); const va=isNaN(na)?(pa[i]||''):na, vb=isNaN(nb)?(pb[i]||''):nb; if(va<vb)return -1; if(va>vb)return 1; } return 0; }
+function _srcBadge(p){ return p.src==='both'?'<span class="chip" title="software + cpes">both</span>':(p.src==='cpe'?'<span class="chip" style="color:var(--accent);border-color:var(--accent)" title="only in the cpes inventory">cpes</span>':'<span class="chip" title="only in the software inventory">software</span>'); }
+
+let SW=null, swFilter='sprawl', SWT=null, EOLT=null;
+const SW_VIEWS={sprawl:['sprawl',['multi']],common:['common',[]],single:['single',['single']],eol:['eol',['eol']],delta:['delta',['delta']],all:['all',[]]};
+const fmtN=n=>Number(n||0).toLocaleString();
+const swW=()=>tagScope()?'this tag':'the estate';   /* build 489: wording for a tag view */
+
+/* every software tag is a KEY — {product}, {product, version}, {product, kind:'eol'|'behind'} or {role};
+   the server rebuilds the exact asset set (and pages it ≤1,999 per navi job) */
+async function tagByKey(category,value,key,n,name,btn){ const res=document.getElementById('swTagRes');
+  if(btn&&btn.disabled)return;
+  if(!SW||!SW.run)return;
+  await testRunStatus();
+  if(!confirm('Tag '+tagCat(category)+' : '+value+' on '+n+' asset'+(n===1?'':'s')+tagScopeNote()+'?'
+    +(WRITES?'':'\n\nWrites are gated (NAVI_ALLOW_WRITES not set) — the job queues but is blocked.'))) return;
+  if(btn&&btn.disabled)return;
+  const scroll=()=>{ if(res)res.scrollIntoView({behavior:'smooth',block:'center'}); };
+  const reset=()=>{ if(!btn)return; btn.disabled=false; btn.textContent=btn.dataset.label; btn.style.opacity=''; btn.style.transform=''; btn.style.cursor=''; };
+  if(btn){ btn.dataset.label=btn.dataset.label||btn.textContent; btn.disabled=true; btn.textContent='⏳ Sending…'; btn.style.opacity='.6'; btn.style.transform='translateY(1px)'; btn.style.cursor='default'; }
+  res.innerHTML='<div class="callbox"><span class="spin"></span> tagging '+esc(fmtN(n))+' asset(s) → '+esc(category)+' : '+esc(value)+'…</div>';
+  scroll();
+  // `name` lets the backend fall back to navi built-ins (--plugin <sw enum> --output <name> -regex) over the 1999 cap
+  let o; try{ o=await API.post('tag',{category,value,key,run:SW.run,name:(name||''),confirm:true}); }catch(e){ o={ok:false,error:e.message}; }
+  const r=(o&&o.result)||{}; const ok=o&&o.ok&&r.ok!==false;
+  const capNote=(o&&o.over_cap)?(' · '+esc(o.count)+' assets exceed the 1999-UUID cap, so navi tagged by built-in signature (--plugin/--output -regex, '+esc(o.commands||1)+' command'+((o.commands||1)>1?'s':'')+')'):'';
+  res.innerHTML='<div class="callbox" style="color:'+(ok?'var(--ok)':'#ffb4c6')+'">'+(ok?('✓ queued tag → '+esc(category)+' : '+esc(value)+' ('+esc(o.count||n)+' asset(s)'+esc(tagScopeNote(' tagged '))+')'+capNote+(r.warning?' — '+esc(r.warning):'')):('✗ '+esc(r.message||r.stderr||(o&&(o.error||o.message))||'write rejected')))+'</div>'
+    +((o&&o.writes_enabled)?'':'<div class="sub" style="margin-top:6px;color:var(--warn)">'+esc((o&&o.write_gate_reason)||'Writes are gated — set NAVI_ALLOW_WRITES=1')+'. Tags queue in the <a href="/web/tags-log.html">Tagging log</a> and apply after a navi.db sync.</div>');
+  scroll(); reset();
+}
+function acrNote(cat,val,acr){ document.getElementById('swTagRes').innerHTML=
+  '<div class="callbox" style="color:#e7c66b">⚖ Recommended ACR rule: <b>'+esc(cat)+' : '+esc(val)+' → set ACR '+esc(acr)+'</b>. Tag the assets first (button above), then add this rule on the <a href="/agents/contract/page.html">Automation / Automation</a> page (or set ACR directly on the <a href="/agents/acr/page.html">Criticality Calibration / ACR</a> page) so Tenable One risk reflects their true value.</div>'; }
+
+async function runSoftware(){
+  const b=document.getElementById('swRun'); if(b)b.disabled=true;
+  const f=document.getElementById('swFlash'); if(f){f.className='flash show';f.style.background='var(--runbg)';f.style.color='var(--accent)';f.innerHTML='<span class="spin"></span> reading the software + cpes inventories'+esc(tagScopeNote())+'…';}
+  let o; try{ o=await API.post('inventory'); }catch(e){ o={ok:false,error:e.message}; }
+  if(!o||!o.ok){ if(f){f.className='flash show';f.style.background='var(--critbg)';f.style.color='var(--crit)';f.innerHTML='✗ '+esc((o&&(o.error||o.message))||'failed');} if(b)b.disabled=false; return; }
+  const m=o.summary||{};
+  SW={run:(o.drill||{}).run, ...m, crown:o.crown||null, eol:null, first:o};
+  if(f)f.className='flash'; if(b)b.disabled=false;
+  const _dk = SW.haveCpe ? `<div class="k" title="products seen by BOTH inventories"><div class="v">${fmtN(m.both)}</div><div class="l">in both sources</div></div><div class="k" style="border-color:var(--accent)" title="products ONLY the cpes table sees"><div class="v" style="color:var(--accent)">${fmtN(m.onlyCpe)}</div><div class="l">Δ only in cpes</div></div><div class="k" title="products ONLY the software table sees"><div class="v">${fmtN(m.onlySoft)}</div><div class="l">Δ only in software</div></div><div class="k"${m.cpeOnlyAssets?' style="border-color:var(--accent)"':''} title="assets the software table misses but cpes inventories"><div class="v"${m.cpeOnlyAssets?' style="color:var(--accent)"':''}>${fmtN(m.cpeOnlyAssets)}</div><div class="l">assets only in cpes</div></div>` : '';
+  document.getElementById('swKpi').innerHTML=`<div class="k"><div class="v">${fmtN(m.nprod)}</div><div class="l">unique products</div></div><div class="k"><div class="v">${fmtN(m.pairs)}</div><div class="l">product+version pairs</div></div><div class="k"><div class="v" style="color:var(--crit)">${fmtN(m.multi)}</div><div class="l">multi-version (sprawl)</div></div><div class="k"><div class="v">${fmtN(m.nasset)}</div><div class="l">assets inventoried${tagScope()?' (of this tag)':''}</div></div><div class="k"><div class="v">${fmtN(m.single)}</div><div class="l">single-install${tagScope()?' (in this tag)':''}</div></div>`+_dk;
+  ['swEol','swCrown','swRisk'].forEach(id=>{const e=document.getElementById(id);if(e)e.disabled=false;});
+  swFilter=((o.drill||{}).view)||'sprawl'; document.querySelectorAll('#swFb button').forEach(x=>x.classList.toggle('on',x.dataset.f===swFilter));
+  document.getElementById('swDrill').innerHTML=''; SWT=null; renderSoftware(true);
+}
+function _swRow(p,idx){ const vb=p.nver>1?`<span class="badge b-appr" style="color:#ffd28a">${fmtN(p.nver)}</span>`:`<span class="sub">${fmtN(p.nver)}</span>`;
+  return `<tr><td><a class="swl" data-n="${esc(p.name)}">${esc(p.name)}</a></td><td>${vb}</td><td>${swAL(p.name,null,p.nasset)}</td><td>${fmtN(p.installs)}</td><td class="mono" style="font-size:12.5px">${esc(p.newest||'')}</td><td>${_eolCell(p)}</td><td>${_srcBadge(p)}</td><td><button class="btn sm" data-tag="${esc(p.name)}" data-n="${esc(p.nasset)}">🏷️ Tag product</button></td></tr>`; }
+function renderSoftware(first){
+  if(!SW)return;
+  const hints={sprawl:'Products running more than one version across '+swW()+' — your biggest version-consolidation opportunities first.',common:'Most-deployed software by asset count'+(tagScope()?' in this tag — its de-facto standard set.':' — your de-facto enterprise-standard set.'),single:'Software found on only one asset'+(tagScope()?' of this tag':'')+' — rare / shadow / one-off installs worth a look.',eol:'Products with end-of-life / unsupported versions in '+swW()+' (via endoflife.date) — patch or isolate first.',all:'Every product, alphabetical.',delta:'Products seen by only ONE inventory source — cpes-only first (apps the RPM view misses), then software-only.'};
+  document.getElementById('swHint').textContent=hints[swFilter]||'';
+  setNavCount('swCard', fmtN(SW.nprod)); document.getElementById('swCount').textContent='('+fmtN(SW.nprod)+' products · '+fmtN(SW.nasset)+' assets)';
+  const v=SW_VIEWS[swFilter]||SW_VIEWS.all;
+  if(!SWT){
+    /* `eol` re-keys the reads once lifecycle data lands on the stored rows (the launcher's short read cache) */
+    SWT=hDrill({api:API, table:'swTbl', run:SW.run, section:'products', sort:v[0], filter:v[1], cols:8, row:_swRow, search:'swQ',
+      extra:SW.eolStamp?{eol:SW.eolStamp}:null,
+      first:(first&&!(document.getElementById('swQ').value||'').trim())?SW.first:null,
+      empty:'<tr><td colspan="8" class="sub">No products match.</td></tr>',
+      wire:tb=>{ tb.querySelectorAll('.swl').forEach(a=>a.onclick=()=>swDrill(a.dataset.n));
+        tb.querySelectorAll('button[data-tag]').forEach(btn=>btn.onclick=()=>tagByKey('Software',btn.dataset.tag,{product:btn.dataset.tag},+btn.dataset.n||0,btn.dataset.tag,btn)); },
+      onRender:T=>{ const pg=document.getElementById('swPager'); if(pg){ const t=T.total; pg.innerHTML=t?'<span class="chip">'+esc(fmtN(t.value))+(t.exact===false?'+':'')+' product(s) in this view</span>':''; } }});
+  } else SWT.set({sort:v[0], filter:v[1]});
+}
+async function swDrill(name){ const d=document.getElementById('swDrill'); if(!SW)return;
+  let o; try{ o=await API.post('product',Object.assign({run:SW.run,name},SW.eolStamp?{eol:SW.eolStamp}:{})); }catch(e){ o={ok:false,error:e.message}; }
+  if(!o||!o.ok||!o.product){ d.innerHTML='<div class="callbox" style="color:var(--crit)">✗ '+esc((o&&(o.error||o.message))||'could not load '+name)+'</div>'; return; }
+  const p=o.product, e=p.eol||null;
+  const eolSet=new Set((e&&e.eolVers)||[]); const _lat=(e&&e.latest)||'';
+  const life = e ? ((e.noData||!e.slug) ? '<span class="sub">no endoflife.date match for this product</span>'
+      : ('endoflife.date <span class="mono">'+esc(e.slug)+'</span> · latest release <b>'+esc(e.latest||'?')+'</b>'+(e.eolAssetCount?(' · <b style="color:var(--crit)">'+esc(fmtN(e.eolAssetCount))+' asset(s) on EOL/unsupported versions</b>'):' · <span style="color:var(--ok)">no EOL versions in '+esc(swW())+'</span>')))
+      : (SW.eol?'<span class="sub">no endoflife.date match for this product</span>':'<span class="sub">Run ⏳ Check lifecycle to enrich EOL / latest.</span>');
+  const behind=(e&&e.behindAssets)||0;
+  d.innerHTML='<div class="card" style="background:var(--panel2);margin-top:14px"><div class="toolbar" style="margin:0 0 8px"><b>'+esc(p.name)+' — '+esc(fmtN(p.nver))+' version(s) across '+esc(fmtN(p.nasset))+' asset(s)</b><button class="btn ghost sm" id="swdClose" style="margin-left:auto">Close</button></div>'
+    +'<p class="sub" style="margin:0 0 6px">'+life+'</p>'
+    +((e&&e.eolAssetCount)?('<div class="toolbar" style="margin:0 0 8px"><button class="btn run sm" id="swdTagEol">🏷️ Tag '+esc(fmtN(e.eolAssetCount))+' EOL asset(s) → Software EOL : '+esc(p.name)+'</button><button class="btn sm" id="swdAcrEol">⚖ Raise ACR on EOL</button></div>'):'')
+    +(behind?('<div class="toolbar" style="margin:0 0 8px"><button class="btn sm" id="swdTagOld">🏷️ Tag '+esc(fmtN(behind))+' asset(s) behind latest ('+esc(_lat)+') → Software Outdated : '+esc(p.name)+'</button></div>'):'')
+    +'<p class="sub" style="margin:0 0 8px">Newest version first. Tag assets stuck on an older/EOL version to drive consolidation &amp; upgrades.</p>'
+    +'<div style="overflow-x:auto"><table id="swdTbl"><thead><tr><th>Version</th><th>Assets</th><th>Share</th><th>Lifecycle</th><th></th></tr></thead><tbody>'
+    +(p.vers||[]).map(function(v,vi){ var pct=p.nasset?Math.round(v.assets/p.nasset*100):0; var l2=eolSet.has(v.v)?'<span class="badge b-appr" style="color:#ffb4c6;border-color:rgba(255,80,120,.5)">⛔ EOL</span>':((_lat&&v.v&&verCmp(v.v,_lat)<0)?'<span class="badge b-appr" style="color:#ffd28a">behind</span>':((_lat&&v.v===_lat)?'<span style="color:var(--ok)">latest</span>':(vi===0?'<span style="color:var(--ok)">newest here</span>':'<span class="sub">—</span>')));
+        return '<tr><td class="mono">'+esc(v.v||'(none)')+'</td><td>'+swAL(p.name,v.v||'',v.assets)+'</td><td>'+pct+'%</td><td>'+l2+'</td><td><button class="btn sm" data-sv="'+vi+'">🏷️ Tag this version</button></td></tr>'; }).join('')
+    +'</tbody></table></div></div>';
+  document.getElementById('swdClose').onclick=function(){d.innerHTML='';};
+  d.querySelectorAll('button[data-sv]').forEach(function(b){ b.onclick=function(){ var v=p.vers[+b.dataset.sv]; tagByKey('Software',p.name+' '+v.v,{product:p.name,version:v.v},v.assets,'',b); }; });
+  var te=document.getElementById('swdTagEol'); if(te)te.onclick=function(){ tagByKey('Software EOL',p.name,{product:p.name,kind:'eol'},e.eolAssetCount,'',te); };
+  var ae=document.getElementById('swdAcrEol'); if(ae)ae.onclick=function(){ acrNote('Software EOL',p.name,8); };
+  var to=document.getElementById('swdTagOld'); if(to)to.onclick=function(){ tagByKey('Software Outdated',p.name,{product:p.name,kind:'behind'},behind,'',to); };
+  d.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+var EOL_TTL=7*864e5;
+async function eolCycles(slug){
+  try{ var c=JSON.parse(localStorage.getItem('eol:'+slug)||'null'); if(c&&(Date.now()-c.t)<EOL_TTL)return c.d; }catch(e){}
+  try{ var r=await fetch('https://endoflife.date/api/'+encodeURIComponent(slug)+'.json',{cache:'no-store'}); if(!r.ok)throw 0; var d=await r.json(); try{localStorage.setItem('eol:'+slug,JSON.stringify({t:Date.now(),d:d}));}catch(e){} return d; }catch(e){ return null; } }
+function eolCycleFor(version,cycles){ if(!cycles)return null; var v=String(version||'').trim(); if(!v)return null;
+  for(var k=0;k<cycles.length;k++){ var cy=String(cycles[k].cycle); if(v===cy||v.indexOf(cy+'.')===0||(v.indexOf(cy)===0&&!/[0-9]/.test(v.charAt(cy.length)))) return cycles[k]; } return null; }
+function eolIsDead(c){ if(!c)return null; var e=c.eol; if(e===true)return true; if(e===false)return false; if(typeof e==='string'){ var d=new Date(e); if(!isNaN(d.getTime()))return d.getTime()<Date.now(); } return null; }
+/* the server lists the slug-matched products + their versions; this browser asks endoflife.date
+   (one GET per slug, cached 7 days) and sends back only each product's EOL versions + latest —
+   the server turns them into asset counts (and unions Tenable's own EOL plugins) */
+async function runSoftwareEol(){
+  if(!SW||!SW.run)return;
+  var btn=document.getElementById('swEol'); if(btn)btn.disabled=true;
+  var f=document.getElementById('swFlash');
+  // the plan is paged (150 products per call; each product's versions as one "\n"-joined string)
+  var plan=[], start=0, guard=0, pl;
+  do{
+    try{ pl=await API.post('eol_plan',{run:SW.run,start:start}); }catch(e){ pl={ok:false,error:e.message}; }
+    if(!pl||!pl.ok){ if(f){f.className='flash show';f.style.background='var(--critbg)';f.style.color='var(--crit)';f.textContent='✗ '+((pl&&(pl.error||pl.message))||'failed');} if(btn)btn.disabled=false; return; }
+    (pl.plan||[]).forEach(function(x){ x.versions=x.vers?String(x.vers).split('\n'):(x.versions||[]); plan.push(x); });
+    start=pl.next_start;
+  }while(start!=null && ++guard<40);
+  var results=[], done=0, bySlug={};
+  for(var i=0;i<plan.length;i++){ var x=plan[i]; done++;
+    if(f){f.className='flash show';f.style.background='var(--runbg)';f.style.color='var(--accent)';f.innerHTML='<span class="spin"></span> checking lifecycle '+done+'/'+plan.length+' — '+esc(x.name)+' ('+esc(x.slug)+')…';}
+    var cy=(x.slug in bySlug)?bySlug[x.slug]:(bySlug[x.slug]=await eolCycles(x.slug));
+    if(!cy){ results.push({name:x.name,slug:x.slug,noData:true}); continue; }
+    var latest=(cy[0]&&cy[0].latest)||'', eolVers=[];
+    (x.versions||[]).forEach(function(v){ var c=eolCycleFor(v,cy); if(eolIsDead(c)===true) eolVers.push(v); });
+    results.push({name:x.name,slug:x.slug,latest:latest,eolVers:eolVers}); }
+  if(f){f.className='flash show';f.style.background='var(--runbg)';f.style.color='var(--accent)';f.innerHTML='<span class="spin"></span> counting assets on end-of-life versions (+ Tenable-flagged EOL)…';}
+  let o; try{ o=await API.post('lifecycle',{run:SW.run,results}); }catch(e){ o={ok:false,error:e.message}; }
+  if(btn)btn.disabled=false;
+  if(!o||!o.ok){ if(f){f.className='flash show';f.style.background='var(--critbg)';f.style.color='var(--crit)';f.textContent='✗ '+((o&&(o.error||o.message))||'failed');} return; }
+  SW.eol=o.summary||{}; const e=SW.eol;
+  if(f){f.className='flash show';f.style.background='var(--okbg,rgba(52,211,153,.14))';f.style.color='var(--ok)';f.innerHTML='✓ lifecycle checked: <b>'+esc(fmtN(e.checkedProducts))+'</b> product(s) matched endoflife.date · <b style="color:var(--crit)">'+esc(fmtN(e.eolProducts))+'</b> with EOL versions. Assets on EOL software: <b style="color:var(--crit)">'+esc(fmtN(e.eolAssets))+'</b> — endoflife.date <b>'+esc(fmtN(e.eolAssetsEndoflife))+'</b> + Tenable-flagged <b>'+esc(fmtN(e.tenEolAssets))+'</b> (unioned). Use the <b>EOL / unsupported</b> filter.';}
+  var kpi=document.getElementById('swKpi'); if(kpi){ var _eh='<div class="v" style="color:var(--crit)">'+esc(fmtN(e.eolAssets))+'</div><div class="l">assets on EOL software</div>'; var ex=document.getElementById('swEolKpi'); if(ex){ ex.innerHTML=_eh; } else { kpi.insertAdjacentHTML('beforeend','<div class="k" id="swEolKpi" style="border-color:var(--crit)">'+_eh+'</div>'); } }
+  SW.eolStamp=[e.checkedProducts,e.eolProducts,e.eolAssets,e.tenEolAssets].join('.'); SWT=null; renderSoftware(); renderEolSection(o);
+}
+function renderEolSection(o){
+  const out=document.getElementById('swEolOut'); if(!out||!SW||!SW.eol) return;
+  const e=SW.eol, nRows=(o&&o.total)?o.total.value:e.eolProducts;
+  setNavCount('secEol', fmtN(e.eolProducts)); document.getElementById('eolCount').textContent='('+fmtN(e.eolProducts)+' product(s) · '+fmtN(e.eolAssets)+' asset(s))';
+  out.className='';
+  out.innerHTML='<p class="sub" style="margin:0 0 8px"><b>'+esc(fmtN(e.checkedProducts))+'</b> product(s) matched endoflife.date. Assets on end-of-life software: <b style="color:var(--crit)">'+esc(fmtN(e.eolAssets))+'</b> (endoflife.date <b>'+esc(fmtN(e.eolAssetsEndoflife))+'</b> + Tenable-flagged <b>'+esc(fmtN(e.tenEolAssets))+'</b>, unioned). Tag a product\'s EOL assets <span class="tagval">Software EOL : &lt;product&gt;</span>.</p>'
+    +'<table id="eolTbl"><thead><tr><th>Product</th><th>EOL versions</th><th>Assets on EOL</th><th>Latest release</th><th>Tenable agrees</th><th></th></tr></thead><tbody></tbody></table>';
+  EOLT=hDrill({api:API, table:'eolTbl', run:SW.run, section:'products', sort:'eol', filter:['eol'], cols:6, first:o, extra:{eol:SW.eolStamp||'1'},
+    row:p=>{ const x=p.eol||{}; return '<tr><td><b>'+esc(p.name)+'</b> <span class="sub mono">'+esc(x.slug||'')+'</span></td><td class="mono" style="font-size:12px">'+esc((x.eolVers||[]).slice(0,6).join(', '))+((x.eolVers||[]).length>6?' +'+esc(x.eolVers.length-6):'')+'</td>'
+      +'<td><b style="color:var(--crit)">'+esc(fmtN(x.eolAssetCount))+'</b></td><td class="mono">'+esc(x.latest||'—')+'</td><td>'+(x.tenConfirmed?esc(fmtN(x.tenConfirmed)):'<span class="sub">—</span>')+'</td>'
+      +'<td><button class="btn ghost sm" data-eolt="'+esc(p.name)+'" data-n="'+esc(x.eolAssetCount||0)+'">🏷️ Tag</button></td></tr>'; },
+    empty:'<tr><td colspan="6" class="sub">No end-of-life versions found among the products endoflife.date covers.</td></tr>',
+    wire:tb=>tb.querySelectorAll('button[data-eolt]').forEach(b=>b.onclick=()=>tagByKey('Software EOL',b.dataset.eolt,{product:b.dataset.eolt,kind:'eol'},+b.dataset.n||0,'',b))});
+}
+function _eolCell(p){ const x=p&&p.eol; if(!x) return SW&&SW.eol?'<span class="sub" title="no endoflife.date match">n/a</span>':'<span class="sub">—</span>'; if(x.noData||!x.slug)return '<span class="sub" title="no endoflife.date match">n/a</span>';
+  if(x.eolAssetCount>0)return '<span class="badge b-appr" style="color:#ffb4c6;border-color:rgba(255,80,120,.5)" title="EOL versions: '+esc((x.eolVers||[]).join(', '))+(x.tenConfirmed?' · Tenable-confirmed: '+esc(x.tenConfirmed):'')+'">⛔ EOL · '+esc(fmtN(x.eolAssetCount))+(x.tenConfirmed?' ✓T':'')+'</span>';
+  if(x.behind)return '<span class="badge b-appr" style="color:#ffd28a" title="latest release is '+esc(x.behind)+'">behind latest</span>';
+  return '<span style="color:var(--ok)">supported</span>'; }
+
+/* ===== Crown-jewel software → role tags + suggested ACR (roles computed with the inventory) ===== */
+async function runCrown(){
+  if(!SW||!SW.run)return; var out=document.getElementById('swCrownOut'); if(!out)return;
+  let o; try{ o=await API.post('crown',{run:SW.run}); }catch(e){ o={ok:false,error:e.message}; }
+  if(!o||!o.ok){ out.innerHTML='<div class="callbox" style="color:var(--crit)">✗ '+esc((o&&(o.error||o.message))||'failed')+'</div>'; return; }
+  var roles=o.top||[], tot=(o.summary||{}).assets||0;
+  if(!roles.length){ setNavCount('secCrown','0'); document.getElementById('crownCount').textContent='(0)'; out.innerHTML='<div class="callbox">No business-critical software matched the curated roles (DBs, hypervisors, directory, PKI, backup, security tooling, remote-access gateways, web/app servers).</div>'; return; }
+  setNavCount('secCrown', fmtN(roles.length)); document.getElementById('crownCount').textContent='('+fmtN(roles.length)+' role(s) · '+fmtN(tot)+' asset(s))';
+  out.innerHTML='<div>'
+    +'<p class="sub" style="margin:0 0 10px">Assets running business-critical software — tag by role and raise ACR so Tenable One risk reflects their true value. Suggested ACR is a starting point. <b>Gated.</b></p>'
+    +roles.map(function(r,i){ return '<div style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px"><div class="toolbar" style="margin:0 0 6px"><b>'+esc(r.role)+'</b><span class="chip" style="color:var(--accent)">suggested ACR '+esc(r.acr)+'</span><span class="chip">'+esc(fmtN(r.assets))+' asset(s)</span></div>'
+        +'<p class="sub" style="margin:0 0 8px">Products: '+esc((r.products||[]).join(', '))+(r.nproducts>(r.products||[]).length?' +'+esc(r.nproducts-r.products.length):'')+'</p>'
+        +'<div class="toolbar" style="margin:0"><button class="btn run sm" data-crt="'+i+'">🏷️ Tag '+esc(fmtN(r.assets))+' asset(s) → Crown Jewel : '+esc(r.role)+'</button><button class="btn sm" data-cra="'+i+'">⚖ Suggest ACR '+esc(r.acr)+'</button></div></div>'; }).join('')
+    +'</div>';
+  out.querySelectorAll('button[data-crt]').forEach(function(b){ b.onclick=function(){ var r=roles[+b.dataset.crt]; tagByKey('Crown Jewel',r.role,{role:r.role},r.assets,null,b); }; });
+  out.querySelectorAll('button[data-cra]').forEach(function(b){ b.onclick=function(){ var r=roles[+b.dataset.cra]; acrNote('Crown Jewel',r.role,r.acr); }; });
+  out.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+/* ===== Software risk leaderboard — products ranked by KEV/critical exposure (server-side) ===== */
+async function runSwRisk(){
+  if(!SW||!SW.run)return; var out=document.getElementById('swRiskOut'); if(!out)return;
+  var btn=document.getElementById('swRisk'); if(btn)btn.disabled=true;
+  var ff=document.getElementById('swFlash'); if(ff){ff.className='flash show';ff.style.background='var(--runbg)';ff.style.color='var(--accent)';ff.innerHTML='<span class="spin"></span> scoring software risk from vulns…';}
+  let o; try{ o=await API.post('risk',{run:SW.run}); }catch(e){ o={ok:false,error:e.message}; }
+  if(btn)btn.disabled=false;
+  if(!o||!o.ok){ if(ff){ff.className='flash show';ff.style.background='var(--critbg)';ff.style.color='var(--crit)';ff.textContent='✗ '+((o&&(o.error||o.message))||'failed');} return; }
+  if(ff){ff.className='flash';}
+  var top=o.top||[], sm=o.summary||{}; SW.risk=o;   // kept for the widget's 📧 list
+  setNavCount('secRisk', fmtN(sm.total)); document.getElementById('riskCount').textContent='('+fmtN(sm.total)+' product(s) with findings · '+fmtN(sm.named)+' with findings that name the package)';
+  out.innerHTML='<div>'
+    +'<p class="sub" style="margin:0 0 8px">Ranked by risk that <b>combines the package with its vulnerabilities</b>: findings whose plugin <b>names the product</b> (package-level) weigh heaviest, then KEV / critical exposure on the hosts that run it, then EOL. A product with its own CVEs outranks one that merely shares a host. <b>Gated.</b></p>'
+    +'<div style="overflow-x:auto"><table><thead><tr><th>Product</th><th title="combined risk: package-named findings + host KEV/critical + EOL">Risk</th><th title="findings whose plugin names this product">Named KEV / crit</th><th title="count of package-named findings">Named finds</th><th>Assets</th><th>KEV assets</th><th>Critical</th><th>Max VPR</th><th>EOL</th><th></th></tr></thead><tbody>'
+    +top.map(function(x,i){ var named=((x.pk?'<span style="color:#ffb4c6;font-weight:700">'+esc(x.pk)+' KEV</span>':'')+((x.pk&&x.pc)?' · ':'')+(x.pc?'<span style="color:#ffd28a">'+esc(x.pc)+' crit</span>':''))||'<span class="sub">—</span>';
+       return '<tr><td><b>'+esc(x.name)+'</b></td><td class="mono"'+(x.pf?' style="color:var(--accent);font-weight:700"':'')+'>'+esc(Math.round(x.risk))+'</td><td>'+named+'</td><td'+(x.pf?'':' class="sub"')+'>'+esc(x.pf||'—')+'</td><td>'+swAL(x.name,null,x.nasset)+'</td><td'+(x.kev?' style="color:#ffb4c6;font-weight:700"':' class="sub"')+'>'+esc(x.kev)+'</td><td'+(x.crit?' style="color:#ffd28a"':' class="sub"')+'>'+esc(x.crit)+'</td><td class="mono">'+(x.vpr?esc((+x.vpr).toFixed(1)):'—')+'</td><td>'+(x.eol?'<span class="badge b-appr" style="color:#ffb4c6;border-color:rgba(255,80,120,.5)">⛔ '+esc(x.eol)+'</span>':'<span class="sub">—</span>')+'</td><td><button class="btn sm" data-swr="'+i+'">🏷️ Tag</button></td></tr>'; }).join('')
+    +'</tbody></table></div></div>';
+  out.querySelectorAll('button[data-swr]').forEach(function(b){ b.onclick=function(){ var x=top[+b.dataset.swr]; tagByKey('Software Risk',x.name,{product:x.name},x.nasset,x.name,b); }; });
+  out.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+/* ===== NL → SQL ask (run_sql is capped: 200 rows a page, 10,000 in all) ===== */
+let _ASK=null;
+function _askTable(o){
+  const out=document.getElementById('swNLout'); const rows=o.rows||[], cols=o.columns||(rows[0]?Object.keys(rows[0]):[]);
+  const t=o.total||{}, st=(o.page||{}).start||0;
+  out.innerHTML='<div class="mono sub" style="margin:6px 0">'+esc(o.sql||'')+'</div>'+(rows.length?('<div style="overflow-x:auto"><table class="nopage"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+cols.map(c=>'<td>'+esc(r[c])+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'
+    +'<div class="toolbar" style="margin-top:6px"><span class="sub">rows '+esc(fmtN(st+1))+'–'+esc(fmtN(st+rows.length))+' of '+esc(fmtN(t.value||rows.length))+(t.exact===false?'+':'')+'</span>'+((o.page||{}).next?'<button class="btn ghost sm" id="swNLnext">Next 200 ›</button>':'')+'</div>'):'<div class="callbox">No rows.</div>');
+  const nx=document.getElementById('swNLnext'); if(nx) nx.onclick=async()=>{ let p; try{ p=await API.post('run_sql',{sql:o.sql,next:o.page.next}); }catch(e){ p={ok:false,message:e.message}; } if(p&&p.ok) _askTable(p); };
+}
+async function swAsk(){
+  const q=document.getElementById('swNL').value.trim(); const out=document.getElementById('swNLout'); const f=document.getElementById('swNLflash');
+  if(!q){ out.innerHTML='<div class="callbox" style="color:var(--crit)">Type a question first.</div>'; return; }
+  if(f){f.className='flash show';f.style.background='var(--runbg)';f.style.color='var(--accent)';f.innerHTML='<span class="spin"></span> translating to SQL…';}
+  let o; try{ o=await API.post('nl_query',{prompt:q}); }catch(e){ o={ok:false,message:e.message}; }
+  if(f)f.className='flash';
+  if(!o||!o.ok){ out.innerHTML='<div class="callbox" style="color:var(--crit)">✗ '+esc((o&&(o.message||o.error))||'failed')+((o&&o.sql)?'<div class="mono sub" style="margin-top:6px">'+esc(o.sql)+'</div>':'')+'</div>'; return; }
+  _askTable(o);
+}
+
+document.getElementById('swRun').onclick=runSoftware;
+document.getElementById('swEol').onclick=runSoftwareEol;
+document.getElementById('swCrown').onclick=runCrown;
+document.getElementById('swRisk').onclick=runSwRisk;
+document.getElementById('swNLgo').onclick=swAsk;
+document.getElementById('swNL').addEventListener('keydown',e=>{if(e.key==='Enter')swAsk();});
+document.querySelectorAll('#swFb button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#swFb button').forEach(x=>x.classList.remove('on'));b.classList.add('on');swFilter=b.dataset.f;document.getElementById('swDrill').innerHTML='';renderSoftware();});
+mountAgentHeader({id:'software',icon:'📦',name:'Software Analyzer',sub:'Software Inventory · sprawl · lifecycle · crown jewels · risk'});
+mountTagScope({agent:'software', note:'a product\'s assets, versions, EOL and risk counts cover only them; the ✨ Ask box still searches the whole estate'});
+if(tagScope()){ const ns=document.getElementById('swNLscope'); if(ns){ ns.style.display=''; ns.innerHTML='⚠ The Ask box is <b>not</b> limited to <b>'+esc(tagScopeLabel())+'</b> — it searches the whole estate. Add the tag to your question to narrow it.'; } }
+mountSectionNav();
+// ⛶ full screen + 📧 picture & list (Notify & Reports) on the risk leaderboard
+hWidget('secRisk',{title:'Software risk leaderboard', visual:()=>document.getElementById('swRiskOut'),
+  note:()=>(SW&&SW.risk&&SW.risk.summary)?(fmtN(SW.risk.summary.total)+' product(s) with findings · '+fmtN(SW.risk.summary.named)+' with findings that name the package'+tagScopeNote()):'',
+  columns:['rank','product','risk','named KEV / crit','named finds','assets','KEV assets','critical','max VPR','EOL'],
+  rows:()=>((SW&&SW.risk&&SW.risk.top)||[]).map((r,i)=>({rank:i+1, product:r.name, risk:Math.round(r.risk||0),
+    'named KEV / crit':(r.pk||r.pc)?((r.pk||0)+' / '+(r.pc||0)):'', 'named finds':r.pf||'', assets:r.nasset, 'KEV assets':r.kev,
+    critical:r.crit, 'max VPR':r.vpr, EOL:r.eol?'yes':''}))});
+try{ hMailAuto(); }catch(e){}   /* pack-wide widget + dashboard email (Notify & Reports) */
+</script>
+</body></html>

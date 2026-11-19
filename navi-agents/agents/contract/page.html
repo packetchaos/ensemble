@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Automation — navi Ensemble</title>
+<link rel="stylesheet" href="/static/console.css"/>
+<style>
+.arow{display:grid;grid-template-columns:minmax(150px,240px) 1fr;gap:10px;align-items:start;margin-bottom:8px}
+.arow .adesc{display:block;font-size:11px;color:var(--mut);margin:3px 0 0 20px;line-height:1.35}
+.arow .needs{font-size:10px;padding:1px 6px;border-radius:9px;border:1px solid var(--line);color:var(--warn,var(--mut));margin-left:4px}
+.arow .xtra{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.arow textarea{width:100%;min-height:40px;padding:7px;border-radius:7px;border:1px solid var(--line);background:var(--bg-2);color:var(--ink);font-size:12px;box-sizing:border-box}
+.fld{padding:7px;border-radius:7px;border:1px solid var(--line);background:var(--bg-2);color:var(--ink)}
+.armed{background:rgba(52,211,153,.14);color:var(--ok);border:1px solid rgba(52,211,153,.4)}
+.disarmed{background:rgba(138,153,173,.16);color:var(--mut);border:1px solid var(--line)}
+.kpi .v{font-size:18px}
+.rpgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:6px}
+.rpbox{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px}
+.rph{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);margin-bottom:6px;font-weight:700}
+.rpl{display:block;margin:6px 0;padding-left:22px;text-indent:-22px;line-height:1.7}
+.rpl input[type=checkbox]{width:16px;margin:0 6px 0 0;vertical-align:-2px}
+.rpl input.fld,.rpl select.fld{text-indent:0;padding:3px 6px;margin:0 2px}
+.rpnote{margin:0 0 6px 22px;font-size:12px}
+.rpchecks{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:2px 10px}
+.rpsteps{margin:8px 0;display:flex;flex-direction:column;gap:3px}
+.rpstep{display:grid;grid-template-columns:22px minmax(0,1fr) 70px;gap:6px;font-size:12.5px;align-items:baseline}
+.rpstep .n{color:var(--ink-3);font-size:11.5px}
+.rpstep.running{font-weight:700}.rpstep.error .lbl{color:var(--crit)}.rpstep.pending{color:var(--ink-3)}
+</style>
+</head><body data-cache-inputs="off">
+<div class="wrap">
+  <header class="top" id="app-header"></header>
+
+  <section class="card">
+    <div class="toolbar"><div><h2 style="margin:0">📜 Automation</h2>
+      <p class="sub" style="margin:2px 0 0">Capture your policy once; the loop tags, sets ACR, waits, and re-runs every few hours — planning first, executing only when <b>armed</b>. With no per-agent policy it tags the <b>risk-weighted top-N</b> of everything.</p></div>
+      <span class="badge" id="armBadge" style="margin-left:auto">…</span></div>
+    <div class="kpi" id="kpi"></div>
+    <div class="toolbar" style="margin-top:8px">
+      <button class="btn sm" id="fromLog">⬇ Build from tag log</button>
+      <button class="btn sm" id="fromCsv">⬆ Build from tag-log CSV</button>
+      <input type="file" id="csvFile" accept=".csv,text/csv" style="display:none">
+      <button class="btn run sm" id="planBtn" data-run title="Plan only — previews what the contract would do; nothing is written">▶ Run</button>
+      <button class="btn sm" id="runBtn">⚡ Execute one cycle now</button>
+      <button class="btn sm" id="armBtn" style="margin-left:auto"></button>
+    </div>
+    <div class="toolbar">
+      <button class="btn ghost sm" id="exportJson">⬇ Export JSON</button>
+      <button class="btn ghost sm" id="importJson">⬆ Import JSON</button>
+      <button class="btn ghost sm" id="exportBtn">⬇ Export navi script</button>
+      <button class="btn ghost sm" id="emailSummaryBtn" title="Hand this run to Notify &amp; Reports — email a summary: tags per category, assets, errors, and which agents didn't run / weren't enabled">📧 Email summary → Notify &amp; Reports</button>
+      <button class="btn ghost sm" id="saveBtn">💾 Save contract</button>
+      <input type="file" id="cFile" accept="application/json" style="display:none">
+    </div>
+    <div id="flash" class="flash"></div>
+  </section>
+
+  <section class="card">
+    <h3 style="margin:0 0 6px">✨ Ask — ACR changes in plain English</h3>
+    <div class="needs-llm">
+      <div class="sub" style="margin-bottom:6px"><b>✨ Author ACR rules with AI</b> — describe your criticality policy in plain English; the model maps it across your live tag list. Several rules in one sentence are fine (e.g. <i>"drop all IoT and lab gear by 5, set anything internet-facing to 9, bump production databases to 10"</i>).</div>
+      <textarea id="cAcrAi" rows="2" placeholder="e.g. set production to 10, internet-facing to 9, drop lab + IoT by 5" style="width:100%;box-sizing:border-box;font-size:13px;padding:8px;border-radius:7px;border:1px solid var(--line);background:var(--bg-2);color:var(--ink)"></textarea>
+      <div class="toolbar" style="margin-top:6px">
+        <span class="sub">Change reason:</span>
+        <span id="cAcrReasons" class="sub" style="display:flex;gap:10px;flex-wrap:wrap">
+          <label><input type="checkbox" value="business" checked> business</label>
+          <label><input type="checkbox" value="compliance"> compliance</label>
+          <label><input type="checkbox" value="mitigation"> mitigation</label>
+          <label><input type="checkbox" value="development"> development</label>
+        </span>
+        <input id="cAcrAiNote" class="fld" placeholder="optional note appended to each change" style="flex:1;min-width:160px">
+      </div>
+      <div class="toolbar" style="margin-top:6px">
+        <button class="btn run sm" id="cAcrInterpret" data-run>✨ Ask</button>
+        <button class="btn sm" id="cAcrAddAll" disabled>➕ Add all to ACR rules</button>
+        <span class="chip" id="cAcrAiCount"></span>
+      </div>
+      <div id="cAcrAiFlash" class="flash"></div>
+      <div id="cAcrAiPreview"></div>
+    </div>
+    <div class="no-llm-note callbox" style="display:none;color:var(--warn,var(--cx-e7c66b));margin:0 0 12px">AI ACR authoring needs a language model. Set <span class="mono">ANTHROPIC_API_KEY</span> on the server to enable it — you can still add ACR rules by hand below.</div>
+  </section>
+
+  <section class="card" id="planCard">
+    <div class="toolbar"><h3 style="margin:0">🔍 Plan preview</h3><span class="chip" id="planCount"></span></div>
+    <div id="planOut"><p class="sub">Click <b>▶ Run</b> above to plan (no writes) and preview what the contract would tag — it appears right here.</p></div>
+  </section>
+
+  <section class="card" id="release">
+    <div class="toolbar"><div><h3 style="margin:0">Run the Ensemble — keep the Ensemble ready</h3>
+      <p class="sub" style="margin:2px 0 0">Refresh navi.db, optimize it, then run the Ensemble — so every page is already populated when someone logs in. Runs in this order, one step at a time: the <b>navi updates</b> you pick → <span class="mono">navi config optimize</span> → <b>⚡ Optimize for the Ensemble</b> → <b>Run the Ensemble</b>. It writes navi.db and the page cache only — never to Tenable.</p></div>
+      <span class="chip" id="rpChip" style="margin-left:auto">…</span></div>
+    <label class="sub" style="display:flex;gap:6px;align-items:center;margin:8px 0 4px;font-weight:600"><input type="checkbox" id="rpEnabled"> Schedule is on</label>
+    <div class="rpgrid">
+      <div class="rpbox"><div class="rph">When</div>
+        <label class="sub rpl"><input type="checkbox" id="rpDaily"> Daily — ready by <input id="rpReady" type="time" class="fld" style="width:120px"> on
+          <select id="rpDays" class="fld"><option value="every">every day</option><option value="weekdays">weekdays</option></select></label>
+        <div class="sub rpnote" id="rpStartNote"></div>
+        <label class="sub rpl"><input type="checkbox" id="rpAfter"> After each contract cycle that tags — wait <input id="rpWait" type="number" min="0" max="720" class="fld" style="width:64px"> min first, so Tenable has applied the new tags</label>
+      </div>
+      <div class="rpbox"><div class="rph">navi updates</div><div id="rpUpdates" class="rpchecks"></div></div>
+      <div class="rpbox"><div class="rph">Then</div>
+        <label class="sub rpl"><input type="checkbox" id="rpNaviOpt"> <span class="mono">navi config optimize</span> — navi's own indexes</label>
+        <label class="sub rpl"><input type="checkbox" id="rpHxOpt"> ⚡ Optimize for the Ensemble — the Ensemble's indexes + summary tables (<a href="/web/settings.html">Settings</a>)</label>
+        <label class="sub rpl"><input type="checkbox" id="rpRelease"> Run the Ensemble — every specialist that can run; specialists whose navi.db data is missing are skipped</label>
+        <label class="sub rpl" style="margin-left:22px"><input type="checkbox" id="rpDl"> approve the MITRE ATT&amp;CK + CISA KEV catalog downloads</label>
+        <label class="sub rpl" style="margin-left:22px"><input type="checkbox" id="rpSkipMine"> leave out the specialists I unticked in the <a href="/">Release dialog</a> <span id="rpSkipList"></span></label>
+      </div>
+    </div>
+    <div class="toolbar" style="margin-top:8px">
+      <button class="btn run sm" id="rpSave" disabled>💾 Save schedule</button>
+      <button class="btn sm" id="rpRun" disabled>▶ Run now</button>
+      <button class="btn ghost sm" id="rpCancel" style="display:none">✕ Cancel</button>
+      <span class="sub" id="rpMsg"></span>
+    </div>
+    <div id="rpProg"></div>
+    <div id="rpHist"></div>
+  </section>
+
+  <section class="card">
+    <h3 style="margin:0 0 6px">Schedule &amp; defaults</h3>
+    <div class="toolbar">
+      <label class="sub">Every <input id="hours" type="number" min="1" class="fld" style="width:64px"> hours</label>
+      <label class="sub">Wait <input id="wait" type="number" min="0" class="fld" style="width:64px"> min between agents</label>
+      <label class="sub">Default top-N <input id="topn" type="number" min="1" class="fld" style="width:72px"></label>
+      <label class="sub"><input type="checkbox" id="naviupd"> run <span class="mono">navi config update assets</span> → <span class="mono">vulns</span> each cycle</label>
+      <label class="sub"><input type="checkbox" id="optimizeChk"> run <span class="mono">navi config optimize</span> (fast tagging)</label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3 style="margin:0 0 6px">Per-agent policy</h3>
+    <p class="sub" style="margin:0 0 10px">Leave a policy blank to fall back to the risk-weighted top-N. Examples: IoT → <i>"tag all IoT but not Dell or Intel — those are laptops"</i>; Custom apps → <i>"only /opt apps and jenkins matter"</i>; Exposure routes → <i>"payment routes → VM Team; docker → Custom Apps"</i>.</p>
+    <div id="agents"></div>
+  </section>
+
+  <section class="card">
+    <div class="toolbar"><h3 style="margin:0">ACR changes</h3><button class="btn ghost sm" id="acrAdd" style="margin-left:auto">+ ACR rule</button></div>
+    <p class="sub trhint" style="display:none;margin:0 0 8px;color:var(--warn,#fbbf24)"></p>
+    <p class="sub" style="margin:0 0 8px">navi never changes the ACR of an asset tagged <span class="tagval">NO : UPDATE</span> — <b>📋 Plan</b> shows, per rule, how many assets change and how many are protected. Every change is recorded per asset in the <a href="/web/acr-log.html">ACR log</a>.</p>
+    <label class="sub" style="display:block;margin:0 0 8px" title="After the ACR rules run, tag NO : UPDATE on exactly the assets they changed, so later cycles leave those ACRs alone"><input type="checkbox" id="protectAcrChk"> 🛡️ Protect ACR after applying — tag <span class="mono">NO : UPDATE</span> on the assets the rules change (counts for navi after the next navi.db sync; remove it with <a href="/agents/tagremoval/page.html">Tag Removal</a>)</label>
+    <div id="acr"></div>
+  </section>
+
+  <section class="card">
+    <div class="toolbar"><h3 style="margin:0">🗑️ Tag removal (Tag Removal)</h3><span class="chip" id="remCount" style="margin-left:auto"></span></div>
+    <p class="sub" style="margin:2px 0 8px">When armed, the contract <b>removes these tags first</b>, forces a pause, runs <span class="mono">navi update</span>, then re-runs the tagging workflow. Add tags from the <a href="/agents/tagremoval/page.html">Tag Removal</a> agent, or type them below.</p>
+    <div class="toolbar">
+      <label class="sub"><input type="checkbox" id="remEnabled"> enable removal phase</label>
+      <label class="sub">pause <input id="remPause" type="number" min="0" class="fld" style="width:64px"> min before re-tagging</label>
+      <label class="sub"><input type="checkbox" id="remNaviupd"> run <span class="mono">navi update</span> after removal</label>
+      <span style="margin-left:auto;display:flex;gap:6px"><button class="btn ghost sm" id="remAdd">+ tag</button><button class="btn ghost sm" id="remClear">Clear list</button></span>
+    </div>
+    <p class="sub trhint" style="display:none;margin:8px 0 0;color:var(--warn,#fbbf24)"></p>
+    <div id="remList" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card">
+    <div class="toolbar"><h3 style="margin:0">📧 Run summary email (Notify &amp; Reports)</h3><span class="chip" id="notifyChip" style="margin-left:auto"></span></div>
+    <p class="sub" style="margin:2px 0 8px">Every cycle, Notify &amp; Reports emails a summary of what the contract did — tags queued, ACR applied, tags removed, and any Alerts alerts that fired. On by default; uncheck to stop getting an email each run. Sending is still gated by <span class="mono">NAVI_EMAIL</span>, so a gated inbox just records what would have gone out.</p>
+    <div class="toolbar">
+      <label class="sub"><input type="checkbox" id="notifyEnabled"> email a summary via Notify &amp; Reports each cycle</label>
+      <label class="sub">to <input id="notifyTo" type="email" class="fld" placeholder="blank → default alert email" style="width:260px"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="toolbar"><h3 style="margin:0">Loop log</h3></div>
+    <div id="loop"><p class="sub">No cycles yet.</p></div>
+  </section>
+  <footer>Automation · plans first · executes when armed · writes gated by NAVI_ALLOW_WRITES</footer>
+</div>
+<script src="/static/brand.js"></script>
+<script src="/static/console.js"></script>
+<script>
+const API=agentApi('contract'); let C=null, WRITES=false, LASTPLAN=null, LASTARMED=false;
+// [id, label, description, needs_input, prompt_driven] — replaced by the server's list (get → taggers)
+let AGENTS=[['iot_squad','IoT squad'],['customapp','Custom apps'],['exproute','Ownership (Exposure Routes)','',true,true],['eol','EOL / unsupported'],['software','Software (Software Inventory)'],['ai','AI inventory'],['identity','Identity'],['mitre','MITRE ATT&CK'],['scan_eval','Scan eval'],['certificate','Certificates'],['cisakev','CISA KEV (Laelaps)'],['postquantum','Post-Quantum (Heimdall)'],['agentgroup','Agent Groups (Agent Group Sync)'],['classify','Asset Classification (Linnaeus)'],['attackpath','Attack Paths (Fenrir)'],['was','Web apps (Arachne)'],['fused_score','Exposure Score'],['compliance','Compliance owner (Compliance Overview)','',true],['asset_ownership','Asset Ownership','',true,true]];
+let EXCLUDED={};
+const agentLabel=id=>{ const a=AGENTS.find(x=>x[0]===id); return a?a[1]:id; };
+function gather(){ // pull edits from the form back into C
+  C.schedule_hours=+document.getElementById('hours').value||4;
+  C.wait_minutes=+document.getElementById('wait').value||0;
+  C.defaults.top_n=+document.getElementById('topn').value||50;
+  C.navi_update=document.getElementById('naviupd').checked;
+  C.optimize=document.getElementById('optimizeChk').checked;
+  C.protect_acr=document.getElementById('protectAcrChk').checked;
+  AGENTS.forEach(([id])=>{ const en=document.getElementById('en_'+id), lg=document.getElementById('lg_'+id);
+    if(!en) return;
+    const a=Object.assign({},C.agents[id]||{}, {enabled:en.checked, logic:(lg?lg.value:'')});
+    const ow=document.getElementById('ow_'+id), ck=document.getElementById('ck_'+id);
+    if(ow) a.owner=ow.value.trim();
+    if(ck) a.checks=ck.value.split(',').map(x=>x.trim()).filter(Boolean);
+    C.agents[id]=a; });
+  C.acr=[...document.querySelectorAll('#acr .acrrow')].map(r=>({category:r.querySelector('.ac').value.trim(),value:r.querySelector('.av').value.trim(),score:+r.querySelector('.as').value||0,mod:r.querySelector('.am').value,reasons:[r.querySelector('.ar').value],note:'contract'})).filter(x=>x.category&&x.value);
+  C.removal=C.removal||{tags:[]};
+  C.removal.enabled=document.getElementById('remEnabled').checked;
+  C.removal.pause_minutes=+document.getElementById('remPause').value||0;
+  C.removal.navi_update=document.getElementById('remNaviupd').checked;
+  C.removal.tags=[...document.querySelectorAll('#remList .remrow')].map(r=>({category:r.querySelector('.rc').value.trim(),value:r.querySelector('.rv').value.trim()})).filter(x=>x.category&&x.value);
+  C.notify=C.notify||{};
+  C.notify.enabled=document.getElementById('notifyEnabled').checked;
+  C.notify.to=(document.getElementById('notifyTo').value||'').trim();
+  return C;
+}
+function renderNotify(){ const n=C.notify||{enabled:true,to:''};
+  document.getElementById('notifyEnabled').checked=(n.enabled!==false);
+  document.getElementById('notifyTo').value=n.to||'';
+  const c=document.getElementById('notifyChip'); if(c)c.textContent=(n.enabled!==false)?('on'+(n.to?(' · '+n.to):' · default')):'off';
+}
+function remRow(t){ t=t||{category:'',value:''};
+  return `<div class="arow remrow"><span></span><div class="toolbar" style="margin:0">
+    <input class="fld rc" placeholder="tag category" value="${esc(t.category||'')}" style="flex:1">
+    <input class="fld rv" placeholder="tag value" value="${esc(t.value||'')}" style="flex:1">
+    <button class="btn ghost sm remdel">✕</button></div></div>`; }
+function renderRemoval(){ const r=C.removal||{enabled:false,tags:[],pause_minutes:30,navi_update:true};
+  document.getElementById('remEnabled').checked=!!r.enabled;
+  document.getElementById('remPause').value=(r.pause_minutes!=null?r.pause_minutes:30);
+  document.getElementById('remNaviupd').checked=(r.navi_update!==false);
+  const box=document.getElementById('remList');
+  box.innerHTML=(r.tags&&r.tags.length?r.tags:[]).map(remRow).join('')||'<p class="sub">No tags to remove. Pick tags in the Tag Removal agent and "Add to Automation", or click <b>+ tag</b>.</p>';
+  box.querySelectorAll('.remdel').forEach(b=>b.onclick=()=>b.closest('.remrow').remove());
+  const c=document.getElementById('remCount'); if(c)c.textContent=((r.tags||[]).length)+' tag(s)'+(r.enabled?' · armed-cycle removes first':'');
+}
+async function push(){ const o=await API.post('set',{contract:gather()});
+  if(o&&o.ok===false){ flash('flash','✗ '+esc(o.error||'could not save the contract'),'crit'); return false; } return true; }
+function renderArm(){ const b=document.getElementById('armBadge'), btn=document.getElementById('armBtn');
+  if(C.armed){ b.className='badge armed'; b.textContent='● ARMED — autonomous'; btn.textContent='■ Disarm'; btn.className='btn ghost sm'; }
+  else { b.className='badge disarmed'; b.textContent='○ Disarmed — plan only'; btn.textContent='⚡ Arm contract'; btn.className='btn run sm'; } }
+function renderAgents(){ document.getElementById('agents').innerHTML=AGENTS.map(([id,nm,desc,needs,prompt])=>{const a=C.agents[id]||{enabled:!needs,logic:''};
+  const ph=prompt?(id==='exproute'?'owner mapping — e.g. "payment routes → VM Team; ignore the ICMP route" (required)':'owner instruction(s), one per line — e.g. "assign Jane Smith to production" (required)')
+    :'policy (blank = risk-weighted top-N)';
+  const xtra=(id==='compliance')?`<div class="xtra"><input class="fld" id="ow_${esc(id)}" placeholder="Audit Owner name (required)" value="${esc(a.owner||'')}" style="flex:1;min-width:180px">
+    <input class="fld" id="ck_${esc(id)}" placeholder="only these check_ids, comma-separated (blank = every failing control)" value="${esc((a.checks||[]).join(', '))}" style="flex:2;min-width:220px"></div>`:'';
+  return `<div class="arow"><label class="sub"><input type="checkbox" id="en_${esc(id)}" ${a.enabled?'checked':''}> <b>${esc(nm)}</b>${needs?'<span class="needs">needs input</span>':''}${desc?`<span class="adesc">${esc(desc)}</span>`:''}</label>
+    <div><textarea id="lg_${esc(id)}" placeholder="${esc(ph)}">${esc(a.logic||'')}</textarea>${xtra}</div></div>`;}).join('')
+  +(Object.keys(EXCLUDED).length?'<p class="sub" style="margin:8px 0 0;font-size:11px">Not orchestrated: '+Object.entries(EXCLUDED).map(([k,v])=>'<b>'+esc(k)+'</b> — '+esc(v)).join(' · ')+'.</p>':''); }
+function acrRow(r){ r=r||{category:'',value:'',score:8,mod:'set',reasons:['business']};
+  return `<div class="arow acrrow"><span></span><div class="toolbar" style="margin:0">
+    <input class="fld ac" placeholder="tag category (e.g. Business Tier)" value="${esc(r.category||'')}" style="flex:1">
+    <input class="fld av" placeholder="tag value (e.g. Production)" value="${esc(r.value||'')}" style="flex:1">
+    <input class="fld as" type="number" min="1" max="10" step="1" value="${esc(String(r.score!=null?r.score:8))}" style="width:64px" title="score">
+    <select class="fld am"><option ${r.mod==='set'?'selected':''}>set</option><option ${r.mod==='inc'?'selected':''}>inc</option><option ${r.mod==='dec'?'selected':''}>dec</option></select>
+    <select class="fld ar"><option ${(!r.reasons||r.reasons[0]==='business')?'selected':''}>business</option><option ${r.reasons&&r.reasons[0]==='compliance'?'selected':''}>compliance</option><option ${r.reasons&&r.reasons[0]==='mitigation'?'selected':''}>mitigation</option><option ${r.reasons&&r.reasons[0]==='development'?'selected':''}>development</option></select>
+    <button class="btn ghost sm acrdel">✕</button></div></div>`; }
+function renderAcr(){ const box=document.getElementById('acr'); box.innerHTML=(C.acr&&C.acr.length?C.acr:[]).map(acrRow).join('')||'<p class="sub">No ACR rules. ACR is never auto-ranked — add explicit rules here.</p>';
+  box.querySelectorAll('.acrdel').forEach(b=>b.onclick=()=>{b.closest('.acrrow').remove();}); }
+function renderForm(){ document.getElementById('hours').value=C.schedule_hours; document.getElementById('wait').value=C.wait_minutes; document.getElementById('topn').value=C.defaults.top_n; document.getElementById('naviupd').checked=!!C.navi_update; document.getElementById('optimizeChk').checked=(C.optimize!==false);
+  document.getElementById('protectAcrChk').checked=(C.protect_acr===true);
+  renderAgents(); renderAcr(); renderRemoval(); renderNotify(); renderArm();
+  document.getElementById('kpi').innerHTML=`<div class="k"><div class="v">${AGENTS.filter(([id])=>C.agents[id]&&C.agents[id].enabled).length}</div><div class="l">agents enabled</div></div><div class="k"><div class="v">${esc(String(C.defaults.top_n))}</div><div class="l">default top-N (risk)</div></div><div class="k"><div class="v">${esc(String(C.schedule_hours))}h</div><div class="l">cadence</div></div><div class="k"><div class="v" style="color:${WRITES?'var(--ok)':'var(--mut)'}">${WRITES?'on':'gated'}</div><div class="l">writes</div></div>`; }
+async function refresh(){ const o=await API.post('get'); C=o.contract; WRITES=o.writes_enabled;
+  if(Array.isArray(o.taggers)&&o.taggers.length) AGENTS=o.taggers.map(t=>[t.id,t.label||t.id,t.desc||'',!!t.needs_input,!!t.prompt_driven]);
+  if(o.excluded&&typeof o.excluded==='object') EXCLUDED=o.excluded;
+  renderForm(); renderLoop(o.scheduler); }
+function renderPlan(p){ LASTPLAN=p; LASTARMED=!!(p&&p.armed); const blocks=p.agents||[]; document.getElementById('planCount').textContent=blocks.reduce((s,b)=>s+(b.selected||0),0)+' tags planned';
+  document.getElementById('planOut').innerHTML='<div style="overflow-x:auto"><table><thead><tr><th>Agent</th><th>Candidates</th><th>Selected</th><th>How</th><th>Sample</th></tr></thead><tbody>'+
+    blocks.map(b=>`<tr><td><b>${esc(agentLabel(b.agent))}</b></td><td>${b.error?'<span class="sub" style="color:var(--crit)">'+esc(b.error)+'</span>':(b.needs_input?'<span class="sub" style="color:var(--warn,var(--mut))">'+esc(b.needs_input)+'</span>':(b.candidates||0))}</td><td>${b.selected||0}${(b.commands||0)>(b.selected||0)?' <span class="sub" style="font-size:11px">('+esc(String(b.commands))+' navi cmds)</span>':''}</td><td class="sub">${esc(b.note||'')}</td><td class="sub" style="font-size:11px">${esc((b.items||[]).slice(0,4).map(i=>i.label).join(', '))}${(b.items||[]).length>4?'…':''}</td></tr>`).join('')+
+    '</tbody></table></div>'+(p.tag_prefix?'<p class="sub" style="margin-top:8px;color:var(--warn,#fbbf24)">🧪 Test run is on — every planned tag is written as <b class="mono">'+esc(p.tag_prefix)+'&lt;category&gt;</b>. ACR rules and the removal list use the category exactly as typed (a specialist-created tag is now <span class="mono">'+esc(p.tag_prefix)+'…</span>).</p>':'')+(p.acr&&p.acr.length?'<p class="sub" style="margin-top:8px">+ '+p.acr.length+' ACR change(s)'+(p.protect_acr?' · 🛡️ then NO : UPDATE on the assets they change':'')+'</p>'+acrPlanTable(p):'')+
+    ((p.removal&&p.removal.enabled&&(p.removal.tags||[]).length)?'<p class="sub" style="margin-top:6px">🗑️ Removal phase: strips <b>'+p.removal.tags.length+'</b> tag(s) first, pauses '+(p.removal.pause_minutes!=null?p.removal.pause_minutes:30)+' min, runs <span class="mono">navi update</span>, then re-tags.</p>':'')+
+    '<p class="sub" style="margin-top:6px">'+(p.armed?(WRITES?'Armed — a cycle will execute these via the background tag queue.':'Armed, but writes are gated (set NAVI_ALLOW_WRITES=1).'):'Disarmed — planning only.')+'</p>'; }
+function acrPlanTable(p){ const rows=p.acr_preview||[]; if(!rows.length) return '';
+  const n=x=>Number(x||0).toLocaleString();
+  return '<div style="overflow-x:auto"><table><thead><tr><th>ACR rule</th><th title="assets navi will set to a new ACR">Change</th><th title="tagged NO : UPDATE — navi skips them">Protected (skipped)</th><th title="no ACR in navi.db — navi skips them">No ACR (skipped)</th><th>Business case</th></tr></thead><tbody>'+
+    rows.map(r=>`<tr><td>${esc(r.category)} : <b>${esc(r.value)}</b> <span class="sub mono">${r.mod==='set'?'set '+esc(r.score):(r.mod==='inc'?'+':'−')+esc(r.score)}</span>${r.valid_score===false?' <span class="sub" style="color:var(--crit)">score navi ignores</span>':''}${r.error?' <span class="sub" style="color:var(--crit)">'+esc(r.error)+'</span>':''}${r.refuse?'<div class="sub" style="color:var(--crit)">✗ will not run: '+esc(r.refuse)+'</div>':''}</td>`
+      +`<td>${n(r.change)}${r.unchanged?' <span class="sub">(+'+n(r.unchanged)+' unchanged)</span>':''}</td><td>${n(r.protected)}</td><td>${n(r.no_acr)}</td><td class="sub">${esc(r.business_case||'')}</td></tr>`).join('')+
+    '</tbody></table></div>'; }
+function renderLoop(sched){ const box=document.getElementById('loop');
+  API.post('loop_log').then(o=>{ const log=o.loop_log||[]; const s=sched||{};
+    const hdr=`<p class="sub">Scheduler: <b>${s.running?'running':'stopped'}</b>${s.next_run?(' · next ~'+new Date(s.next_run*1000).toLocaleTimeString()):''}</p>`;
+    box.innerHTML=hdr+(log.length?'<div style="overflow-x:auto"><table><thead><tr><th>Started</th><th title="armed = the autonomous loop · manual = ⚡ Execute one cycle now · plan = nothing written">Mode</th><th>Queued</th><th>ACR</th><th title="assets tagged NO : UPDATE after the ACR rules">Protected</th><th>navi update</th><th>QA</th></tr></thead><tbody>'+
+      log.map(e=>`<tr><td class="sub" style="font-size:11px">${esc((e.started||'').replace('T',' ').replace('Z',''))}</td><td>${esc(e.mode||(e.armed?'armed':'plan'))}</td><td>${e.queued_tags||0}</td><td>${e.acr_applied||0}</td><td>${e.acr_protected||0}</td><td class="sub">${esc(((e.navi_update||{}).started||[]).join(',')||(e.navi_update||{}).skipped||'')}</td><td><span class="badge ${e.qa&&e.qa.verdict==='ok'?'b-ready':'b-err'}">${esc(e.qa?String(e.qa.verdict):'—')}</span> <span class="sub">Δtags ${esc(e.qa?(e.qa.tag_delta==null?'?':String(e.qa.tag_delta)):'?')}</span></td></tr>`).join('')+'</tbody></table></div>':'<p class="sub">No cycles yet.</p>'); });
+}
+document.getElementById('fromLog').onclick=async()=>{ flash('flash','<span class="spin"></span> building from tag log…','run'); const o=await API.post('build_from_log'); C=o.contract; renderForm();
+  if(o.log_count) flash('flash','✓ Built the policy from <b>'+o.log_count+'</b> logged tag(s) — review below, then Plan / Arm.','ok');
+  else flash('flash','No tags in this session\'s log yet, so I enabled all agents as a starting point. Run some agents (or <b>⬆ Build from tag-log CSV</b>) for a policy shaped by your tags.','warn'); };
+// CSV import — parse an exported tag-log CSV and build the policy from it (survives restarts)
+document.getElementById('fromCsv').onclick=()=>document.getElementById('csvFile').click();
+document.getElementById('csvFile').onchange=async(e)=>{
+  const f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f)return;
+  flash('flash','<span class="spin"></span> reading '+esc(f.name)+'…','run');
+  let text; try{ text=await f.text(); }catch(err){ flash('flash','✗ could not read the file','crit'); return; }
+  const rows=parseCsv(text);
+  if(!rows.length){ flash('flash','✗ no rows found in that CSV (expected a tag-log export)','crit'); return; }
+  let o; try{ o=await API.post('build_from_csv',{rows}); }catch(err){ flash('flash','✗ '+esc(err.message),'crit'); return; }
+  C=o.contract; renderForm();
+  flash('flash','✓ Built the policy from <b>'+(o.log_count||rows.length)+'</b> tag(s) in '+esc(f.name)+' — review below, then Plan / Arm.','ok');
+};
+function parseCsv(text){
+  const lines=String(text).replace(/\r/g,'').split('\n').filter(l=>l.trim().length);
+  if(!lines.length) return [];
+  const split=(l)=>{ const out=[]; let cur='',q=false; for(let i=0;i<l.length;i++){ const c=l[i];
+    if(q){ if(c==='"'){ if(l[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else { if(c===','){out.push(cur);cur='';} else if(c==='"')q=true; else cur+=c; } } out.push(cur); return out; };
+  const hdr=split(lines[0]).map(h=>h.trim().toLowerCase());
+  return lines.slice(1).map(l=>{ const cells=split(l); const o={}; hdr.forEach((h,i)=>o[h]=(cells[i]||'').trim()); return o; });
+}
+document.getElementById('planBtn').onclick=async()=>{ if(!await push()) return; flash('flash','<span class="spin"></span> planning…','run'); const o=await API.post('plan'); flashClear('flash'); renderPlan(o.plan); };
+document.getElementById('exportBtn').onclick=async()=>{ if(!await push()) return; flash('flash','<span class="spin"></span> building navi script…','run'); let o; try{o=await API.post('export');}catch(e){o={ok:false}} flashClear('flash'); if(!o.ok){flash('flash','✗ export failed','crit');return;} const blob=new Blob([o.script],{type:'text/x-shellscript'}); const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download=(C.name||'navi-contract')+'.sh'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),2000); flash('flash','Exported navi script — run it where navi can write.','ok'); };
+document.getElementById('runBtn').onclick=async()=>{ if(!confirm((C&&C.armed?'Run one contract cycle now? It applies the planned tags'+((C.acr||[]).length?', ACR rules'+(document.getElementById('protectAcrChk').checked?' (then tags NO : UPDATE on the assets they change)':''):'')+((C.removal&&C.removal.enabled&&(C.removal.tags||[]).length)?' and the removal list':'')+' through the gated tag queue.':'Execute one contract cycle now? The autonomous loop is not armed, so this applies ONE cycle — the planned tags'+((C&&(C.acr||[]).length)?', ACR rules':'')+((C&&C.removal&&C.removal.enabled&&(C.removal.tags||[]).length)?' and the removal list':'')+' — through the gated tag queue. The 4-hour loop stays off (⚡ Arm turns it on).'))) return;
+  if(!await push()) return; flash('flash','<span class="spin"></span> running one cycle…','run'); let o; try{ o=await API.post('run_now',{confirm:true}); }catch(e){ flashClear('flash'); flash('flash','✗ '+esc(e.message||'run failed'),'crit'); return; } flashClear('flash'); renderPlan((o.cycle&&o.cycle.plan)||{agents:[]}); refresh(); const cy=o.cycle||{}, q=cy.queued_tags||0, rj=(cy.removal||{}).removed_jobs||0, ac=cy.acr_applied||0;
+  if(cy.skipped) flash('flash','⚠ Nothing applied — '+esc(cy.skipped),'warn');
+  else if(!q&&!rj&&!ac) flash('flash','⚠ Cycle ran but queued nothing — every enabled specialist matched 0 assets (see the plan above), or writes are gated on this server.','warn');
+  else flash('flash','✓ Cycle applied — '+q+' tag job(s)'+(rj?', '+rj+' removal(s)':'')+(ac?', '+ac+' ACR rule(s)':'')+' queued. Track them in the Tagging log; navi.db refreshes in the background (navi config update assets → vulns).','ok'); };
+document.getElementById('armBtn').onclick=async()=>{
+  const btn=document.getElementById('armBtn'); const lbl=btn.textContent; btn.disabled=true; btn.textContent='…';
+  try{
+    try{ await push(); }catch(e){ /* a save hiccup shouldn't block arm/disarm */ }
+    if(C && C.armed){
+      let o; try{ o=await API.post('disarm'); }catch(e){ o={ok:false,error:e.message}; }
+      flash('flash', (o&&o.ok)?'○ Disarmed — planning only.':('✗ '+esc((o&&(o.error||o.message))||'disarm failed')), (o&&o.ok)?'warn':'crit');
+    } else {
+      if(!confirm(WRITES?'Arm the contract? The autonomous loop starts now and applies the plan every '+C.schedule_hours+'h (live tag writes).':'Writes are gated (NAVI_ALLOW_WRITES not set), so armed cycles will be planned but not executed. Arm anyway?')){ btn.disabled=false; btn.textContent=lbl; return; }
+      let o; try{ o=await API.post('arm',{confirm:true}); }catch(e){ o={ok:false,error:e.message}; }
+      if(o&&o.ok) flash('flash','● Armed — the autonomous loop is running'+(o.writes_enabled?'':' (writes gated — it will plan but not execute until NAVI_ALLOW_WRITES=1)')+'.','ok');
+      else flash('flash','✗ Arm failed: '+esc((o&&(o.error||o.message))||'unknown error'),'crit');
+    }
+  }catch(e){ flash('flash','✗ '+esc(e.message||'failed'),'crit'); }
+  btn.disabled=false; await refresh();
+};
+document.getElementById('emailSummaryBtn').onclick=async()=>{
+  // If there's no plan yet, build one so the summary reflects this contract.
+  if(!LASTPLAN){ await push(); flash('flash','<span class="spin"></span> planning for the summary…','run'); try{ const o=await API.post('plan'); renderPlan(o.plan); }catch(e){} flashClear('flash'); }
+  const plan_agents=AGENTS.map(([id])=>{ const blk=((LASTPLAN&&LASTPLAN.agents)||[]).find(b=>b.agent===id)||{};
+    return {agent:id, enabled:!!(C&&C.agents[id]&&C.agents[id].enabled), selected:blk.selected||0, error:blk.error||undefined}; });
+  // hand off to Notify & Reports — it reads the live tag log for deployed/errored tags + navi.db for
+  // assets-per-category, and uses this plan for enabled/skipped/matched-nothing.
+  emailFindings({report:'contract_summary', armed:LASTARMED, plan_agents});
+};
+document.getElementById('saveBtn').onclick=async()=>{ if(!await push()) return; const name=prompt('Save contract as:',C.name||'navi-contract'); if(name===null)return; const o=await API.post('save',{name}); flash('flash',o.ok?('Saved '+esc(o.name)+'.json'):'Save failed','ok'); };
+document.getElementById('exportJson').onclick=()=>{ const doc=gather(); const blob=new Blob([JSON.stringify(doc,null,2)],{type:'application/json'}); const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download=(doc.name||'navi-contract')+'.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(u),2000); flash('flash','Exported contract JSON — Import it on another machine to reuse this policy.','ok'); };
+document.getElementById('importJson').onclick=()=>document.getElementById('cFile').click();
+document.getElementById('cFile').onchange=(e)=>{ const f=e.target.files&&e.target.files[0]; if(!f)return; const r=new FileReader();
+  r.onload=async()=>{ let doc; try{ doc=JSON.parse(r.result); }catch(err){ flash('flash','✗ not valid JSON','crit'); return; }
+    if(!doc||!doc.agents){ flash('flash','✗ that file is not a contract (missing "agents")','crit'); return; }
+    C=doc; await push(); await refresh(); flash('flash','✓ imported contract'+(doc.name?' “'+esc(doc.name)+'”':'')+' — review, then Plan / Arm as usual.','ok'); };
+  r.readAsText(f); e.target.value=''; };
+document.getElementById('acrAdd').onclick=()=>{ const box=document.getElementById('acr'); if(box.querySelector('.sub'))box.innerHTML=''; box.insertAdjacentHTML('beforeend',acrRow()); box.querySelectorAll('.acrdel').forEach(b=>b.onclick=()=>b.closest('.acrrow').remove()); };
+document.getElementById('remAdd').onclick=()=>{ const box=document.getElementById('remList'); if(box.querySelector('.sub'))box.innerHTML=''; box.insertAdjacentHTML('beforeend',remRow()); box.querySelectorAll('.remdel').forEach(b=>b.onclick=()=>b.closest('.remrow').remove()); };
+document.getElementById('remClear').onclick=()=>{ C.removal=C.removal||{}; C.removal.tags=[]; renderRemoval(); };
+document.getElementById('notifyEnabled').onchange=()=>{ C.notify=C.notify||{}; C.notify.enabled=document.getElementById('notifyEnabled').checked; C.notify.to=(document.getElementById('notifyTo').value||'').trim(); renderNotify(); };
+document.getElementById('notifyTo').onblur=()=>{ C.notify=C.notify||{}; C.notify.to=(document.getElementById('notifyTo').value||'').trim(); renderNotify(); };
+/* ---- AI-authored bulk ACR inside the contract (reuses /api/acr run + interpret) ---- */
+let C_ACR_TAGS=null, C_ACR_AI={changes:[]};
+function cAcrAiReasons(){ return [...document.querySelectorAll('#cAcrReasons input:checked')].map(x=>x.value); }
+async function ensureAcrTags(){ if(C_ACR_TAGS&&C_ACR_TAGS.length) return C_ACR_TAGS; const o=await jpost('/api/acr/run',{}); C_ACR_TAGS=(o&&o.result&&o.result.tags)||[]; return C_ACR_TAGS; }
+function cAcrRender(changes,source){
+  C_ACR_AI={changes:changes};
+  const pv=document.getElementById('cAcrAiPreview'), ab=document.getElementById('cAcrAddAll'), cc=document.getElementById('cAcrAiCount');
+  if(pv) pv.innerHTML='<p class="sub" style="margin:10px 0 4px">'+changes.length+' change(s) · <b>'+esc(source)+'</b></p>'+(changes.length?'<div style="overflow-x:auto"><table><thead><tr><th>Tag</th><th>Action</th><th>Reason</th><th>Why</th></tr></thead><tbody>'+changes.map(c=>'<tr><td>'+esc(c.category)+' : <b>'+esc(c.value)+'</b></td><td><b>'+(c.mod==='set'?'set '+esc(c.score):(c.mod==='inc'?'+':'−')+esc(c.score))+'</b></td><td class="sub">'+esc((c.reasons||[]).join(', '))+'</td><td class="sub">'+esc(c.why||'')+'</td></tr>').join('')+'</tbody></table></div>':'<p class="sub">No changes.</p>');
+  if(cc)cc.textContent=changes.length+' change(s)';
+  if(ab)ab.disabled=!changes.length;
+}
+async function cAcrInterpret(){
+  const prompt=(document.getElementById('cAcrAi').value||'').trim();
+  if(!prompt){ flash('cAcrAiFlash','Type an instruction first.','crit'); return; }
+  flash('cAcrAiFlash','<span class="spin"></span> loading the live tag list…','run');
+  let tags; try{ tags=await ensureAcrTags(); }catch(e){ flash('cAcrAiFlash','✗ could not load tags: '+esc(e.message||e),'crit'); return; }
+  if(!tags.length){ flash('cAcrAiFlash','No tags found (is navi on PATH / navi.db present?).','crit'); return; }
+  flash('cAcrAiFlash','<span class="spin"></span> interpreting across '+tags.length+' tags…','run');
+  const reasons=cAcrAiReasons(), note=(document.getElementById('cAcrAiNote').value||'').trim();
+  let o; try{ o=await jpost('/api/acr/interpret',{prompt,tags}); }catch(e){ o={ok:false,message:e.message}; }
+  if(!o||!o.ok){ flash('cAcrAiFlash','✗ '+esc((o&&(o.message||o.error))||'failed')+(o&&o.fallback?' — set ANTHROPIC_API_KEY on the server for AI authoring':''),'crit'); return; }
+  const changes=(o.changes||[]).map(c=>({category:c.category,value:c.value,mod:c.mod,score:c.score,reasons:(reasons.length?reasons:(c.reasons||['business'])),note:'AI ACR (contract): "'+prompt.slice(0,80)+'"'+(c.why?' — '+c.why:'')+(note?' — '+note:''),why:c.why||''}));
+  flash('cAcrAiFlash','AI proposed '+changes.length+' change(s).'+(o.rejected&&o.rejected.length?' ('+o.rejected.length+' rejected by validation)':''),'ok');
+  cAcrRender(changes,'AI (server)');
+}
+function cAcrAddAll(){
+  const changes=(C_ACR_AI.changes||[]); if(!changes.length)return;
+  const box=document.getElementById('acr'); if(box.querySelector('.sub'))box.innerHTML='';
+  changes.forEach(c=>{ box.insertAdjacentHTML('beforeend',acrRow({category:c.category,value:c.value,score:c.score,mod:c.mod,reasons:c.reasons})); });
+  box.querySelectorAll('.acrdel').forEach(b=>b.onclick=()=>b.closest('.acrrow').remove());
+  flash('cAcrAiFlash','✓ added '+changes.length+' rule(s) to the ACR list below — they apply on the loop when armed. Review / Save / Export as usual.','ok');
+  C_ACR_AI={changes:[]}; const ab=document.getElementById('cAcrAddAll'); if(ab)ab.disabled=true;
+  box.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+document.getElementById('cAcrInterpret').onclick=cAcrInterpret;
+document.getElementById('cAcrAddAll').onclick=cAcrAddAll;
+
+mountAgentHeader({icon:'📜',name:'Automation',sub:'autonomous workflow · plan→arm→loop'});
+try{ hMailAuto(); }catch(e){}
+refresh();
+/* Arriving from "Plan Run" (?plan=1) → auto-run the plan and land on the review below. */
+if(new URLSearchParams(location.search).get('plan')){
+  setTimeout(()=>{ const b=document.getElementById('planBtn'); if(b){ b.click(); const pc=document.getElementById('planCard'); if(pc) pc.scrollIntoView({behavior:'smooth',block:'start'}); } }, 450);
+}
+// Settings → Test run: categories typed here are used EXACTLY — say what a specialist-created tag is now called
+testRunStatus().then(t=>{ if(!t||!t.enabled) return; document.querySelectorAll('.trhint').forEach(el=>{ el.style.display='';
+  el.innerHTML='🧪 Test run is on — the Ensemble now create <span class="mono">'+esc(t.prefix)+'&lt;category&gt;</span> tags (e.g. <span class="mono">'+esc(t.prefix)+'Lifecycle</span>). A category typed here is used exactly as typed.'; }); });
+</script>
+<script>
+/* ── Run the Ensemble pipeline (core/release_pipeline.py) ─────────────────────────── */
+(function(){
+const $=id=>document.getElementById(id);
+let RP=null, RP_T=null;
+const fmtD=s=>{ s=Math.max(0,Math.round(s||0)); if(s<60) return s+' s'; const m=Math.floor(s/60); if(m<60) return m+' min'; return Math.floor(m/60)+' h '+(m%60?(m%60)+' min':''); };
+const when=t=>t?new Date(t*1000).toLocaleString([], {weekday:'short',hour:'2-digit',minute:'2-digit'}):'—';
+function relOff(){ try{ return JSON.parse(localStorage.getItem('houndsRelOff')||'[]').map(String); }catch(e){ return []; } }
+const ICON={done:'✓',running:'⟳',error:'✗',cancelled:'⊘',pending:'·'};
+function cfgFromForm(){
+  return {enabled:$('rpEnabled').checked, daily:$('rpDaily').checked, ready_by:$('rpReady').value||'07:00', days:$('rpDays').value,
+    after_tagging:$('rpAfter').checked, wait_minutes:+($('rpWait').value||0),
+    updates:[...document.querySelectorAll('#rpUpdates input:checked')].map(x=>x.value),
+    navi_optimize:$('rpNaviOpt').checked, hx_optimize:$('rpHxOpt').checked, release:$('rpRelease').checked,
+    approve_downloads:$('rpDl').checked, skip:$('rpSkipMine').checked?relOff():[]};
+}
+function fillForm(o){ const c=o.config;
+  $('rpEnabled').checked=c.enabled; $('rpDaily').checked=c.daily; $('rpReady').value=c.ready_by; $('rpDays').value=c.days;
+  $('rpAfter').checked=c.after_tagging; $('rpWait').value=c.wait_minutes;
+  $('rpUpdates').innerHTML=(o.update_kinds||[]).map(k=>'<label class="sub rpl" style="margin:1px 0"><input type="checkbox" value="'+esc(k.key)+'"'+(c.updates.includes(k.key)?' checked':'')+'> '+esc(k.label)+'</label>').join('');
+  $('rpNaviOpt').checked=c.navi_optimize; $('rpHxOpt').checked=c.hx_optimize; $('rpRelease').checked=c.release; $('rpDl').checked=c.approve_downloads;
+  $('rpSkipMine').checked=(c.skip||[]).length>0; paintSkip(c.skip||[]);
+}
+function paintSkip(saved){ const off=relOff(); const show=$('rpSkipMine').checked?(saved&&saved.length&&!off.length?saved:off):off;
+  $('rpSkipList').textContent=show.length?'('+show.length+': '+show.join(', ')+')':'(none unticked)'; }
+function paintStatus(o){ RP=o; const c=o.config, st=o.state||{}, running=st.status==='running';
+  let chip;
+  if(running){ const steps=st.steps||[], i=steps.findIndex(x=>x.status==='running'); chip='⟳ running — step '+(i+1)+' of '+steps.length; }
+  else if(!c.enabled) chip='○ off';
+  else if(c.daily&&o.next_start) chip='● scheduled — starts '+when(o.next_start)+' · ready by '+c.ready_by;
+  else if(c.after_tagging) chip='● after each tagging cycle';
+  else chip='● on — no trigger picked';
+  $('rpChip').textContent=chip;
+  $('rpStartNote').innerHTML=c.daily?('Starts about <b>'+(o.next_start?when(o.next_start):'—')+'</b> — '+esc(fmtD(o.estimate_s))+' ahead of '+esc(c.ready_by)+' ('+esc(o.estimate_basis)+'). Server clock'+(o.tz?' ('+esc(o.tz)+')':'')+'.'
+      +(c.enabled?'':' <i>Turn the schedule on and save.</i>')):'';
+  $('rpCancel').style.display=running?'':'none'; $('rpRun').disabled=running;
+  const steps=st.steps||[];
+  $('rpProg').innerHTML=steps.length?('<div class="sub" style="margin-top:8px"><b>'+(running?'Running':'Last run')+'</b> · '+esc(st.trigger||'')+' · started '+esc(new Date((st.started||0)*1000).toLocaleString())
+      +(st.total_s?' · '+esc(fmtD(st.total_s)):'')+(!running&&st.status?' · <span class="badge '+(st.status==='done'?'b-ready':'b-err')+'">'+esc(st.status)+'</span>':'')+'</div>'
+      +'<div class="rpsteps">'+steps.map(x=>'<div class="rpstep '+esc(x.status)+'"><span>'+(ICON[x.status]||'·')+'</span><span class="lbl">'+esc(x.label)+(x.note?' <span class="sub">— '+esc(x.note)+'</span>':'')+'</span><span class="n">'+(x.sec!=null?esc(fmtD(x.sec)):(x.status==='running'?'…':''))+'</span></div>').join('')+'</div>'):'';
+  const h=(o.history||[]).filter(x=>x.id!==st.id).slice(0,8);
+  $('rpHist').innerHTML=h.length?('<details style="margin-top:6px"><summary class="sub">Earlier runs ('+h.length+')</summary><table style="margin-top:6px"><thead><tr><th>Started</th><th>Trigger</th><th>Took</th><th>Result</th><th>Steps</th></tr></thead><tbody>'
+      +h.map(x=>'<tr><td class="sub">'+esc(new Date((x.started||0)*1000).toLocaleString())+'</td><td>'+esc(x.trigger||'')+'</td><td>'+esc(fmtD(x.total_s))+'</td><td><span class="badge '+(x.status==='done'?'b-ready':'b-err')+'">'+esc(x.status)+'</span></td><td class="sub">'
+        +esc((x.steps||[]).filter(s=>s.status!=='done').map(s=>s.label+' '+s.status).join(' · ')||'all done')+'</td></tr>').join('')+'</tbody></table></details>'):'';
+  clearTimeout(RP_T); RP_T=setTimeout(load, running?3000:60000);
+}
+async function load(first){ let o; try{ o=await jpost('/api/contract/release_get',{}); }catch(e){ o=null; }
+  if(!o||!o.ok){ $('rpChip').textContent='status unavailable'; clearTimeout(RP_T); RP_T=setTimeout(()=>load(first||!RP),15000); return; }
+  if(first||!RP){ fillForm(o); $('rpSave').disabled=false; } paintStatus(o); }
+function msg(t,cls){ $('rpMsg').innerHTML=t; $('rpMsg').style.color=cls==='crit'?'var(--crit)':''; }
+$('rpSkipMine').onchange=()=>paintSkip([]);
+$('rpSave').onclick=async function(){ const cfg=cfgFromForm();
+  if(cfg.enabled){
+    const parts=[]; if(cfg.daily) parts.push('every '+(cfg.days==='weekdays'?'weekday':'day')+', ready by '+cfg.ready_by); if(cfg.after_tagging) parts.push('after each tagging cycle (wait '+cfg.wait_minutes+' min)');
+    if(!parts.length){ msg('Pick “Daily” and/or “After each contract cycle”.','crit'); return; }
+    if(!confirm('Turn on the Run the Ensemble schedule — '+parts.join(' and ')+'?\n\nEach run: '+(cfg.updates.length?'navi update '+cfg.updates.join(', ')+' → ':'')+(cfg.navi_optimize?'navi config optimize → ':'')+(cfg.hx_optimize?'⚡ Optimize (writes indexes into navi.db) → ':'')+(cfg.release?'Run the Ensemble':'')+'.\nNothing is written to Tenable.')) return;
+  }
+  this.disabled=true; msg('<span class="spin"></span> saving…');
+  let o; try{ o=await jpost('/api/contract/release_save',{config:cfg, confirm:true}); }catch(e){ o={ok:false,error:e.message}; }
+  this.disabled=false;
+  if(!o||!o.ok){ msg('✗ '+esc((o&&o.error)||'save failed'),'crit'); return; }
+  msg(o.config.enabled?'✓ Saved — '+(o.config.daily&&o.next_start?'next start '+esc(when(o.next_start)):'on'):'✓ Saved — schedule is off');
+  fillForm(o); paintStatus(o); };
+$('rpRun').onclick=async function(){ const cfg=cfgFromForm();
+  if(!confirm('Run the pipeline now? '+(cfg.updates.length?'navi update '+cfg.updates.join(', ')+' → ':'')+(cfg.navi_optimize?'navi config optimize → ':'')+(cfg.hx_optimize?'⚡ Optimize → ':'')+(cfg.release?'Run the Ensemble':'')+'.\nIt runs in the background (it can take hours on a big navi.db); nothing is written to Tenable.')) return;
+  this.disabled=true; msg('<span class="spin"></span> starting…');
+  let o; try{ o=await jpost('/api/contract/release_run',{config:cfg, confirm:true}); }catch(e){ o={ok:false,error:e.message}; }
+  if(!o||!o.ok){ this.disabled=false; msg('✗ '+esc((o&&o.error)||'could not start'),'crit'); return; }
+  msg(o.already_running?'Already running — showing its progress.':'✓ Started.'); load(); };
+$('rpCancel').onclick=async function(){ this.disabled=true; try{ await jpost('/api/contract/release_cancel',{}); }catch(e){} this.disabled=false; msg('Cancelling — a navi command already running finishes first.'); load(); };
+load(true);
+if(location.hash==='#release') setTimeout(()=>$('release').scrollIntoView({behavior:'smooth'}),300);
+})();
+</script>
+</body></html>

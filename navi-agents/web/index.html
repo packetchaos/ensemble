@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Run the Ensemble — navi Ensemble</title>
+<link rel="stylesheet" href="/static/console.css"/>
+<style>
+/* Run the Ensemble — card layout matched to the live console (single large left crest,
+   tag chips, metric + last-run rows, lore details). */
+.hero{background:var(--panel)}
+.agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:12px;margin-top:14px}
+@media (max-width:520px){ .agrid{grid-template-columns:1fr} }
+.agrid .agent{padding:11px 12px;display:flex;flex-direction:column;gap:7px}
+.agrid .agent .ah{display:flex;align-items:center;gap:9px}
+.agrid .agent .ico{width:34px;height:34px;border-radius:8px;background:var(--panel-2);display:flex;align-items:center;justify-content:center;font-size:17px;border:1px solid var(--line);overflow:hidden;flex:0 0 auto}
+.agrid .agent .ico img{width:100%;height:100%;object-fit:cover;display:block}
+.agrid .agent .nm{font-family:var(--display);font-weight:700;font-size:14.5px;line-height:1.15}
+.agrid .agent .ameta{font-size:10.5px;color:var(--ink-3);margin-top:1px}
+.agrid .agent .adep{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px}
+.agrid .agent .alast{font-size:10.5px;color:var(--mut)}
+.agrid .agent .atags{display:flex;gap:4px;flex-wrap:wrap}
+.agrid .agent .acode{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);font-weight:700;line-height:1.1;margin-bottom:1px}
+.agrid .agent .ds{color:var(--mut);font-size:15px;min-height:32px}
+.agrid .agent .row{display:flex;justify-content:space-between;font-size:14px;color:var(--mut)}
+.agrid .agent .acts{display:flex;gap:5px;margin-top:1px;flex-wrap:nowrap;overflow-x:auto}
+.agrid .agent .acts .btn{padding:5px 8px;font-size:11.5px;white-space:nowrap;flex:0 0 auto}
+.agrid .agent .atag{font-size:10px;padding:1px 7px}
+.agent.dim{opacity:.6}
+.atag{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.atagchip{font-size:12.5px;font-weight:600;color:var(--ink-2);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;cursor:pointer;margin:0 5px 6px 0;transition:background .15s,color .15s,border-color .15s}
+.atagchip:hover{border-color:var(--accent);color:var(--ink)}
+.atagchip.on{color:#eef1fb;background:var(--amber);border-color:var(--amber);font-weight:700}
+[data-theme="light"] .atagchip.on{color:#1a1206}
+#agentCats{display:flex;gap:6px;flex-wrap:wrap}
+.badge.b-live{background:rgba(52,211,153,.16);color:var(--ok);border:1px solid rgba(52,211,153,.4)}
+.badge.b-off{background:rgba(138,153,173,.16);color:var(--mut);border:1px solid var(--line)}
+.badge.b-err{background:rgba(251,113,133,.14);color:var(--crit);border:1px solid rgba(251,113,133,.4)}
+.badge.b-run{background:rgba(62,166,255,.14);color:var(--accent);border:1px solid rgba(62,166,255,.4)}
+#trustLog{max-height:260px;overflow:auto}
+/* Run the Ensemble — run the whole pack (reads only) in the background */
+.relbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 0;padding:11px 13px;border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:11px;background:var(--panel-2)}
+.relbar .rl{flex:1;min-width:240px;font-size:12.5px;color:var(--ink-2)}
+.relbtn{font-family:var(--display);font-weight:700;font-size:13.5px;padding:9px 16px;border-radius:10px;border:1px solid var(--amber);background:linear-gradient(100deg,#b07a14,#e0a526);color:#1a1206;cursor:pointer}
+.relbtn:disabled{opacity:.55;cursor:default}
+.relmodal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
+.relbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:640px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 18px 60px rgba(0,0,0,.45)}
+.relbox .rh{padding:14px 18px 6px}.relbox .rb{padding:4px 18px;overflow:auto}.relbox .rf{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.reltbl{width:100%;font-size:12.5px;border-collapse:collapse}.reltbl td{padding:5px 6px;border-top:1px solid var(--line)}
+.reltbl td.e{font-family:var(--mono);text-align:right;white-space:nowrap;color:var(--ink-2)}.reltbl tr.off td{opacity:.55}
+/* build 466 — pick which specialists to release + the preflight step */
+.reltbl td.c{width:26px;padding-right:0}.reltbl tr.unsel td:not(.c){opacity:.5}
+.reltbl input[type=checkbox]{width:15px;height:15px;accent-color:var(--amber);cursor:pointer}
+.relsel{display:flex;gap:8px;align-items:center;margin:2px 0 6px;font-size:12px}
+.relsel button{font-size:11.5px;padding:2px 9px}
+.relsel select{font-size:11.5px;padding:2px 6px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink)}
+.reltbl .slow{color:var(--amber);font-weight:700}
+.pfrow{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:start;padding:9px 0;border-top:1px solid var(--line);font-size:12.5px}
+.pfrow:first-child{border-top:0}
+.pfrow .pi{font-size:15px;line-height:1.2}.pfrow .pa{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pfrow .ph{color:var(--ink-2);font-size:11.5px;margin-top:2px}.pfrow .pf{font-family:var(--mono);font-size:11px;color:var(--ink-2)}
+.pfrow.block .pi{color:var(--crit)}.pfrow.warn .pi{color:var(--amber)}.pfrow.skipped{opacity:.55}
+.pfok{font-size:12px;color:var(--ok);margin:6px 0}
+@media (max-width:560px){.pfrow{grid-template-columns:22px 1fr}.pfrow .pa{grid-column:2;justify-content:flex-start}}
+.relprog{margin:12px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:var(--panel)}
+.relprog .pbar{height:8px;border-radius:5px;background:var(--panel-2);overflow:hidden;margin:8px 0}.relprog .pbar>i{display:block;height:100%;background:var(--amber);transition:width .4s}
+.rchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.rchip{font-size:11.5px;border:1px solid var(--line);border-radius:999px;padding:3px 9px;text-decoration:none;color:var(--ink-2);background:var(--panel-2);white-space:nowrap}
+.rchip.done{border-color:var(--ok);color:var(--ok)}.rchip.running{border-color:var(--amber);color:var(--amber)}.rchip.error{border-color:var(--crit);color:var(--crit)}
+.rchip.skipped,.rchip.cancelled{opacity:.6}
+/* build 490: mission headings + the specialist's icon in place of a crest */
+.agrid .mhead{grid-column:1/-1;margin:14px 2px 0;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.agrid .mhead:first-child{margin-top:2px}
+.agentcard .ico .aico{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:34px;line-height:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo"><span class="hcrest brand" role="img" aria-label="navi Ensemble"></span></div>
+    <h1>navi Ensemble <small>NAVI AGENT COMMAND CENTER · HITL</small></h1>
+    <div class="meta" id="meta"><span class="chip">loading…</span></div>
+  </header>
+
+  <div id="srcbanner"></div>
+
+  <section class="card hero" style="margin-top:14px">
+    <div class="toolbar">
+      <div><h2 style="margin:0"><span class="hcrest sm" aria-hidden="true"></span>Run the Ensemble</h2>
+        <p class="sub" style="margin:2px 0 0" id="intro">The Ensemble — every agent, what it does, and the lore behind its name. <b>Open</b> jumps to its page. Ask below to find the right specialist fast.</p></div>
+    </div>
+
+    <div class="toolbar needs-llm" style="margin-top:10px">
+      <input id="askq" placeholder="Ask which agent can help — e.g. “find expiring certificates” or “tag end-of-life software”…" style="flex:1;min-width:260px;padding:9px;border-radius:8px;border:1px solid var(--accent);background:var(--bg-2);color:var(--ink)">
+      <button class="btn run sm" id="askgo">✨ Ask</button>
+    </div>
+    <div id="askout" style="margin-top:8px"></div>
+    <div class="relbar" id="relbar">
+      <div class="rl"><b>Run the Ensemble</b> — run every specialist in the sidebar's order (Ensemble Report last — it summarises the rest), in the background, so each page is already populated when you open it. Reads only: nothing is tagged, applied or sent. Explorer, Asset Dossier, ACR, Automation, Dashboards and the other hands-on tools are left out.</div>
+      <button class="relbtn" id="relBtn" type="button">Run the Ensemble</button>
+    </div>
+    <div class="sub" id="relSched" style="margin:6px 2px 0;font-size:12.5px">⏰ <b>Keep the Ensemble ready</b> — the <a href="/agents/contract/page.html#release">Automation</a> can refresh navi.db (assets, vulns, certs, software …), optimize it and run the Ensemble on a schedule, so everything is ready when you log in.</div>
+    <div id="relProg" class="relprog" style="display:none"></div>
+    <div class="no-llm-note sub" style="display:none;margin-top:8px;color:var(--warn,var(--cx-e7c66b))">Set <span class="mono">ANTHROPIC_API_KEY</span> on the server to enable “ask which agent can help”.</div>
+
+    <div class="toolbar" style="margin:10px 0 6px;gap:10px;flex-wrap:wrap;align-items:center">
+      <input id="filter" placeholder="🔎 Filter specialists — name, codename, mission, or what it does…" style="flex:1;min-width:220px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg-2);color:var(--ink)">
+      <span id="agentCats"></span>
+    </div>
+    <div id="trustLog" class="log" style="display:none;margin:10px 0 4px"></div>
+    <div id="flash" class="flash"></div>
+  </section>
+
+  <div id="grid" class="agrid"><div class="sub" style="padding:12px">discovering agents…</div></div>
+
+  <footer>navi Ensemble · Navi Agent Command Center · HITL — agents auto-discovered from <span class="mono">agents/</span> · reads <b>navi.db</b> read-only · writes gated</footer>
+</div>
+
+<script src="/static/brand.js"></script>
+<script src="/static/console.js"></script>
+<script>
+let AGENTS=[], TAGGERS=[], curCat='__all';
+const LASTRUN={};
+
+/* Tag chips mirror the live console's per-agent tags; fall back to the agent's category. */
+const TAG_MAP={
+  certificate:['Tagging','Certificates'], iot_squad:['Tagging','Discovery'], acr:['Risk'],
+  customapp:['Tagging','Discovery'], mitre:['Tagging','Threat'], eol:['Tagging','Lifecycle'],
+  ai:['Tagging','Discovery'], identity:['Tagging','Identity'], scan_eval:['Health'],
+  agentgroup:['Tagging'], tagremoval:['Tagging'], cisakev:['Tagging','Threat'],
+  postquantum:['Tagging','Threat'], attackpath:['Correlation','Threat'],
+  contract:['Orchestration'], insights:['Overview'], software:['Inventory'],
+  dashboard:['Explore'], mcpcmp:['Reference'], exproute:['Tagging','Ownership']
+};
+function tagsFor(a){ return TAG_MAP[a.id] || [a.category||'Agent']; }
+
+/* The Ensemble — the specialists shown on Run the Ensemble, in the live console's order.
+   Every other deployed agent stays reachable by its own URL, just not carded here. */
+/* Guided-flow order (see AGENT_FLOW in console.js): Highlight the Signal — Fast, then
+   Deeper Analysis, then Organize the Work, then Operationalize. Non-flow specialists trail after. */
+const PACK=[
+            'mitre','cisakev','eol','certificate',
+            'iot_squad','postquantum','ai','identity',
+            'software','customapp','was','attackpath',
+            'scan_eval','agentgroup','classify','exproute',
+            'acr','compliance','custom_audit','sla','email',
+            'alert','tagremoval','c2','argos','was_asset',
+            'compliance_asset','asset_ownership','fused_score'];
+const METRIC_LABEL={
+  certificate:'Failing certs (12mo)', iot_squad:'IoT devices', acr:'Tags available',
+  customapp:'Candidates', exproute:'Routes mapped', mitre:'Tag writes', eol:'Lifecycle assets',
+  software:'Software titles', ai:'AI assets',
+  identity:'Identities', scan_eval:'Cred failures', agentgroup:'Agent groups',
+  tagremoval:'Tags loaded', cisakev:'KEV assets', postquantum:'PQ assets', attackpath:'Paths'
+};
+
+function badge(a){
+  if(a.deployed) return '<span class="badge b-live">deployed</span>';
+  if(a.error)    return '<span class="badge b-err">import error</span>';
+  return '<span class="badge b-off">not installed</span>';
+}
+/* build 490 (navi Ensemble): a HERO card reads "Codename · Plain job"; everyone else the plain name */
+function codenameFor(a){ return (a&&a.hero&&a.codename)?{name:a.codename}:{name:''}; }
+function shownName(a){ const c=codenameFor(a).name; return c?c+' · '+(a.name||a.id):(a.name||a.id); }
+function missionOf(a){ return a.mission||((window.BRAND&&BRAND.roster[a.id]||{}).mission)||'Platform'; }
+function card(a){
+  const cn=codenameFor(a);
+  const acts=(a.actions||[]);
+  const canExec=a.deployed && (acts.includes('run')||acts.includes('load')||!acts.length);
+  const inPack=TAGGERS.includes(a.id);
+  const glyph=(a.icon||'').replace(/'/g,'');
+  const tags=tagsFor(a);
+  const crestImg=`<span class="aico" aria-hidden="true">${esc(glyph||'✦')}</span>`;   // the sidebar icon (no crests)
+  const tagsHtml=tags.map(t=>`<span class="atag">${esc(t)}</span>`).join('');
+  const search=((cn.name||'')+' '+(a.name||'')+' '+missionOf(a)+' '+(a.summary||'')+' '+tags.join(' ')).toLowerCase();
+  return `<div class="agent agentcard ${a.deployed?'':'dim'}" data-mission="${esc(missionOf(a))}" data-cat="${esc(tags.join(' '))}" data-search="${esc(search)}" data-id="${esc(a.id)}">
+    <div class="ah">
+      <div class="ico">${a.deployed&&a.page?`<a href="${esc(safeHref(a.page))}" title="Open ${esc(a.name||'')}" style="display:block;line-height:0;width:100%;height:100%">${crestImg}</a>`:crestImg}</div>
+      <div style="min-width:0;flex:1">
+        <div class="nm">${esc(shownName(a))}</div>
+        <div class="adep"><span data-badge>${badge(a)}</span><span class="alast">· last run <span data-lastrun>never</span></span><span class="alast" data-metric></span></div>
+      </div>
+    </div>
+    ${tagsHtml?`<div class="atags">${tagsHtml}${inPack?'<span class="atag" style="color:var(--amber);border-color:var(--amber)">in the Ensemble</span>':''}</div>`:''}
+    <div class="acts">
+      ${a.deployed&&a.page?`<a class="btn ghost sm" href="${esc(safeHref(a.page))}">Open</a>`:''}
+      ${a.hound?`<a class="btn ghost sm" href="${esc(safeHref(a.hound))}" target="_blank" rel="noopener" title="Details — the specialist's one-pager (printable)">Info ↗</a>`
+               :(a.readme?`<a class="btn ghost sm" href="${esc(safeHref(a.readme))}" target="_blank" rel="noopener">Info ↗</a>`:'')}
+      ${(typeof deepDiveCode==='function')?deepDiveCode(a.id):''}
+      ${!a.deployed&&!a.hound&&!a.readme?`<button class="btn sm" disabled>unavailable</button>`:''}
+    </div>
+  </div>`;
+}
+function renderCats(){
+  const cats=((window.BRAND&&BRAND.missions)||[]).filter(m=>AGENTS.some(a=>missionOf(a)===m));
+  const cc=document.getElementById('agentCats');
+  cc.innerHTML='<button class="atagchip on" data-cat="__all">All</button>'+cats.map(c=>`<button class="atagchip" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
+  cc.querySelectorAll('.atagchip').forEach(b=>b.onclick=()=>{cc.querySelectorAll('.atagchip').forEach(x=>x.classList.remove('on'));b.classList.add('on');curCat=b.dataset.cat;applyFilter();});
+}
+function applyFilter(){
+  const q=(document.getElementById('filter').value||'').toLowerCase().trim();
+  let shown=0;
+  document.querySelectorAll('#grid .agentcard').forEach(c=>{
+    const okT=!q||(c.dataset.search||'').indexOf(q)>=0;
+    const okC=curCat==='__all'||c.dataset.mission===curCat;
+    const vis=okT&&okC; c.style.display=vis?'':'none'; if(vis)shown++;
+  });
+  // a mission heading shows only while one of its cards does
+  document.querySelectorAll('#grid .mhead').forEach(h=>{ const any=[...document.querySelectorAll('#grid .agentcard')].some(c=>c.dataset.mission===h.dataset.mission&&c.style.display!=='none'); h.style.display=any?'':'none'; });
+  const e=document.getElementById('gridEmpty'); if(e) e.style.display=shown?'none':'';
+}
+function render(){
+  const grid=document.getElementById('grid');
+  const ms=(window.BRAND&&BRAND.missions)||[]; let html='';
+  ms.concat(['Platform']).filter((m,i,a)=>a.indexOf(m)===i).forEach(m=>{ const L=AGENTS.filter(a=>missionOf(a)===m); if(!L.length) return;
+    html+=`<h3 class="mhead" data-mission="${esc(m)}">${esc(m)}</h3>`+L.map(card).join(''); });
+  grid.innerHTML=html+'<div id="gridEmpty" class="sub" style="display:none;grid-column:1/-1;text-align:center;padding:24px 0">No agents match — clear the filter.</div>';
+  grid.querySelectorAll('[data-exec]').forEach(b=>b.onclick=()=>execAgent(b.dataset.exec,b));
+  renderCats(); applyFilter();
+}
+function cardEls(id){ const c=document.querySelector('.agentcard[data-id="'+id+'"]'); return c?{badge:c.querySelector('[data-badge]'),metric:c.querySelector('[data-metric]'),lastrun:c.querySelector('[data-lastrun]')}:null; }
+function summarize(o){
+  const r=(o&&o.result)||o||{}; if(typeof r!=='object'||!r) return 'ran ✓';
+  for(const k of ['tag_actions','candidates','twelve_month','actions','groups','accounts','rows','paths']){ if(Array.isArray(r[k])) return r[k].length+' '+k.replace(/_/g,' '); }
+  for(const k of ['asset_count','failing_count','count','total','assets']){ if(typeof r[k]==='number') return r[k]+' '+k.replace(/_/g,' '); }
+  if(r.kpi&&typeof r.kpi==='object'){ const kv=Object.entries(r.kpi)[0]; if(kv) return kv[1]+' '+kv[0].replace(/_/g,' '); }
+  return 'ran ✓';
+}
+async function execAgent(id,btn){
+  const el=cardEls(id); btn.disabled=true; const old=btn.textContent; btn.textContent='running…';
+  if(el){ el.badge.innerHTML='<span class="badge b-run">running…</span>'; }
+  try{
+    let o=await jpost('/api/'+id+'/run',{});
+    if(o&&o.error&&/unknown action/.test(o.error)) o=await jpost('/api/'+id+'/load',{});
+    if(o&&o.ok!==false){ if(el){ el.badge.innerHTML='<span class="badge b-live">ran ✓</span>'; el.metric.textContent=summarize(o); el.lastrun.textContent=new Date().toLocaleString(); } }
+    else { if(el){ el.badge.innerHTML='<span class="badge b-err">error</span>'; el.metric.textContent=(o&&(o.error||o.message))||'failed'; } }
+  }catch(e){ if(el){ el.badge.innerHTML='<span class="badge b-err">error</span>'; el.metric.textContent=e.message; } }
+  btn.disabled=false; btn.textContent=old;
+}
+/* Plan Run → open the Automation page and run its (no-writes) plan; the user lands on
+   the plan review that sits directly under the Automation widget. */
+function runAll(){
+  const c=(AGENTS||[]).find(a=>a.id==='contract');
+  const pg=(c&&c.page)||'/agents/contract/page.html';
+  location.href=pg+(pg.indexOf('?')>=0?'&':'?')+'plan=1';
+}
+async function trust(){
+  let skipped=[]; try{ const r=await jpost('/api/hub/roster',{}); skipped=(r&&r.skipped)||[]; }catch(e){}
+  const nm=id=>{ const a=(AGENTS||[]).find(x=>x.id===id); return (a&&(a.name||a.title))||id; };
+  if(!confirm('Run Tag Sequence will run every tagging agent and APPLY all proposed tags live (gated writes). ACR is never run'+(skipped.length?'; skipped (they need human input): '+skipped.map(nm).join(', '):'')+'. Continue?')) return;
+  const btn=document.getElementById('trustBtn'); btn.disabled=true; const old=btn.textContent; btn.textContent='Running…';
+  const box=document.getElementById('trustLog'); box.style.display='block'; box.textContent='';
+  const tlog=m=>{ box.textContent='['+new Date().toLocaleTimeString()+'] '+m+'\n'+box.textContent; };
+  tlog('Running the whole pack — discovers + applies across every tagging agent…');
+  try{
+    const o=await jpost('/api/hub/trust',{confirm:true});
+    if(!o||!o.ok){ tlog('✗ '+((o&&(o.error||o.message))||'failed')); }
+    else{
+      (o.plan&&o.plan.agents||[]).forEach(b=>{ const el=cardEls(b.agent);
+        tlog((b.error?'✗ ':'✓ ')+b.agent+': '+(b.error||(b.selected+' tag(s) queued')));
+        if(el&&!b.error){ el.badge.innerHTML='<span class="badge b-live">ran ✓</span>'; el.metric.textContent=b.selected+' tag(s) queued'; el.lastrun.textContent=new Date().toLocaleString(); }});
+      tlog('— DONE — '+o.queued_tags+' tag(s) queued. '+(o.writes_enabled?'Writes enabled — applied live (allow ~30 min for navi.db to reflect).':'⚠ Writes are GATED — tags were planned, not written. Set NAVI_ALLOW_WRITES=1 to apply.'));
+      flash('flash', o.writes_enabled?('✓ pack run complete — '+o.queued_tags+' tag(s) applied (gated).'):('Planned '+o.queued_tags+' tag(s) — writes gated, nothing written.'), o.writes_enabled?'ok':'warn');
+    }
+  }catch(e){ tlog('✗ '+e.message); }
+  btn.disabled=false; btn.textContent=old;
+}
+/* ===== Run the Ensemble — run the Ensemble (reads only) in the background ================
+   ▶ the button → an estimate per specialist (Continue / Cancel) → a background release on the
+   server (core/release.py). Each specialist's result is saved as that page's cache entry, so
+   opening any page later shows its run. Progress survives leaving this page. */
+const fmtDur=s=>{ s=Math.max(0,Math.round(s||0)); if(s<60) return s+' s'; const m=Math.floor(s/60), r=s%60; if(m<60) return m+' min'+(r?' '+r+' s':''); return Math.floor(m/60)+' h '+(m%60)+' min'; };
+let REL_POLL=null;
+async function releasePlan(approve){
+  let o; try{ o=await jpost('/api/hub/release_plan', approve==null?{}:{approve_downloads:!!approve}); }catch(e){ o={ok:false,error:e.message}; }
+  return o;
+}
+/* build 466 — the dialog is two steps:
+   1. PREFLIGHT (only when something is missing): what each specialist needs in navi.db (WAS, compliance,
+      certs, software, routes / paths, SLA, EPSS, ⚡ Optimize …) — "Skip" unticks the specialists that
+      can't run without it, "Go to Settings" opens the card that fixes it.
+   2. PICK + RELEASE: a checkbox per specialist (remembered in this browser), the estimate for the
+      ticked ones; the server runs only those (agents: […]) and records the rest "not selected". */
+let REL_OFF=null, REL_PFSKIP=null;   // unticked specialists; preflight checks the user skipped
+function _relLoad(){ if(REL_OFF) return; REL_OFF=new Set(); REL_PFSKIP=new Set();
+  try{ JSON.parse(localStorage.getItem('houndsRelOff')||'[]').forEach(a=>REL_OFF.add(String(a))); }catch(e){} }
+function _relSave(){ try{ localStorage.setItem('houndsRelOff', JSON.stringify([...REL_OFF])); }catch(e){} }
+function _pfOpen(pl){ return (pl.preflight||[]).filter(c=>!c.ok); }
+function relModal(pl, step){
+  _relLoad();
+  const old=document.getElementById('relModal'); if(old) old.remove();
+  const m=document.createElement('div'); m.id='relModal'; m.className='relmodal';
+  const issues=_pfOpen(pl), runnable=pl.items.filter(i=>i.run), dl=pl.items.some(i=>i.download);
+  const name=a=>{ const i=pl.items.find(x=>x.agent===a); return i?i.label:a; };
+  if(step==null) step=issues.length?'pf':'pick';
+  const close=()=>m.remove();
+  if(step==='pf'){
+    const blk=issues.filter(c=>c.level==='block'), wrn=issues.filter(c=>c.level!=='block');
+    const row=c=>{ const skipped=c.level==='block'&&c.hounds.every(a=>REL_OFF.has(a));
+      return `<div class="pfrow ${c.level==='block'?'block':'warn'}${skipped?' skipped':''}"><span class="pi">${c.level==='block'?'⛔':'⚠'}</span>
+        <div><b>${esc(c.label)}</b> <span class="sub">— ${esc(c.detail||'missing')}</span>
+          <div class="ph">${esc(c.why)} · <b>${c.hounds.length===runnable.length&&c.hounds.length>3?'every specialist':esc(c.hounds.map(name).join(', '))}</b></div>
+          ${c.fix?`<div class="pf">fix: ${esc(c.fix)}</div>`:''}</div>
+        <div class="pa">${c.level==='block'?`<button class="btn ghost sm" data-pfskip="${esc(c.key)}" type="button">${skipped?'✓ skipped':'Skip '+(c.hounds.length===1?'it':c.hounds.length)}</button>`:''}
+          <a class="btn ghost sm" href="${esc(c.settings||'/web/settings.html')}" target="_blank" rel="noopener">Go to Settings →</a></div></div>`; };
+    m.innerHTML=`<div class="relbox" role="dialog" aria-modal="true" aria-labelledby="relTitle">
+      <div class="rh"><h2 id="relTitle" style="margin:0;font-size:17px">Run the Ensemble — preflight</h2>
+        <p class="sub" style="margin:4px 0 0">navi.db is missing data some specialists need. <b>Skip</b> leaves those specialists out of this release; <b>Go to Settings</b> opens the card that fixes it (in a new tab — come back and press <b>↻ Re-check</b>).</p></div>
+      <div class="rb">${blk.length?`<div class="sub" style="margin:8px 0 2px;font-weight:700">Can't run without it (${blk.length})</div>${blk.map(row).join('')}`:''}
+        ${wrn.length?`<div class="sub" style="margin:12px 0 2px;font-weight:700">Runs, but with less (${wrn.length})</div>${wrn.map(row).join('')}`:''}</div>
+      <div class="rf"><button class="relbtn" id="pfGo" type="button">${blk.length?'Skip what can\'t run & continue':'Continue'}</button>
+        <button class="btn ghost sm" id="pfRe" type="button">↻ Re-check</button>
+        <a class="btn ghost sm" href="/web/settings.html#secTables" target="_blank" rel="noopener">Go to Settings →</a>
+        <button class="btn ghost sm" id="relNo" type="button" style="margin-left:auto">Cancel</button></div></div>`;
+    document.body.appendChild(m);
+    m.querySelectorAll('[data-pfskip]').forEach(b=>b.onclick=()=>{ const c=issues.find(x=>x.key===b.dataset.pfskip); if(!c) return;
+      const all=c.hounds.every(a=>REL_OFF.has(a)); c.hounds.forEach(a=>all?REL_OFF.delete(a):REL_OFF.add(a)); _relSave(); relModal(pl,'pf'); });
+    document.getElementById('pfGo').onclick=()=>{ blk.forEach(c=>c.hounds.forEach(a=>REL_OFF.add(a))); _relSave(); relModal(pl,'pick'); };
+    document.getElementById('pfRe').onclick=async function(){ this.disabled=true; const p2=await releasePlan(pl.approve_downloads); if(p2&&p2.ok) relModal(p2); else this.disabled=false; };
+  } else {
+    const sel=()=>runnable.filter(i=>!REL_OFF.has(i.agent));
+    const blocked=new Set(); issues.filter(c=>c.level==='block').forEach(c=>c.hounds.forEach(a=>blocked.add(a)));
+    const warned={}; issues.filter(c=>c.level!=='block').forEach(c=>c.hounds.forEach(a=>{ (warned[a]=warned[a]||[]).push(c.label); }));
+    const rowH=i=>{ const on=i.run&&!REL_OFF.has(i.agent);
+      const why=!i.run?esc(i.note||'skipped'):(blocked.has(i.agent)?'<span style="color:var(--crit)">⛔ missing data — see preflight</span>':(warned[i.agent]&&warned[i.agent].length<3?'<span style="color:var(--amber)">⚠ '+esc(warned[i.agent].join(', '))+'</span>':esc(i.basis||'')));
+      return `<tr class="${i.run?(on?'':'unsel'):'off'}"><td class="c">${i.run?`<input type="checkbox" data-rel="${esc(i.agent)}" ${on?'checked':''} aria-label="Release ${esc(i.label)}">`:''}</td><td>${esc(i.label)}</td><td class="sub">${why}</td><td class="e">${i.run?`<span class="${(i.est_s||0)>=900?'slow':''}" title="${(i.est_s||0)>=900?'a long one — consider its own release':''}">${(i.est_s||0)>=900?'⏳ ':''}~${fmtDur(i.est_s)}</span>`:'—'}</td></tr>`; };
+    m.innerHTML=`<div class="relbox" role="dialog" aria-modal="true" aria-labelledby="relTitle">
+      <div class="rh"><h2 id="relTitle" style="margin:0;font-size:17px">Run the Ensemble</h2>
+        <p class="sub" style="margin:4px 0 0" id="relSum"></p></div>
+      <div class="rb">${issues.length?`<div class="sub" style="margin:6px 0">Preflight: ${issues.filter(c=>c.level==='block').length} missing · ${issues.filter(c=>c.level!=='block').length} warning(s) — <a href="#" id="relPf">review</a></div>`:'<div class="pfok">✓ Preflight: navi.db has what every selected specialist needs.</div>'}
+        <div class="relsel" style="flex-wrap:wrap"><b>Specialists</b><button class="btn ghost sm" id="relAll" type="button">Select all</button><button class="btn ghost sm" id="relNone" type="button">None</button>
+          <label class="sub" style="display:flex;gap:5px;align-items:center" title="Tick only the specialists whose estimate is under this — the slow ones can run in their own release later">Quick ones only:
+            <select id="relQuick"><option value="">—</option><option value="120">under 2 min each</option><option value="300">under 5 min each</option><option value="900">under 15 min each</option><option value="1800">under 30 min each</option></select></label>
+          <span class="sub" id="relCnt" style="margin-left:auto"></span></div>
+        <table class="reltbl"><tbody>${pl.items.map(rowH).join('')}</tbody></table>
+        ${dl?`<label style="display:flex;gap:8px;align-items:flex-start;margin:12px 0 4px;font-size:12.5px"><input type="checkbox" id="relDl" ${pl.approve_downloads?'checked':''} ${pl.auto_approve_downloads?'disabled':''}>
+          <span>Approve the public catalog downloads MITRE ATT&amp;CK and CISA KEV need (the ATT&amp;CK→CVE map and the KEV list)${pl.auto_approve_downloads?' — already auto-approved in <a href="/web/settings.html">Settings</a>':' for this release — unticked, those two are skipped'}.</span></label>`:''}
+        <p class="sub" style="font-size:11.5px;margin:8px 0 2px">Left out on purpose: ${Object.values(pl.excluded||{}).map(v=>esc(String(v).split(' — ')[0])).join(', ')}.</p></div>
+      <div class="rf"><button class="relbtn" id="relGo" type="button">Continue</button>
+        <button class="btn ghost sm" id="relNo" type="button">Cancel</button><span class="sub" id="relMsg" style="margin-left:auto"></span></div></div>`;
+    document.body.appendChild(m);
+    const paint=()=>{ const s=sel(), tot=s.reduce((t,i)=>t+(i.est_s||0),0);
+      document.getElementById('relSum').innerHTML=`Runs <b>${s.length}</b> of ${runnable.length} specialist${runnable.length===1?'':'s'} in the sidebar's order (Ensemble Report last — it summarises the rest), in the background — you can leave this page. Estimated <b>${fmtDur(tot)}</b> for ${Number(pl.vuln_rows||0).toLocaleString()} findings in navi.db. Reads only: nothing is tagged, applied or sent.`;
+      const slowOff=runnable.filter(i=>REL_OFF.has(i.agent)&&(i.est_s||0)>=900).length;
+      document.getElementById('relCnt').textContent=s.length+' of '+runnable.length+' selected'+(slowOff?' · '+slowOff+' slow one'+(slowOff===1?'':'s')+' left for later':'');
+      const g=document.getElementById('relGo'); g.disabled=!s.length; g.textContent=s.length?'Continue — release '+s.length:'Pick at least one specialist';
+      m.querySelectorAll('input[data-rel]').forEach(cb=>{ cb.checked=!REL_OFF.has(cb.dataset.rel); cb.closest('tr').classList.toggle('unsel',!cb.checked); }); };
+    m.querySelectorAll('input[data-rel]').forEach(cb=>cb.onchange=()=>{ cb.checked?REL_OFF.delete(cb.dataset.rel):REL_OFF.add(cb.dataset.rel); _relSave(); paint(); });
+    document.getElementById('relAll').onclick=()=>{ runnable.forEach(i=>REL_OFF.delete(i.agent)); _relSave(); paint(); };
+    document.getElementById('relNone').onclick=()=>{ runnable.forEach(i=>REL_OFF.add(i.agent)); _relSave(); paint(); };
+    // "quick ones only": tick every specialist whose estimate is under the limit, untick the slow ones
+    // (Ensemble Report stays ticked — it only summarises what ran); blocked specialists stay unticked
+    document.getElementById('relQuick').onchange=function(){ const lim=+this.value; if(!lim) return;
+      runnable.forEach(i=>{ if(blocked.has(i.agent)) REL_OFF.add(i.agent); else if((i.est_s||0)<lim||i.agent==='insights') REL_OFF.delete(i.agent); else REL_OFF.add(i.agent); });
+      _relSave(); paint(); this.value=''; };
+    const pfl=document.getElementById('relPf'); if(pfl) pfl.onclick=e=>{ e.preventDefault(); relModal(pl,'pf'); };
+    const dlb=document.getElementById('relDl');
+    if(dlb) dlb.onchange=async()=>{ const p2=await releasePlan(dlb.checked); if(p2&&p2.ok) relModal(p2,'pick'); };
+    paint();
+    document.getElementById('relGo').onclick=async function(){
+      const agents=sel().map(i=>i.agent); if(!agents.length) return;
+      this.disabled=true; document.getElementById('relMsg').innerHTML='<span class="spin"></span> starting…';
+      let o; try{ o=await jpost('/api/hub/release_start',{confirm:true, approve_downloads:dlb?dlb.checked:undefined, agents}); }catch(e){ o={ok:false,error:e.message}; }
+      if(!o||!o.ok){ document.getElementById('relMsg').textContent='✗ '+((o&&o.error)||'failed'); this.disabled=false; return; }
+      close(); relShow(o.state); relPoll();
+    };
+  }
+  m.addEventListener('click',e=>{ if(e.target===m) close(); });
+  document.getElementById('relNo').onclick=close;
+  document.addEventListener('keydown',function esck(e){ if(e.key==='Escape'){ close(); document.removeEventListener('keydown',esck); } });
+  setTimeout(()=>{ const g=document.getElementById(step==='pf'?'pfGo':'relGo'); if(g) g.focus(); },30);
+}
+function relShow(st){
+  const box=document.getElementById('relProg'), btn=document.getElementById('relBtn');
+  if(!st||!st.id){ box.style.display='none'; btn.disabled=false; return; }
+  const items=st.items||[], todo=items.filter(i=>i.status!=='skipped'), fin=todo.filter(i=>/^(done|error|cancelled)$/.test(i.status));
+  const running=st.status==='running', cur=items.find(i=>i.status==='running');
+  const spent=((running?Date.now()/1000:(st.finished||Date.now()/1000))-(st.started||Date.now()/1000));
+  const left=running?todo.filter(i=>i.status==='pending'||i.status==='running').reduce((s,i)=>s+(i.est_s||0),0):0;
+  const pct=todo.length?Math.round(100*fin.length/todo.length):100;
+  const done=items.filter(i=>i.status==='done').length, errs=items.filter(i=>i.status==='error').length;
+  box.style.display='block'; btn.disabled=running;
+  box.innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">${running?'<span class="spin"></span>':''}<b>${running?'Releasing the specialists':(st.status==='cancelled'?'Release cancelled':'Released')}</b>
+     <span class="sub">${fin.length}/${todo.length} · ${fmtDur(spent)} elapsed${running&&cur?' · now: '+esc(cur.label):''}${running&&left?' · ~'+fmtDur(left)+' left':''}${!running?' · finished '+new Date((st.finished||0)*1000).toLocaleString():''}</span>
+     <span style="margin-left:auto"></span>${running?'<button class="btn ghost sm" id="relCancel" type="button">✕ Cancel</button>':''}</div>
+    <div class="pbar"><i style="width:${pct}%"></i></div>
+    ${!running?`<div class="sub" style="margin:0 0 4px">${done} specialist${done===1?'':'s'} populated${errs?' · <span style="color:var(--crit)">'+errs+' failed</span>':''} — open any of them to see the run.</div>`:''}
+    <div class="rchips">${items.map(i=>`<a class="rchip ${esc(i.status)}" href="${esc(i.page)}" title="${esc((i.note||i.status)+(i.sec!=null?' · '+i.sec+' s':''))}">${{done:'✓',running:'⟳',error:'✗',skipped:'–',cancelled:'⊘',pending:'·'}[i.status]||'·'} ${esc(i.label)}</a>`).join('')}</div>`;
+  const c=document.getElementById('relCancel');
+  if(c) c.onclick=async()=>{ c.disabled=true; try{ const o=await jpost('/api/hub/release_cancel',{}); relShow(o.state); }catch(e){} };
+  // the cards on this page follow along
+  items.forEach(i=>{ const el=cardEls(i.agent); if(!el) return;
+    if(i.status==='running') el.badge.innerHTML='<span class="badge b-run">releasing…</span>';
+    else if(i.status==='done'){ el.badge.innerHTML='<span class="badge b-live">released ✓</span>'; el.lastrun.textContent=new Date(((i.started||0)+(i.sec||0))*1000).toLocaleString(); }
+    else if(i.status==='error'){ el.badge.innerHTML='<span class="badge b-err">error</span>'; el.metric.textContent=' '+(i.note||''); } });
+}
+/* ⏰ Automation's release schedule (core/release_pipeline.py) — one line under the button */
+async function relSched(){
+  let o; try{ o=await jpost('/api/contract/release_get',{}); }catch(e){ o=null; }
+  if(!o||!o.ok){ setTimeout(relSched, 60000); return; }
+  const c=o.config||{}, st=o.state||{}, last=o.last, el=document.getElementById('relSched');
+  const at=t=>new Date(t*1000).toLocaleString([], {weekday:'short',hour:'2-digit',minute:'2-digit'});
+  const link='<a href="/agents/contract/page.html#release">Automation ▸ Run the Ensemble</a>';
+  let h;
+  if(st.status==='running'){ const steps=st.steps||[], cur=steps.find(x=>x.status==='running');
+    h='⟳ <b>Keeping the Ensemble ready</b> — running now'+(cur?': '+esc(cur.label):'')+' ('+(steps.indexOf(cur)+1)+' of '+steps.length+') · '+link; }
+  else if(c.enabled){
+    const trig=[c.daily?'ready by <b>'+esc(c.ready_by)+'</b> '+(c.days==='weekdays'?'on weekdays':'daily')+(o.next_start?' (starts '+esc(at(o.next_start))+')':''):'', c.after_tagging?'after each tagging cycle':''].filter(Boolean).join(' and ');
+    h='⏰ <b>Scheduled</b> — '+(trig||'no trigger picked')+(last?' · last run '+esc(at(last.started))+' '+(last.status==='done'?'✓':'<span style="color:var(--crit)">'+esc(last.status)+'</span>'):'')+' · '+link; }
+  else h='⏰ <b>Keep the Ensemble ready</b> — the '+link+' can refresh navi.db (assets, vulns, certs, software …), optimize it and run the Ensemble on a schedule, so everything is ready when you log in.';
+  el.innerHTML=h;
+  setTimeout(relSched, st.status==='running'?5000:60000);
+}
+relSched();
+async function relPoll(){
+  clearTimeout(REL_POLL);
+  let o; try{ o=await jpost('/api/hub/release_status',{}); }catch(e){ o=null; }
+  if(o&&o.ok){ relShow(o.state); if(o.state&&o.state.status==='running') REL_POLL=setTimeout(relPoll,1500); }
+  else REL_POLL=setTimeout(relPoll,4000);
+}
+document.getElementById('relBtn').onclick=async function(){
+  // the plan runs the preflight against navi.db (a few seconds on a big one) — say so
+  const box=document.getElementById('relProg'), was=box.innerHTML, shown=box.style.display, lbl=this.textContent;
+  this.disabled=true; this.textContent='🔎 Checking navi.db…';
+  box.style.display='block'; box.innerHTML='<div style="display:flex;align-items:center;gap:10px"><span class="spin"></span><b>Checking navi.db</b><span class="sub">— what each specialist needs (WAS, compliance, certs, software, routes, SLA …) and how long each one takes. A big navi.db can take a few seconds.</span></div>';
+  const pl=await releasePlan();
+  this.disabled=false; this.textContent=lbl; box.innerHTML=was; box.style.display=shown;
+  if(!pl||!pl.ok){ flash('flash','✗ '+esc((pl&&pl.error)||'could not plan the release'),'crit'); return; }
+  if(pl.state&&pl.state.status==='running'){ relShow(pl.state); relPoll(); return; }
+  relModal(pl);
+};
+/* "last run" on each card = when its page was last run or released (server page cache) */
+async function lastRuns(){
+  let o; try{ o=await jpost('/api/hub/pc_list',{}); }catch(e){ return; }
+  ((o&&o.pages)||[]).forEach(p=>{ const m=String(p.key||'').match(/^\/agents\/([^/]+)\/page\.html$/); if(!m) return;
+    const el=cardEls(m[1]); if(el&&p.at&&el.lastrun.textContent==='never') el.lastrun.textContent=new Date(p.at).toLocaleString()+(p.released?' · released':''); });
+}
+async function askAgent(){
+  const q=document.getElementById('askq'), out=document.getElementById('askout');
+  const prompt=(q.value||'').trim(); if(!prompt){ out.innerHTML='<div class="callbox" style="color:var(--crit)">Type a question first.</div>'; return; }
+  out.innerHTML='<div class="callbox"><span class="spin"></span> matching your task to the right specialist…</div>';
+  let o; try{ o=await jpost('/api/explore/which_agent',{prompt,agents:AGENTS.map(a=>({id:a.id,name:a.name,summary:a.summary||'',codename:codenameFor(a).name}))}); }catch(e){ o={ok:false,message:e.message}; }
+  if(!o||!o.ok){ out.innerHTML='<div class="callbox" style="color:var(--crit)">✗ '+esc((o&&(o.message||o.error))||'failed')+'</div>'; return; }
+  const byId0={}; AGENTS.forEach(a=>byId0[a.id]=a); const picks=(Array.isArray(o.picks)?o.picks:[]).filter(p=>p&&typeof p.id==='string'&&byId0[p.id]); if(!picks.length){ out.innerHTML='<div class="callbox">No clear match — try describing the task differently.</div>'; return; }
+  const byId={}; AGENTS.forEach(a=>byId[a.id]=a);
+  out.innerHTML='<div class="callbox"><b>Recommended specialists</b>'+picks.map(p=>{ const a=byId[p.id]||{}; const nm=shownName(a)||p.id;
+    const img='<span style="display:inline-flex;width:32px;height:32px;align-items:center;justify-content:center;font-size:20px;border-radius:8px;background:var(--bg-2);margin-right:8px">'+esc(a.icon||'✦')+'</span>';
+    const open=(a.deployed&&a.page)?(' <a class="btn ghost sm" href="'+esc(safeHref(a.page))+'" style="margin-left:6px">Open →</a>'):'';
+    return '<div style="display:flex;align-items:center;gap:6px;margin-top:8px">'+img+'<div style="flex:1"><b>'+esc(nm)+'</b> — '+esc(p.why||'')+open+'</div></div>'; }).join('')+
+    (o.note?'<div class="sub" style="margin-top:8px">'+esc(o.note)+'</div>':'')+'</div>';
+}
+(async()=>{
+  const meta=document.getElementById('meta'); let h=null;
+  try{ h=await jget('/api/health'); }catch(e){}
+  window.__LLM_AVAILABLE=!!(h&&h.llm); applyLlmGate();
+  const banner=document.getElementById('srcbanner');
+  if(h){
+    meta.innerHTML=dataSourceChip(h)+claudeChip(h)+
+      (h.db_ok?`<span class="chip">assets <b>${h.asset_total}</b></span>`+(h.db_fresh?`<span class="chip">db <b>${String(h.db_fresh).slice(0,10)}</b></span>`:''):`<span class="chip" style="color:var(--crit)">db: ${esc(h.error||'error')}</span>`)+
+      `<span class="chip gate">writes: ${h.writes_enabled?'enabled':'gated'}</span>`;
+    if(h.data_source==='fixture') banner.innerHTML=`<div style="margin:14px 0 0;padding:11px 14px;border-radius:9px;background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.4);color:var(--cx-e7c66b);font-size:12.5px">◆ <b>Sample data.</b> Reading a crafted fixture (<span class="mono">${esc(h.db_path||'sample_navi.db')}</span>). Point <span class="mono">NAVI_DB_PATH</span> at navi’s real <span class="mono">navi.db</span> to run live.</div>`;
+    else if(h.data_source==='live') banner.innerHTML=`<div style="margin:14px 0 0;padding:11px 14px;border-radius:9px;background:var(--ok-bg);border:1px solid var(--ok);color:var(--ok);font-size:12.5px">● <b>Live navi.db</b> — <span class="mono">${esc(h.db_path||'')}</span></div>`;
+  } else meta.innerHTML=`<span class="chip" style="color:var(--warn)">no backend · static view</span>`;
+
+  let reg=null;
+  try{ reg=await jget('/api/registry'); }
+  catch(e){ for(const u of ['/web/agents.json','agents.json']){ try{ reg=await jget(u); if(reg)break; }catch(_){} } }
+  const byId={}; ((reg&&reg.agents)||[]).forEach(a=>byId[a.id]=a);
+  /* Run the Ensemble = the 14-strong pack, in the live console's order. Any pack
+     agent missing from the registry is still shown as a card (marked not installed). */
+  // build 490: every on-grid specialist, by mission (BRAND order), heroes → specialists → instruments;
+  // the ten Explorer tabs are ONE card (their pages and deep links still work)
+  const R=(window.BRAND&&BRAND.roster)||{}, KO={hero:0,specialist:1,instrument:2,explorer:3};
+  const rk=Object.keys(R);
+  AGENTS=((reg&&reg.agents)||[]).filter(a=>a.grid!==false&&R[a.id]&&R[a.id].kind!=='explorer');
+  PACK.forEach(id=>{ if(!byId[id]&&R[id]) AGENTS.push({id,name:R[id].name,mission:R[id].mission,deployed:false,actions:[],summary:''}); });
+  AGENTS.push({id:'explorer',name:'Explorer',icon:'🔎',mission:'Platform',deployed:true,page:'/web/search.html',actions:[],
+    summary:'Search navi.db directly — assets, vulnerabilities, plugins, routes, paths, software, tags, fixed findings, compliance, web apps, and an advanced cross-table search.'});
+  AGENTS.sort((a,b)=>{ const ma=((BRAND.missions||[]).indexOf(missionOf(a))), mb=((BRAND.missions||[]).indexOf(missionOf(b)));
+    if(ma!==mb) return ma-mb; const ka=KO[(R[a.id]||{}).kind]??2, kb=KO[(R[b.id]||{}).kind]??2; if(ka!==kb) return ka-kb;
+    return rk.indexOf(a.id)-rk.indexOf(b.id); });
+  try{ const rr=await jpost('/api/hub/roster',{}); if(rr&&rr.ok) TAGGERS=rr.taggers||[]; }catch(e){}
+  const dep=AGENTS.filter(a=>a.deployed).length;
+  document.getElementById('intro').innerHTML=`The Ensemble — <b>${dep} of ${AGENTS.length}</b> agents deployed. <b>Open</b> jumps to a specialist's page; <b>‹ › Code</b> opens its source in the ensemble repo. Ask below to find the right specialist fast.`;
+  if(!AGENTS.length){ document.getElementById('grid').innerHTML='<div class="agent"><div class="ds">No agent modules found in <span class="mono">agents/</span>. Start the launcher from the repo root that contains <span class="mono">agents/</span> and <span class="mono">app_fastapi.py</span>.</div></div>'; return; }
+  render();
+  lastRuns(); relPoll();      // a release still running (or just finished) shows its progress
+  // /?release=1 (Ensemble Report's "Run the Ensemble" button) opens the Release dialog — the
+  // button's own handler: a plan + Continue/Cancel (or the progress strip if one is running)
+  try{ if(new URLSearchParams(location.search).get('release')==='1'){ history.replaceState(null,'',location.pathname); document.getElementById('relBtn').click(); } }catch(e){}
+  document.getElementById('filter').addEventListener('input',applyFilter);
+  const g=document.getElementById('askgo'), qq=document.getElementById('askq');
+  if(g){ g.onclick=askAgent; qq.addEventListener('keydown',e=>{if(e.key==='Enter')askAgent();}); }
+})();
+</script>
+</body>
+</html>

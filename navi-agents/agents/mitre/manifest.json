@@ -1,0 +1,27 @@
+{
+  "id": "mitre",
+  "name": "ATT&CK Mapping",
+  "icon": "🎯",
+  "order": 5,
+  "category": "Tagging",
+  "summary": "Tags assets by the ATT&CK impact of their vulnerabilities: fetches the live ATT&CK→CVE mapping and tags every asset whose findings cite a mapped CVE with its Primary/Secondary Impact + Exploit Technique, via navi's tag-by-CVE selector.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "source",
+    "run",
+    "apply"
+  ],
+  "codename": "",
+  "tag_scope": {
+    "actions": [
+      "run",
+      "apply"
+    ],
+    "ignore": [
+      "source"
+    ]
+  },
+  "hero": false,
+  "mission": "Exploited Now"
+}

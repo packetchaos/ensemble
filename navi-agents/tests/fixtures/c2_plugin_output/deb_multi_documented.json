@@ -1,0 +1,34 @@
+{
+ "id": "deb_multi_documented",
+ "provenance": "linux_REVIEW P1-2 documented Ubuntu format ('  - Installed package :' / '  - Fixed package :'), the reviewer's recollection; NOT a real sample",
+ "real_sample": false,
+ "fam": "deb",
+ "shape": "multi_pair",
+ "plugin_name": "Ubuntu 20.04 LTS : OpenSSL vulnerabilities (USN-6188-1)",
+ "plugin_family": "Ubuntu Local Security Checks",
+ "solution": "Update the affected libssl1.1 and / or openssl packages.",
+ "os": "Ubuntu 20.04.6 LTS",
+ "output": "\n  - Installed package : libssl1.1_1.1.1f-1ubuntu2.16\n  - Fixed package     : libssl1.1_1.1.1f-1ubuntu2.20\n\n  - Installed package : openssl_1.1.1f-1ubuntu2.16\n  - Fixed package     : openssl_1.1.1f-1ubuntu2.20\n",
+ "expect": {
+  "pairs": [
+   [
+    "libssl1.1",
+    "1.1.1f-1ubuntu2.16",
+    "1.1.1f-1ubuntu2.20",
+    "distro"
+   ],
+   [
+    "openssl",
+    "1.1.1f-1ubuntu2.16",
+    "1.1.1f-1ubuntu2.20",
+    "distro"
+   ]
+  ],
+  "packages": [
+   "libssl1.1",
+   "openssl"
+  ],
+  "kernel": false,
+  "family": "apt"
+ }
+}

@@ -1,0 +1,31 @@
+{
+ "id": "real_D_centos7_rsyslog_zstream",
+ "provenance": "REAL sample from the owner's navi.db (real_samples.md, plugin 135313, read 2026-11-18): OUTPUT verbatim; SOLUTION verbatim from real_solutions.md. plugin_family is synthetic (not supplied).",
+ "real_sample": true,
+ "fam": "rpm",
+ "shape": "pair",
+ "plugin_id": "135313",
+ "plugin_name": "CentOS 7 : rsyslog (RHSA-2020:1000)",
+ "plugin_family": "CentOS Local Security Checks",
+ "solution": "Update the affected packages.",
+ "os": "CentOS Linux 7.7.1908",
+ "output": "\nRemote package installed : rsyslog-8.24.0-41.el7_7.2\nShould be                : rsyslog-8.24.0-52.el7\n\n",
+ "expect": {
+  "pairs": [
+   [
+    "rsyslog",
+    "8.24.0-41.el7_7.2",
+    "8.24.0-52.el7",
+    "distro"
+   ]
+  ],
+  "packages": [
+   "rsyslog"
+  ],
+  "kernel": false,
+  "family": "yum",
+  "compare": "rpm",
+  "requires_reboot": false,
+  "esm": false
+ }
+}

@@ -1,0 +1,164 @@
+"""AI Navi Contract — HTTP actions (authoring, plan, arm, run, schedule)."""
+from core import contract, gates, navi_cli, release_pipeline
+from .agent import ContractAgent
+from core.gates import confirmed
+
+AGENT = ContractAgent()
+
+
+def get(p):
+    return {"ok": True, "agent": AGENT.meta(), "contract": contract.current(),
+            "scheduler": contract.scheduler_status(), "saved": contract.list_saved(),
+            "taggers": contract.taggers_info(), "excluded": contract.AGENT_EXCLUDED,
+            "writes_enabled": navi_cli.writes_enabled()}, 200
+
+
+def set_(p):
+    doc = p.get("contract") or p
+    err = contract.acr_rule_errors(doc)
+    if err:                          # e.g. score 9.5 — navi int()s the score; refuse, don't truncate
+        return {"ok": False, "error": err}, 400
+    return {"ok": True, "contract": contract.set_contract(doc)}, 200
+
+
+def build_from_log(p):
+    from core import tagq
+    n = len(tagq.list_jobs())
+    return {"ok": True, "contract": contract.build_from_log(), "log_count": n}, 200
+
+
+def _uncsv(v):
+    """Undo the CSV-injection guard of the Tagging-log export (a ' put before = + - @ TAB CR)."""
+    if isinstance(v, str) and len(v) > 1 and v[0] == "'" and v[1] in "=+-@\t\r":
+        return v[1:]
+    return v
+
+
+def build_from_csv(p):
+    """Build the contract from rows parsed out of an exported tag-log CSV, so the
+    policy can be seeded even after a restart (in-memory log is gone). Each row is
+    a dict with at least agent/category/value (and detail for ACR score)."""
+    rows = p.get("rows") or []
+    rows = [{k: _uncsv(v) for k, v in r.items()} for r in rows if isinstance(r, dict) and (r.get("agent") or r.get("category"))]
+    return {"ok": True, "contract": contract.build_from_log(rows), "log_count": len(rows)}, 200
+
+
+def plan(p):
+    return {"ok": True, "plan": contract.plan()}, 200
+
+
+def export(p):
+    return {"ok": True, "script": contract.export_script()}, 200
+
+
+_NEED = "confirm=true required — this %s"
+
+
+def run_now(p):
+    if not confirmed(p):
+        return {"ok": False, "error": _NEED % "runs a contract cycle (removal list, tags, ACR)"}, 400
+    # manual trigger: removal + re-tag, but DON'T block the request for the 30-min
+    # pause (that pause is enforced only in the autonomous scheduler loop)
+    # an explicit, confirmed run applies this one cycle even when the loop isn't armed
+    # (arming = the autonomous 4-hourly loop; it stays as it is)
+    return {"ok": True, "cycle": contract.run_cycle(enforce_pause=False, apply=True)}, 200
+
+
+def arm(p):
+    if not confirmed(p):
+        return {"ok": False, "error": _NEED % "arms the autonomous loop"}, 400
+    c = contract.current(); c["armed"] = True
+    contract.set_contract(c)
+    contract.scheduler_start()
+    return {"ok": True, "armed": True, "scheduler": contract.scheduler_status(),
+            "writes_enabled": navi_cli.writes_enabled()}, 200
+
+
+def disarm(p):
+    c = contract.current(); c["armed"] = False
+    contract.set_contract(c)
+    contract.scheduler_stop()
+    return {"ok": True, "armed": False, "scheduler": contract.scheduler_status()}, 200
+
+
+def save(p):
+    return {**contract.save(p.get("name"))}, 200
+
+
+def load(p):
+    try:
+        return {"ok": True, "contract": contract.load(p.get("name", ""))}, 200
+    except Exception as e:
+        return {"ok": False, "error": str(e)}, 200
+
+
+def list_(p):
+    return {"ok": True, "saved": contract.list_saved()}, 200
+
+
+def status(p):
+    return {"ok": True, "scheduler": contract.scheduler_status(),
+            "loop_log": contract.loop_log(), "armed": contract.current().get("armed", False)}, 200
+
+
+def loop_log(p):
+    return {"ok": True, "loop_log": contract.loop_log()}, 200
+
+
+def scheduler(p):
+    op = p.get("op")
+    if op == "start":
+        if not confirmed(p):
+            return {"ok": False, "error": _NEED % "starts the autonomous loop"}, 400
+        return {"ok": True, **contract.scheduler_start()}, 200
+    if op == "stop":
+        return {"ok": True, **contract.scheduler_stop()}, 200
+    return {"ok": True, "scheduler": contract.scheduler_status()}, 200
+
+
+# ── Release the Hounds pipeline (core/release_pipeline.py) ─────────────────────────────
+def release_get(p):
+    return {"ok": True, **release_pipeline.status()}, 200
+
+
+def _local_confirmed(p, what):
+    if not confirmed(p):
+        return {"ok": False, "needs_confirm": True, "error": _NEED % what}, 400
+    if not gates.client_is_loopback():
+        return {"ok": False, "error": "Only a browser on this machine can %s (it runs ⚡ Optimize, "
+                                      "which writes navi.db)." % what.split(" — ")[0]}, 403
+    return None
+
+
+def release_save(p):
+    """Save the release schedule. Turning it on (or keeping it on) needs confirm + this machine;
+    turning it off is always allowed."""
+    cfg = release_pipeline.normalize(p.get("config") or {})
+    if cfg["enabled"]:
+        bad = _local_confirmed(p, "schedules navi updates, optimize and the release")
+        if bad:
+            return bad
+    c = release_pipeline.save_config(cfg)
+    return {"ok": True, "config": c, **{k: v for k, v in release_pipeline.status().items() if k != "config"}}, 200
+
+
+def release_run(p):
+    bad = _local_confirmed(p, "runs the navi updates, optimize and the release now")
+    if bad:
+        return bad
+    cfg = p.get("config")
+    r = release_pipeline.start("manual", cfg=cfg if isinstance(cfg, dict) else None)
+    return (r, 200) if r.get("ok") else (r, 400)
+
+
+def release_cancel(p):
+    return {"ok": True, "cancelled": release_pipeline.cancel(), "state": release_pipeline.state()}, 200
+
+
+ACTIONS = {"get": get, "set": set_, "build_from_log": build_from_log,
+           "build_from_csv": build_from_csv, "plan": plan,
+           "export": export, "run_now": run_now, "arm": arm, "disarm": disarm,
+           "save": save, "load": load, "list": list_, "status": status,
+           "loop_log": loop_log, "scheduler": scheduler,
+           "release_get": release_get, "release_save": release_save, "release_run": release_run,
+           "release_cancel": release_cancel}

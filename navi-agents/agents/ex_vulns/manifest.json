@@ -1,0 +1,17 @@
+{
+  "id": "ex_vulns",
+  "name": "Explorer › Vulnerabilities",
+  "icon": "🔎",
+  "order": 21,
+  "category": "Explore",
+  "codename": "",
+  "summary": "Search findings by plugin name, ID, CVE, or severity — grouped by plugin. Read-only navi.db search via the UI.",
+  "needs_backend": true,
+  "page": "page.html",
+  "actions": [
+    "search"
+  ],
+  "hero": false,
+  "mission": "Platform",
+  "grid": false
+}
