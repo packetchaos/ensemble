@@ -244,19 +244,37 @@ def _follow_job(i, r):
     jid = job.get("id")
     if not (r or {}).get("ok") or jid is None:
         return False, str((r or {}).get("error") or "could not start")
-    _set_step(i, job=jid, note="")
+    _set_step(i, job=jid, log=job.get("log"), note="")
+    cli_jobs.note(jid, "started by Automation Station ▸ Run the Ensemble (run %s, trigger: %s)"
+                  % (_STATE.get("id"), _STATE.get("trigger")))
     t0 = time.time()
     while time.time() - t0 < STEP_MAX_S:
         j = (cli_jobs.poll(jid, since=10 ** 9) or {}).get("job") or {}
         if j.get("status") != "running":
             rc = j.get("returncode")
-            return (j.get("status") == "done", "" if j.get("status") == "done" else "exit %s" % rc)
+            if j.get("status") == "done":
+                return True, ""
+            return False, "exit %s%s" % (rc, _last_line(cli_jobs, jid))
         if _CANCEL.is_set():
             if j.get("kind") == "hx_optimize":
                 cli_jobs.cancel(jid)
             return False, "cancelled (the navi command itself runs to its end)"
         time.sleep(2)
     return False, "still running after %d h — moved on" % (STEP_MAX_S // 3600)
+
+
+def _last_line(cli_jobs, jid):
+    """' — <navi's last meaningful output line>' for a failed step's note, so the schedule's
+    history says WHY a sync failed (no keys, 401, no navi.db …) instead of just the exit code."""
+    try:
+        j = (cli_jobs.poll(jid, since=0) or {}).get("job") or {}
+        for ln in reversed(j.get("lines") or []):
+            t = " ".join(str(ln).split())
+            if t and not t.startswith(("cwd:", "audit log:", "started by ")):
+                return " — " + t[:200]
+    except Exception:
+        pass
+    return ""
 
 
 def _exclusive(i, fn):
@@ -351,7 +369,10 @@ def _run(c, trigger, wait_s, slot):
             if k == "wait":
                 ok, note = _sleep(wait_s), ""
             elif k.startswith("update:") or k == "navi_optimize":
-                if not navi_ok:
+                blocked = cli_jobs.sample_block_reason()
+                if blocked:
+                    ok, note = False, "skipped — " + blocked
+                elif not navi_ok:
                     ok, note = False, "skipped — navi CLI not found"
                 else:
                     def _navi_step(i=i, k=k):
@@ -385,6 +406,15 @@ def _run(c, trigger, wait_s, slot):
         _STATE["total_s"] = round(_STATE["finished"] - _STATE["started"], 1)
         _STATE["status"] = "cancelled" if _CANCEL.is_set() else ("done" if all_ok else "error")
         entry = json.loads(json.dumps(_STATE, default=str))
+    try:
+        from core import cli_jobs
+        rl = cli_jobs.write_run_log(entry)
+        if rl:
+            entry["log"] = rl
+            with _LOCK:
+                _STATE["log"] = rl
+    except Exception:
+        pass
     _record(entry, slot)
 
 

@@ -155,10 +155,25 @@ def release_cancel(p):
     return {"ok": True, "cancelled": release_pipeline.cancel(), "state": release_pipeline.state()}, 200
 
 
+# ── the live navi window on Automation Station (same jobs as Settings ▸ navi CLI) ──────
+def navi_poll(p):
+    """Stream a console job's output (read-only) — the step's navi command, live."""
+    from core import cli_jobs
+    return cli_jobs.poll(p.get("job_id"), p.get("since", 0)), 200
+
+
+def navi_log(p):
+    """Open a job's audit log file (read-only) — works after a restart, when the job itself is
+    gone from memory. Only file names the job runner itself writes are accepted."""
+    from core import cli_jobs
+    r = cli_jobs.read_log(p.get("name"))
+    return (r, 200) if r.get("ok") else (r, 404)
+
+
 ACTIONS = {"get": get, "set": set_, "build_from_log": build_from_log,
            "build_from_csv": build_from_csv, "plan": plan,
            "export": export, "run_now": run_now, "arm": arm, "disarm": disarm,
            "save": save, "load": load, "list": list_, "status": status,
            "loop_log": loop_log, "scheduler": scheduler,
            "release_get": release_get, "release_save": release_save, "release_run": release_run,
-           "release_cancel": release_cancel}
+           "release_cancel": release_cancel, "navi_poll": navi_poll, "navi_log": navi_log}

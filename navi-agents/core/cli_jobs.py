@@ -81,6 +81,160 @@ CHAIN_LOCK = threading.Lock()
 MAX_LINES = 5000       # cap the buffer so a chatty sync can't balloon memory
 KEEP_JOBS = 30          # retain the most recent N jobs
 
+# ── audit log ───────────────────────────────────────────────────────────────────────
+# Every console job (navi syncs, navi optimize, rebuilds, ⚡ Optimize) also writes its FULL
+# output to a file on the server, line by line as it arrives — so a run can be audited after
+# the fact, after a restart, and even when the in-memory window trimmed it. One file per job:
+#   <NAVI_JOB_LOG_DIR or navi-agents/logs/navi-jobs>/<YYYYmmdd-HHMMSS>-job<N>-<kind>.log
+# plus one <run id>-ensemble-run.log summary per Automation Station run. Newest LOG_KEEP kept.
+_REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOG_KEEP = 1000
+LOG_READ_MAX = 2 * 1024 * 1024          # a log opened in the console is tailed to this
+_LOG_NAME = re.compile(r"^\d{8}-\d{6}-(?:job\d+-[a-z0-9_]+|ensemble-run)\.log$")
+
+
+def log_dir():
+    return os.environ.get("NAVI_JOB_LOG_DIR") or os.path.join(_REPO, "logs", "navi-jobs")
+
+
+def _stamp(t):
+    t = t or _now()
+    return "%s (UTC %s)" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t)),
+                            time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(t)))
+
+
+def _dur(sec):
+    sec = int(max(0, sec or 0))
+    h, r = divmod(sec, 3600)
+    m, s_ = divmod(r, 60)
+    return ("%dh %dm %ds" % (h, m, s_)) if h else (("%dm %ds" % (m, s_)) if m else "%ds" % s_)
+
+
+def _prune(d):
+    try:
+        names = sorted(n for n in os.listdir(d) if _LOG_NAME.match(n))
+        for n in names[:max(0, len(names) - LOG_KEEP)]:
+            os.remove(os.path.join(d, n))
+    except OSError:
+        pass
+
+
+def _log_open(job):
+    """Create the job's audit log and write its header. Never fatal."""
+    job["_logf"] = None
+    job["log"] = None
+    try:
+        d = log_dir()
+        os.makedirs(d, exist_ok=True)
+        _prune(d)
+        kind = re.sub(r"[^a-z0-9_]+", "_", str(job.get("kind") or "job").lower()).strip("_")[:40] or "job"
+        name = "%s-job%d-%s.log" % (time.strftime("%Y%m%d-%H%M%S", time.localtime(job["started"])),
+                                    job["id"], kind)
+        f = open(os.path.join(d, name), "a", encoding="utf-8")
+        f.write("# navi Ensemble — console job audit log\n"
+                "# job       #%d  %s\n# command   %s\n# started   %s\n#\n"
+                % (job["id"], job["label"], job["cmd"], _stamp(job["started"])))
+        f.flush()
+        job["_logf"] = f
+        job["log"] = name
+    except Exception as e:                       # read-only folder, disk full … the job still runs
+        job["_log_err"] = "%s: %s" % (type(e).__name__, e)
+
+
+def _log_close(job):
+    f = job.pop("_logf", None)
+    if f is None:
+        return
+    try:
+        el = (job.get("finished") or _now()) - (job.get("started") or _now())
+        f.write("#\n# finished  %s\n# result    %s · exit %s · took %s\n"
+                % (_stamp(job.get("finished")), job.get("status"), job.get("returncode"), _dur(el)))
+        f.close()
+    except Exception:
+        pass
+
+
+def _add(job, line):
+    """Add a line to a job's window AND its audit log. Caller holds _LOCK. The window is capped
+    at MAX_LINES; the audit log always gets every line."""
+    line = str(line)
+    f = job.get("_logf")
+    if f is not None:
+        try:
+            f.write(line + "\n")
+            f.flush()
+        except Exception:
+            pass
+    if len(job["lines"]) < MAX_LINES:
+        job["lines"].append(line)
+
+
+def note(jid, line):
+    """Stamp a line into a running job's window + audit log (who started it, and why)."""
+    key = int(jid) if str(jid).isdigit() else None
+    with _LOCK:
+        job = _JOBS.get(key)
+        if job is not None:
+            _add(job, line)
+
+
+def log_path(name):
+    """Absolute path of an audit log by its file name — or None for anything that isn't one."""
+    name = str(name or "")
+    if not _LOG_NAME.match(name):
+        return None
+    d = os.path.realpath(log_dir())
+    p = os.path.realpath(os.path.join(d, name))
+    if os.path.dirname(p) != d or not os.path.isfile(p):
+        return None
+    return p
+
+
+def read_log(name):
+    """An audit log's text (its last LOG_READ_MAX bytes when bigger) for the console window."""
+    p = log_path(name)
+    if not p:
+        return {"ok": False, "error": "no such audit log"}
+    size = os.path.getsize(p)
+    with open(p, "rb") as f:
+        if size > LOG_READ_MAX:
+            f.seek(size - LOG_READ_MAX)
+        raw = f.read()
+    text = raw.decode("utf-8", "replace").replace("\r\n", "\n")
+    if size > LOG_READ_MAX:
+        text = text.split("\n", 1)[-1]
+    return {"ok": True, "name": os.path.basename(p), "path": p, "size": size,
+            "truncated": size > LOG_READ_MAX, "text": text}
+
+
+def write_run_log(st):
+    """One summary file per Automation Station run: every step, its result and its job's log."""
+    try:
+        rid = str(st.get("id") or "")
+        if not re.match(r"^\d{8}-\d{6}$", rid):
+            return None
+        d = log_dir()
+        os.makedirs(d, exist_ok=True)
+        name = rid + "-ensemble-run.log"
+        lines = ["# navi Ensemble — Automation Station ▸ Run the Ensemble audit log",
+                 "# run       %s  (trigger: %s)" % (rid, st.get("trigger") or "?"),
+                 "# started   %s" % _stamp(st.get("started")),
+                 "# finished  %s" % _stamp(st.get("finished")),
+                 "# result    %s · took %s" % (st.get("status"), _dur(st.get("total_s"))), "#"]
+        for n, x in enumerate(st.get("steps") or [], 1):
+            lines.append("%2d. [%s] %s%s%s%s" % (
+                n, x.get("status"), x.get("label"),
+                (" · %s" % _dur(x.get("sec"))) if x.get("sec") is not None else "",
+                (" · job #%s" % x.get("job")) if x.get("job") is not None else "",
+                (" · log %s" % x.get("log")) if x.get("log") else ""))
+            if x.get("note"):
+                lines.append("      %s" % x.get("note"))
+        with open(os.path.join(d, name), "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        return name
+    except Exception:
+        return None
+
 
 def _now():
     return time.time()
@@ -92,7 +246,13 @@ def _record(argv, label, kind=None):
            "returncode": None, "lines": [], "cur": "", "_cr": False, "cwd": None,
            "created": _now(), "started": _now(), "finished": None,
            "_local": _loopback()}
+    _log_open(job)
     with _LOCK:
+        if job.get("log"):
+            _add(job, "audit log: " + os.path.join(log_dir(), job["log"]))
+        elif job.get("_log_err"):
+            _add(job, "⚠ audit log unavailable (%s) — set NAVI_JOB_LOG_DIR to a writable folder"
+                 % job["_log_err"])
         _JOBS[jid] = job
         _ORDER.append(jid)
         while len(_ORDER) > KEEP_JOBS:
@@ -111,11 +271,10 @@ def _reader(job, fd, proc):
     carry = bytearray()          # holds a partial multibyte char across chunk boundaries
 
     def _commit(line):
-        if len(job["lines"]) < MAX_LINES:
-            job["lines"].append(line)
-        elif not truncated[0]:
-            job["lines"].append("… [older output trimmed — the run continues]")
+        if len(job["lines"]) >= MAX_LINES and not truncated[0]:
+            job["lines"].append("… [this window is full — the run continues; every line is in the audit log]")
             truncated[0] = True
+        _add(job, line)
 
     def feed(raw):
         carry.extend(raw)
@@ -149,11 +308,29 @@ def _reader(job, fd, proc):
             job["cur"] = cur
             job["_cr"] = cr
 
+    def _drain_blocking():
+        # Plain blocking reads until EOF. Windows' select() only accepts sockets — on a pipe it
+        # raises at once (WinError 10038) — so the pipe fallback MUST read this way. Breaking out
+        # instead closed the pipe seconds into the run: navi died on its next write and the step
+        # was reported finished in ~4 s.
+        try:
+            while True:
+                chunk = os.read(fd, 65536)
+                if not chunk:
+                    break
+                feed(chunk)
+        except OSError:                          # pty master: EIO at child exit
+            pass
+
     try:
         while True:
+            if not _HAS_PTY:
+                _drain_blocking()
+                break
             try:
                 r, _, _ = select.select([fd], [], [], 0.5)
             except (OSError, ValueError):
+                _drain_blocking()                # never abandon a live child's output
                 break
             if r:
                 try:
@@ -181,7 +358,10 @@ def _reader(job, fd, proc):
         if job["cur"]:                           # flush the last unterminated line
             _commit(job["cur"]); job["cur"] = ""
     try:
-        os.close(fd)
+        if proc.stdout is not None:              # pipe path: close via the file object it owns,
+            proc.stdout.close()                  # or its finalizer closes the fd a second time
+        else:
+            os.close(fd)                         # pty master
     except OSError:
         pass
     rc = proc.wait()
@@ -191,6 +371,7 @@ def _reader(job, fd, proc):
         job["returncode"] = rc
         job["status"] = "done" if rc == 0 else "error"
         job["finished"] = _now()
+        _log_close(job)
 
 
 def _after_sync(job):
@@ -210,7 +391,7 @@ def _after_sync(job):
             msg = "Specialists: could not re-apply 'unordered' (%s) — run ⚡ Optimize in Settings." % r.get("error")
         if msg:
             with _LOCK:
-                job["lines"].append(msg)
+                _add(job, msg)
     except Exception:                            # pragma: no cover
         pass
 
@@ -241,7 +422,7 @@ def _refresh_summaries(job):
             # Optimize writes navi.db (loopback + confirm when started by hand): a sync started
             # from a remote browser doesn't get to start it implicitly
             with _LOCK:
-                job["lines"].append("Specialists: the summary tables are now stale — run ⚡ Optimize in "
+                _add(job, "Specialists: the summary tables are now stale — run ⚡ Optimize in "
                                     "Settings (from this machine) to refresh them; specialists use the "
                                     "slower path until then.")
             return
@@ -258,7 +439,7 @@ def _refresh_summaries(job):
                     "Specialists: summary tables are stale and could not refresh (%s) — run ⚡ Optimize "
                     "in Settings." % r.get("error"))
             with _LOCK:
-                job["lines"].append(line)
+                _add(job, line)
         threading.Thread(target=_go, daemon=True, name="hounds-summary-refresh").start()
     except Exception:                            # pragma: no cover
         pass
@@ -274,6 +455,28 @@ def hx_busy():
     return None
 
 
+def sample_block_reason():
+    """Why navi CLI jobs must not run right now — '' when they may.
+
+    navi keeps its API keys and data in a navi.db in the folder it runs in, and jobs run in
+    the folder of the database the console reads (_run_cwd). On the bundled demo fixture
+    (sample_navi.db) that folder is the repo itself, which has no navi keys: every Tenable
+    sync fails there and navi leaves an empty navi.db behind. So refuse, and say how to fix
+    it, unless the operator pointed NAVI_CWD at a real navi folder on purpose."""
+    if os.environ.get("NAVI_CWD"):
+        return ""
+    try:
+        from core import db
+        p = db.db_path() or ""
+    except Exception:
+        return ""
+    if os.path.basename(p) != "sample_navi.db":
+        return ""
+    return ("the console is reading the SAMPLE database (sample_navi.db), so navi has no Tenable keys "
+            "or navi.db to update here. Point NAVI_DB_PATH at your real navi.db (Settings \u25b8 "
+            "Environment, or export NAVI_DB_PATH=/path/to/navi.db) and restart the server.")
+
+
 def _start(sub_argv, label, answer=None, kind=None):
     """answer: bytes typed into navi's stdin right after it starts — only used to answer
     the y/N confirm of `-rebuild` (click.confirm), which the user already confirmed in
@@ -282,6 +485,9 @@ def _start(sub_argv, label, answer=None, kind=None):
     if hx is not None:
         return {"ok": False, "error": "⚡ Optimize for the Ensemble is building indexes (job #%s) and holds "
                 "navi.db's write lock — wait for it to finish (or cancel it in Settings)." % hx["id"]}
+    blocked = sample_block_reason()
+    if blocked:
+        return {"ok": False, "error": blocked}
     navi = navi_cli._resolve_navi()
     if not navi:
         return {"ok": False, "error": navi_cli.write_gate_reason()
@@ -291,7 +497,7 @@ def _start(sub_argv, label, answer=None, kind=None):
     job = _record(argv, label, kind)
     job["cwd"] = cwd or "(server working dir — set NAVI_DB_PATH so navi runs where your navi.db lives)"
     with _LOCK:
-        job["lines"].append("cwd: " + cwd if cwd else
+        _add(job, "cwd: " + cwd if cwd else
                              "⚠ no navi.db location resolved — running in the server's working dir. "
                              "Set NAVI_DB_PATH (Settings ▸ Environment) so navi builds the right navi.db.")
     # Run navi under a PTY so it line-buffers and flushes its early lines immediately
@@ -334,8 +540,9 @@ def _start(sub_argv, label, answer=None, kind=None):
         with _LOCK:
             job["status"] = "error"
             job["returncode"] = -1
-            job["lines"].append("[spawn error] " + str(e))
+            _add(job, "[spawn error] " + str(e))
             job["finished"] = _now()
+            _log_close(job)
         return {"ok": False, "error": str(e), "job": _view(job)}
     threading.Thread(target=_reader, args=(job, fd, proc), daemon=True).start()
     return {"ok": True, "job": _view(job)}
@@ -443,12 +650,12 @@ def start_rebuild(tables="both", days=90, derived=True, hx=False):
                     if not rr.get("ok"):
                         with _LOCK:
                             if jid in _JOBS:
-                                _JOBS[jid]["lines"].append("⚡ Optimize for the Ensemble not started: "
-                                                           + str(rr.get("error")))
+                                _add(_JOBS[jid], "⚡ Optimize for the Ensemble not started: "
+                                     + str(rr.get("error")))
                 except Exception as e:    # pragma: no cover
                     with _LOCK:
                         if jid in _JOBS:
-                            _JOBS[jid]["lines"].append("⚡ Optimize for the Ensemble failed to start: %s" % e)
+                            _add(_JOBS[jid], "⚡ Optimize for the Ensemble failed to start: %s" % e)
         threading.Thread(target=_chain, daemon=True, name="navi-rebuild-derived").start()
         r["then"] = (["navi " + " ".join(COMMANDS[k]) for k in REBUILD_DERIVED] if derived else []) \
             + (["⚡ Optimize for the Ensemble"] if hx else [])
@@ -472,7 +679,8 @@ def _view(job, since=0):
         return {"id": job["id"], "label": job["label"], "cmd": job["cmd"], "kind": job.get("kind"),
                 "cwd": job.get("cwd"), "status": job["status"], "returncode": job["returncode"],
                 "lines": list(out), "n_lines": total, "since": s, "cur": job.get("cur", ""),
-                "elapsed": round(el, 1), "started": job["started"], "finished": job["finished"]}
+                "elapsed": round(el, 1), "started": job["started"], "finished": job["finished"],
+                "log": job.get("log")}
 
 
 def poll(jid, since=0):
@@ -489,7 +697,7 @@ def recent():
         jobs = [_JOBS[i] for i in _ORDER]
     return [{"id": j["id"], "label": j["label"], "status": j["status"], "kind": j.get("kind"),
              "returncode": j["returncode"], "n_lines": len(j["lines"]),
-             "started": j["started"], "finished": j["finished"]} for j in reversed(jobs)]
+             "started": j["started"], "finished": j["finished"], "log": j.get("log")} for j in reversed(jobs)]
 
 
 def start_task(label, kind, fn, cmd=None):
@@ -505,8 +713,7 @@ def start_task(label, kind, fn, cmd=None):
 
     def emit(line):
         with _LOCK:
-            if len(job["lines"]) < MAX_LINES:
-                job["lines"].append(str(line))
+            _add(job, line)
 
     def live(text):
         with _LOCK:
@@ -528,6 +735,7 @@ def start_task(label, kind, fn, cmd=None):
             job["returncode"] = rc
             job["status"] = "done" if rc == 0 else ("cancelled" if rc == 130 else "error")
             job["finished"] = _now()
+            _log_close(job)
 
     threading.Thread(target=body, daemon=True, name="hounds-task-%s" % job["id"]).start()
     return {"ok": True, "job": _view(job)}

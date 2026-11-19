@@ -25,6 +25,12 @@
 .rpstep{display:grid;grid-template-columns:22px minmax(0,1fr) 70px;gap:6px;font-size:12.5px;align-items:baseline}
 .rpstep .n{color:var(--ink-3);font-size:11.5px}
 .rpstep.running{font-weight:700}.rpstep.error .lbl{color:var(--crit)}.rpstep.pending{color:var(--ink-3)}
+.rpstep.has-out{cursor:pointer}.rpstep.has-out:hover .lbl{text-decoration:underline}
+.rpstep.watching{background:rgba(124,92,255,.10);border-radius:6px}
+.rpstep .wlog{font-size:11px;color:var(--accent);margin-left:6px}
+.cli{font-family:var(--mono);font-size:12px;line-height:1.5;color:#c9d4e5;background:#0c0e13;border:1px solid var(--line);
+     border-radius:10px;padding:12px 14px;white-space:pre-wrap;word-break:break-word;max-height:min(60vh,600px);overflow:auto;min-height:140px}
+.cli:focus{outline:none}
 </style>
 </head><body data-cache-inputs="off">
 <div class="wrap">
@@ -113,6 +119,12 @@
       <span class="sub" id="rpMsg"></span>
     </div>
     <div id="rpProg"></div>
+    <div style="margin-top:10px">
+      <div class="toolbar"><h3 style="margin:0;font-size:14px">🖥 navi CLI <span id="rpCliStatus" class="chip" style="margin-left:6px;display:none"></span></h3>
+        <span class="sub" id="rpCliWhich" style="margin-left:6px"></span>
+        <label class="sub" style="margin-left:auto;display:flex;gap:5px;align-items:center"><input type="checkbox" id="rpFollow" checked> follow the running step</label></div>
+      <div class="cli" id="rpCli" tabindex="-1"><span style="color:var(--mut)">What navi prints, live — the same output you see at the command line. While a run is going this window follows the step that's running; click any step above to watch it or replay it. Every job's full output is also saved to an audit log on the server.</span></div>
+    </div>
     <div id="rpHist"></div>
   </section>
 
@@ -396,6 +408,58 @@ const fmtD=s=>{ s=Math.max(0,Math.round(s||0)); if(s<60) return s+' s'; const m=
 const when=t=>t?new Date(t*1000).toLocaleString([], {weekday:'short',hour:'2-digit',minute:'2-digit'}):'—';
 function relOff(){ try{ return JSON.parse(localStorage.getItem('houndsRelOff')||'[]').map(String); }catch(e){ return []; } }
 const ICON={done:'✓',running:'⟳',error:'✗',cancelled:'⊘',pending:'·'};
+/* the navi CLI window — the same live view as Settings ▸ navi CLI, over the same server jobs */
+const CLI={job:null, log:null, cur:0, tok:0, ms:300};
+function cliStatus(txt,kind){ const c=$('rpCliStatus'); c.style.display=txt?'':'none'; c.textContent=txt||'';
+  c.style.borderColor=c.style.color=kind==='ok'?'var(--ok)':kind==='err'?'var(--crit)':'var(--accent)'; }
+function cliDur(s){ s=Math.max(0,s|0); if(s<60)return s+'s'; const m=Math.floor(s/60); if(m<60)return m+'m '+(s%60)+'s'; const h=Math.floor(m/60); return h+'h '+(m%60)+'m'; }
+function cliReset(which){ $('rpCli').innerHTML='<span id="rpHead" style="color:var(--accent)"></span><span id="rpOut"></span><span id="rpLive"></span>';
+  $('rpCliWhich').textContent=which?'· '+which:''; document.querySelectorAll('.rpstep.watching').forEach(e=>e.classList.remove('watching')); }
+function cliAttach(job, log, which){
+  CLI.job=job; CLI.log=log; CLI.cur=0; CLI.ms=300; const tok=++CLI.tok; cliReset(which);
+  document.querySelectorAll('.rpstep.has-out').forEach(e=>{ if(job!=null && e.dataset.job===String(job)) e.classList.add('watching'); });
+  if(job==null){ if(log) cliShowLog(log, which); return; }
+  cliPoll(tok);
+}
+async function cliShowLog(name, which){
+  const tok=++CLI.tok; CLI.job=null; CLI.log=name; cliReset(which||name); cliStatus('loading…','run');
+  let o; try{ o=await jpost('/api/contract/navi_log',{name:name}); }catch(e){ o={ok:false,error:e.message}; }
+  if(tok!==CLI.tok) return;
+  if(!o||!o.ok){ $('rpOut').textContent='✗ '+((o&&o.error)||'could not open the audit log'); cliStatus('',''); return; }
+  $('rpHead').textContent='📄 '+o.path+(o.truncated?'  (showing the last 2 MB)':'')+'\n';
+  $('rpOut').textContent=o.text; cliStatus('audit log','ok'); $('rpCli').scrollTop=1e9;
+}
+async function cliPoll(tok){
+  if(tok!==CLI.tok) return;
+  let o; try{ o=await jpost('/api/contract/navi_poll',{job_id:CLI.job, since:CLI.cur}); }catch(e){ o=null; }
+  if(tok!==CLI.tok) return;
+  if(o && o.ok===false){                       // gone from memory (server restarted) → its audit log
+    if(CLI.log){ cliShowLog(CLI.log, $('rpCliWhich').textContent.replace(/^· /,'')); }
+    else { $('rpOut').textContent='This job is no longer in the server\'s memory, and no audit log was recorded for it.'; cliStatus('',''); }
+    return;
+  }
+  let changed=false;
+  if(o && o.ok){ const j=o.job, box=$('rpCli'), stick=box.scrollTop+box.clientHeight>=box.scrollHeight-40;
+    const head=$('rpHead'); if(head && !head.dataset.set){ head.textContent='$ '+j.cmd+'\n'; head.dataset.set='1'; }
+    if(j.log) CLI.log=j.log;
+    if(j.lines && j.lines.length){ $('rpOut').textContent+=j.lines.join('\n')+'\n'; changed=true; }
+    CLI.cur=j.n_lines;
+    const live=$('rpLive');
+    if(j.status!=='running'){
+      const ok=j.returncode===0;
+      live.textContent=(j.cur?j.cur+'\n':'')+(ok?'✓ done':'✗ exit '+j.returncode)+' · '+cliDur(j.elapsed||0);
+      live.style.color=ok?'var(--ok)':'var(--crit)';
+      cliStatus((ok?'done':'exit '+j.returncode)+' · '+cliDur(j.elapsed||0), ok?'ok':'err');
+      if(stick) box.scrollTop=1e9;
+      return;
+    }
+    if(live.textContent!==(j.cur||'')){ live.textContent=j.cur||''; live.style.color=''; changed=true; }
+    cliStatus('running · '+cliDur(j.elapsed||0),'run');
+    if(stick) box.scrollTop=1e9;
+  }
+  CLI.ms=changed?300:Math.min(2000,Math.round(CLI.ms*1.4));
+  setTimeout(()=>cliPoll(tok), CLI.ms);
+}
 function cfgFromForm(){
   return {enabled:$('rpEnabled').checked, daily:$('rpDaily').checked, ready_by:$('rpReady').value||'07:00', days:$('rpDays').value,
     after_tagging:$('rpAfter').checked, wait_minutes:+($('rpWait').value||0),
@@ -426,11 +490,21 @@ function paintStatus(o){ RP=o; const c=o.config, st=o.state||{}, running=st.stat
   const steps=st.steps||[];
   $('rpProg').innerHTML=steps.length?('<div class="sub" style="margin-top:8px"><b>'+(running?'Running':'Last run')+'</b> · '+esc(st.trigger||'')+' · started '+esc(new Date((st.started||0)*1000).toLocaleString())
       +(st.total_s?' · '+esc(fmtD(st.total_s)):'')+(!running&&st.status?' · <span class="badge '+(st.status==='done'?'b-ready':'b-err')+'">'+esc(st.status)+'</span>':'')+'</div>'
-      +'<div class="rpsteps">'+steps.map(x=>'<div class="rpstep '+esc(x.status)+'"><span>'+(ICON[x.status]||'·')+'</span><span class="lbl">'+esc(x.label)+(x.note?' <span class="sub">— '+esc(x.note)+'</span>':'')+'</span><span class="n">'+(x.sec!=null?esc(fmtD(x.sec)):(x.status==='running'?'…':''))+'</span></div>').join('')+'</div>'):'';
+      +'<div class="rpsteps">'+steps.map(x=>{ const out=(x.job!=null||x.log);
+        return '<div class="rpstep '+esc(x.status)+(out?' has-out':'')+(out&&CLI.job!=null&&String(x.job)===String(CLI.job)?' watching':'')+'"'+(out?' data-job="'+esc(x.job!=null?String(x.job):'')+'" data-log="'+esc(x.log||'')+'" title="Show this step\'s navi output"':'')+'><span>'+(ICON[x.status]||'·')+'</span><span class="lbl">'+esc(x.label)+(x.note?' <span class="sub">— '+esc(x.note)+'</span>':'')+(out?'<span class="wlog">🖥 output</span>':'')+'</span><span class="n">'+(x.sec!=null?esc(fmtD(x.sec)):(x.status==='running'?'…':''))+'</span></div>'; }).join('')+'</div>'
+      +(st.log?'<div class="sub" style="margin-top:2px">Run summary: <a href="#" class="rplog" data-log="'+esc(st.log)+'">'+esc(st.log)+'</a></div>':'')):'';
+  $('rpProg').querySelectorAll('.rpstep.has-out').forEach(r=>r.onclick=()=>{ $('rpFollow').checked=false; cliAttach(r.dataset.job?+r.dataset.job:null, r.dataset.log||null, r.querySelector('.lbl').firstChild.textContent); });
+  $('rpProg').querySelectorAll('.rplog').forEach(a=>a.onclick=e=>{ e.preventDefault(); $('rpFollow').checked=false; cliShowLog(a.dataset.log, 'run summary'); });
+  if($('rpFollow').checked && running){ const r=steps.find(x=>x.status==='running' && x.job!=null);
+    if(r && String(r.job)!==String(CLI.job)) cliAttach(r.job, r.log||null, r.label); }
   const h=(o.history||[]).filter(x=>x.id!==st.id).slice(0,8);
-  $('rpHist').innerHTML=h.length?('<details style="margin-top:6px"><summary class="sub">Earlier runs ('+h.length+')</summary><table style="margin-top:6px"><thead><tr><th>Started</th><th>Trigger</th><th>Took</th><th>Result</th><th>Steps</th></tr></thead><tbody>'
+  $('rpHist').innerHTML=h.length?('<details style="margin-top:6px"><summary class="sub">Earlier runs ('+h.length+')</summary><table style="margin-top:6px"><thead><tr><th>Started</th><th>Trigger</th><th>Took</th><th>Result</th><th>Steps</th><th>Audit</th></tr></thead><tbody>'
       +h.map(x=>'<tr><td class="sub">'+esc(new Date((x.started||0)*1000).toLocaleString())+'</td><td>'+esc(x.trigger||'')+'</td><td>'+esc(fmtD(x.total_s))+'</td><td><span class="badge '+(x.status==='done'?'b-ready':'b-err')+'">'+esc(x.status)+'</span></td><td class="sub">'
-        +esc((x.steps||[]).filter(s=>s.status!=='done').map(s=>s.label+' '+s.status).join(' · ')||'all done')+'</td></tr>').join('')+'</tbody></table></details>'):'';
+        +esc((x.steps||[]).filter(s=>s.status!=='done').map(s=>s.label+' '+s.status).join(' · ')||'all done')+'</td><td>'
+        +(x.log?'<a href="#" class="rplog" data-log="'+esc(x.log)+'" data-which="run summary">📄 run</a>':'')
+        +(x.steps||[]).filter(s=>s.log).map(s=>' · <a href="#" class="rplog" data-log="'+esc(s.log)+'" data-which="'+esc(s.label)+'" title="'+esc(s.label)+'">'+esc(String(s.label||'').replace(/^navi update — /,''))+'</a>').join('')
+        +(!x.log&&!(x.steps||[]).some(s=>s.log)?'<span class="sub">—</span>':'')+'</td></tr>').join('')+'</tbody></table></details>'):'';
+  $('rpHist').querySelectorAll('.rplog').forEach(a=>a.onclick=e=>{ e.preventDefault(); $('rpFollow').checked=false; cliShowLog(a.dataset.log, a.dataset.which||'audit log'); });
   clearTimeout(RP_T); RP_T=setTimeout(load, running?3000:60000);
 }
 async function load(first){ let o; try{ o=await jpost('/api/contract/release_get',{}); }catch(e){ o=null; }
