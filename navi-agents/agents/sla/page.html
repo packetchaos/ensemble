@@ -48,7 +48,7 @@ details.defs ul{margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--ink-
   <header class="top" id="app-header"></header>
 
   <section class="card">
-    <div class="toolbar"><div><div class="acode">SLA Tracker</div><h2 style="margin:0">⏱ SLA Tracker <span class="sub" style="font-weight:400">· SLA Tracker chases the clock</span></h2>
+    <div class="toolbar"><div><div class="acode">SLA Tracker</div><h2 style="margin:0"><img class="bicon" src="/static/icons/sla.png?v=1" alt="" aria-hidden="true" draggable="false"> SLA Tracker <span class="sub" style="font-weight:400">· SLA Tracker chases the clock</span></h2>
       <p class="sub" style="margin:2px 0 0">Are we hitting our SLAs? <b>Open-vuln aging</b> (how open findings are burning down their SLA window, what's about to breach), <b>remediation</b> (were closed findings fixed in time, how fast), the worst assets, plugins and owners, and how it has moved <b>over time</b> — segmented by owner/tag. Each whole-estate build saves a daily point for the trend.</p></div>
       <span style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <label class="sub" for="tagsel" style="margin:0">Segment by</label>
@@ -432,7 +432,7 @@ function wireMail(){
   });
 }
 
-/* ---- email the dashboard (reuse Notify & Reports's email-safe dashboard renderer) ---- */
+/* ---- email the dashboard (reuse Notify & Report's email-safe dashboard renderer) ---- */
 function emailComponents(){
   const oa=DASH.open_aging||{}, rem=DASH.remediation||{}, vd=DASH.verdict||{}, tk=DASH.tag_key||'owner', t=(DASH.metrics||{}).totals||{};
   const comps=[];

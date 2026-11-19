@@ -1,13 +1,13 @@
 {
  "codename": "",
- "discipline": "Automation",
+ "discipline": "Automation Station",
  "category": "Orchestration",
  "tagline": "Write the policy once, arm it when ready — the Ensemble keeps it.",
  "lore": "",
  "problem": "Tags and ACR go stale the moment the estate changes. The Ensemble can find and propose all day, but if a human has to approve every tag on every cycle, upkeep stops the first busy week — and automation nobody can review is automation nobody trusts.",
- "does": "Automation turns your tagging history and a plain-English policy into a workflow: which specialists tag, with what logic, which ACR changes to make, which stale tags to clear first, and how often to run. It always shows the plan first; only when you arm it does the loop execute — every few hours, behind the same write gate as everything else.",
+ "does": "Automation Station turns your tagging history and a plain-English policy into a workflow: which specialists tag, with what logic, which ACR changes to make, which stale tags to clear first, and how often to run. It always shows the plan first; only when you arm it does the loop execute — every few hours, behind the same write gate as everything else.",
  "glance": {
-  "caption": "Automation's plan preview: for each enabled specialist, the tags it would apply on this cycle and how many assets each covers, followed by the ACR changes — reviewed before the Contract is armed."
+  "caption": "Automation Station's plan preview: for each enabled specialist, the tags it would apply on this cycle and how many assets each covers, followed by the ACR changes — reviewed before the Contract is armed."
  },
  "capabilities": [
   [
@@ -20,7 +20,7 @@
   ],
   [
    "ACR rules in plain English",
-   "describe a calibration and Automation writes the rule; optionally protect the changed assets with NO : UPDATE."
+   "describe a calibration and Automation Station writes the rule; optionally protect the changed assets with NO : UPDATE."
   ],
   [
    "Tag Removal removal phase",
@@ -32,7 +32,7 @@
   ],
   [
    "Each cycle checked and reported",
-   "a QA pass on what landed, the loop log, Alerts's checks, and a run-summary email through Notify & Reports."
+   "a QA pass on what landed, the loop log, Alerts's checks, and a run-summary email through Notify & Report."
   ],
   [
    "Escape hatch",
@@ -41,7 +41,7 @@
  ],
  "how": "Each cycle can kick off `navi update assets` and `vulns` in the background, builds the plan from each specialist's own discovery and tag scheme (the same tags a person would apply from that specialist's page), then — only if armed — runs it through the background tag queue. Contracts can be saved and loaded as JSON files.",
  "who": "Vulnerability management program owners who need upkeep to survive a busy quarter, and automation engineers who want autonomy an auditor can follow.",
- "better": "Automation orchestrates the tagging specialists — Laelaps, Pythia, Certania, Charon, Linnaeus, Fenrir, Exposure Score, Ownership and the rest — plus Criticality Calibration's ACR rules and Tag Removal's removals. Alerts's checks and Notify & Reports's summary ride along on every cycle.",
+ "better": "Automation Station orchestrates the tagging specialists — Laelaps, Pythia, Certania, Charon, Linnaeus, Fenrir, Exposure Score, Ownership and the rest — plus Criticality Calibration's ACR rules and Tag Removal's removals. Alerts's checks and Notify & Report's summary ride along on every cycle.",
  "different": [
   [
    "Same tags as a human",

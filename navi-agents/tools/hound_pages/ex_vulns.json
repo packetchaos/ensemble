@@ -28,7 +28,7 @@
   ],
   [
    "Email the result",
-   "send the rows to an owner through Notify & Reports."
+   "send the rows to an owner through Notify & Report."
   ]
  ],
  "how": "Explorer › Vulnerabilities runs a read-only search over the findings in your local navi.db; results page on the server, 20 rows a page (up to 50).",

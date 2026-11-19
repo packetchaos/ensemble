@@ -72,6 +72,8 @@
 .agrid .mhead{grid-column:1/-1;margin:14px 2px 0;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
 .agrid .mhead:first-child{margin-top:2px}
 .agentcard .ico .aico{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:34px;line-height:1}
+.agentcard .ico .aico img.bicon{width:100%;height:100%;border-radius:12px}
+.agentcard .ico:has(img.bicon){background:transparent;border:0}
 </style>
 </head>
 <body>
@@ -96,10 +98,10 @@
     </div>
     <div id="askout" style="margin-top:8px"></div>
     <div class="relbar" id="relbar">
-      <div class="rl"><b>Run the Ensemble</b> — run every specialist in the sidebar's order (Ensemble Report last — it summarises the rest), in the background, so each page is already populated when you open it. Reads only: nothing is tagged, applied or sent. Explorer, Asset Dossier, ACR, Automation, Dashboards and the other hands-on tools are left out.</div>
+      <div class="rl"><b>Run the Ensemble</b> — run every specialist in the sidebar's order (Ensemble Report last — it summarises the rest), in the background, so each page is already populated when you open it. Reads only: nothing is tagged, applied or sent. Explorer, Asset Dossier, ACR, Automation Station, Dashboards and the other hands-on tools are left out.</div>
       <button class="relbtn" id="relBtn" type="button">Run the Ensemble</button>
     </div>
-    <div class="sub" id="relSched" style="margin:6px 2px 0;font-size:12.5px">⏰ <b>Keep the Ensemble ready</b> — the <a href="/agents/contract/page.html#release">Automation</a> can refresh navi.db (assets, vulns, certs, software …), optimize it and run the Ensemble on a schedule, so everything is ready when you log in.</div>
+    <div class="sub" id="relSched" style="margin:6px 2px 0;font-size:12.5px">⏰ <b>Keep the Ensemble ready</b> — the <a href="/agents/contract/page.html#release">Automation Station</a> can refresh navi.db (assets, vulns, certs, software …), optimize it and run the Ensemble on a schedule, so everything is ready when you log in.</div>
     <div id="relProg" class="relprog" style="display:none"></div>
     <div class="no-llm-note sub" style="display:none;margin-top:8px;color:var(--warn,var(--cx-e7c66b))">Set <span class="mono">ANTHROPIC_API_KEY</span> on the server to enable “ask which agent can help”.</div>
 
@@ -170,7 +172,7 @@ function card(a){
   const inPack=TAGGERS.includes(a.id);
   const glyph=(a.icon||'').replace(/'/g,'');
   const tags=tagsFor(a);
-  const crestImg=`<span class="aico" aria-hidden="true">${esc(glyph||'✦')}</span>`;   // the sidebar icon (no crests)
+  const crestImg=`<span class="aico" aria-hidden="true">${(typeof brandIconHtml==='function')?brandIconHtml(a.id, glyph||'✦'):esc(glyph||'✦')}</span>`;   // the sidebar icon: a navi Ensemble tile when it has one (build 493), else its emoji
   const tagsHtml=tags.map(t=>`<span class="atag">${esc(t)}</span>`).join('');
   const search=((cn.name||'')+' '+(a.name||'')+' '+missionOf(a)+' '+(a.summary||'')+' '+tags.join(' ')).toLowerCase();
   return `<div class="agent agentcard ${a.deployed?'':'dim'}" data-mission="${esc(missionOf(a))}" data-cat="${esc(tags.join(' '))}" data-search="${esc(search)}" data-id="${esc(a.id)}">
@@ -237,8 +239,8 @@ async function execAgent(id,btn){
   }catch(e){ if(el){ el.badge.innerHTML='<span class="badge b-err">error</span>'; el.metric.textContent=e.message; } }
   btn.disabled=false; btn.textContent=old;
 }
-/* Plan Run → open the Automation page and run its (no-writes) plan; the user lands on
-   the plan review that sits directly under the Automation widget. */
+/* Plan Run → open the Automation Station page and run its (no-writes) plan; the user lands on
+   the plan review that sits directly under the Automation Station widget. */
 function runAll(){
   const c=(AGENTS||[]).find(a=>a.id==='contract');
   const pg=(c&&c.page)||'/agents/contract/page.html';
@@ -394,13 +396,13 @@ function relShow(st){
     else if(i.status==='done'){ el.badge.innerHTML='<span class="badge b-live">released ✓</span>'; el.lastrun.textContent=new Date(((i.started||0)+(i.sec||0))*1000).toLocaleString(); }
     else if(i.status==='error'){ el.badge.innerHTML='<span class="badge b-err">error</span>'; el.metric.textContent=' '+(i.note||''); } });
 }
-/* ⏰ Automation's release schedule (core/release_pipeline.py) — one line under the button */
+/* ⏰ Automation Station's release schedule (core/release_pipeline.py) — one line under the button */
 async function relSched(){
   let o; try{ o=await jpost('/api/contract/release_get',{}); }catch(e){ o=null; }
   if(!o||!o.ok){ setTimeout(relSched, 60000); return; }
   const c=o.config||{}, st=o.state||{}, last=o.last, el=document.getElementById('relSched');
   const at=t=>new Date(t*1000).toLocaleString([], {weekday:'short',hour:'2-digit',minute:'2-digit'});
-  const link='<a href="/agents/contract/page.html#release">Automation ▸ Run the Ensemble</a>';
+  const link='<a href="/agents/contract/page.html#release">Automation Station ▸ Run the Ensemble</a>';
   let h;
   if(st.status==='running'){ const steps=st.steps||[], cur=steps.find(x=>x.status==='running');
     h='⟳ <b>Keeping the Ensemble ready</b> — running now'+(cur?': '+esc(cur.label):'')+' ('+(steps.indexOf(cur)+1)+' of '+steps.length+') · '+link; }

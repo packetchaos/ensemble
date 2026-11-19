@@ -268,8 +268,8 @@ def _exclusive(i, fn):
         if _CANCEL.is_set():
             return False, "cancelled"
         if time.time() - t0 > IDLE_MAX_S:
-            return False, "Automation's navi update is still running — skipped"
-        _set_step(i, note="waiting for Automation's navi update to finish")
+            return False, "Automation Station's navi update is still running — skipped"
+        _set_step(i, note="waiting for Automation Station's navi update to finish")
     try:
         return fn()
     finally:

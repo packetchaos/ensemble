@@ -39,7 +39,7 @@ td .mono,.dim{color:var(--mut)}
     <button class="btn ghost sm" id="setw">apply</button>
     <button class="btn ghost sm" id="refresh">↻ Refresh</button>
     <button class="btn sm" id="verify" title="Cross-check every applied tag against the live tenant (navi explore info tags) to confirm it actually landed">✓ Verify landed</button>
-    <button class="btn ghost sm" id="exportCsv" title="Download the tagging log as a CSV — import it on the Automation page to build a policy from it">⬇ Export CSV</button>
+    <button class="btn ghost sm" id="exportCsv" title="Download the tagging log as a CSV — import it on the Automation Station page to build a policy from it">⬇ Export CSV</button>
     <button class="btn ghost sm" id="exportSh" title="Download a shell script that re-runs every navi command in this log — drop it in cron">⬇ Export .sh</button>
     <button class="btn ghost sm" id="exportPy" title="Download a python script that re-runs every navi command in this log">⬇ Export .py</button>
     <label class="sub" title="Off by default. Only APPLIED ACR changes are included; a replayed ACR change is not recorded in the ACR log, and navi skips NO : UPDATE assets"><input type="checkbox" id="exportAcr"> include applied ACR changes in .sh / .py</label>
@@ -164,7 +164,7 @@ async function exportScript(format){
   if(!o||!o.ok){ flash('flash','✗ export failed','crit'); return; }
   if(!o.count){ flash('flash','Nothing to export yet — apply a tag from any agent first.','warn'); return; }
   downloadText(o.filename||('navi-tags.'+format), o.script, format==='csv'?'text/csv':'text/plain');
-  const tail = format==='csv' ? ' — import it on the Automation page to build a policy.' : ' — add it to cron to re-run them.';
+  const tail = format==='csv' ? ' — import it on the Automation Station page to build a policy.' : ' — add it to cron to re-run them.';
   const acrTxt = format==='csv' ? '' : (o.acr_included ? ' Includes '+o.acr_included+' applied ACR change(s) — replays are not recorded in the ACR log.' : (o.acr_left_out ? ' '+o.acr_left_out+' ACR change(s) left out (tick “include applied ACR changes” to add the applied ones).' : ''));
   flash('flash','✓ exported '+o.count+' '+(format==='csv'?'row(s)':'navi command(s)')+' → '+esc(o.filename)+tail+acrTxt,'ok');
 }

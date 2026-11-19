@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Arachne · Web App Scanning — navi Ensemble</title>
+<title>Arachne · Web App Report — navi Ensemble</title>
 <link rel="stylesheet" href="/static/console.css"/>
 <style>
 .barrow{display:grid;grid-template-columns:170px 1fr 128px;gap:12px;align-items:center;margin:7px 0}
@@ -38,7 +38,7 @@ a.tchip{text-decoration:none;cursor:pointer} a.tchip:hover{border-color:var(--ac
 <div class="wrap">
   <header class="top" id="app-header"></header>
   <section class="card">
-    <div class="toolbar"><div><h2 style="margin:0">🕸️ Web App Scanning <span class="sub" style="font-weight:400">· Arachne guards the web apps</span></h2>
+    <div class="toolbar"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/was.png?v=1" alt="" aria-hidden="true" draggable="false"> Web App Report <span class="sub" style="font-weight:400">· Arachne guards the web apps</span></h2>
       <p class="sub" style="margin:2px 0 0">Every web app navi has scanned, consolidated: severity, the OWASP Top-10 profile, technology inventory, and scan coverage. Click an app for its full <b>App Report</b>.</p></div>
       <span style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <a class="btn ghost sm" href="/agents/was/report.html" title="Per-app deep-dive">🔬 App Report →</a>
@@ -220,7 +220,7 @@ async function applyTag(btn){
   } else { res.innerHTML='<span style="color:var(--crit)">✗ '+esc((o&&(o.error||o.message))||'failed')+'</span>'; btn.disabled=false; btn.textContent='🏷️ Tag again'; }
 }
 
-/* ---- email (reuse Notify & Reports's email-safe dashboard renderer) ---- */
+/* ---- email (reuse Notify & Report's email-safe dashboard renderer) ---- */
 function emailComponents(){
   const sv=OV.severity||{}, ow=OV.owasp||[], rows=OV.apps_rows||[], cov=OV.coverage||{};
   return [

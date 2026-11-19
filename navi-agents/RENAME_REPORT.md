@@ -194,3 +194,27 @@ Three more display names changed (ids, routes and URLs unchanged):
 server strings were updated; `tests/test_brand_rename.py` now treats "Standing Orders", "Briefing" and
 "Route Mapping" as retired words. Settings help for the route/paths sync no longer names the old codenames. The email template "Morning briefing" is a different thing and keeps its name.
 The tables above describe build 490 as delivered.
+
+## Build 492 — final names
+
+| Was (491) | Now (492) | id |
+|---|---|---|
+| ATT&CK Mapping | **MITRE ATT&CK Map** | `mitre` |
+| Device Discovery | **IoT Discovery** (hero: Argos · IoT Discovery) | `iot_squad` |
+| Web App Scanning | **Web App Report** (hero: Arachne · Web App Report) | `was` |
+| Classification | **Asset Classification** (hero: Linnaeus · Asset Classification) | `classify` |
+| Notify & Reports | **Notify & Report** | `email` |
+| Automation | **Automation Station** | `contract` |
+| Tools (nav) | **Tools and Logs** | `/web/tools.html` |
+
+Kept on purpose: MITRE technique T1120 "Peripheral Device Discovery", the generic "Web App Scanning program"
+line in the Web Apps explorer's one-pager, and the Classification chart/facet labels on the Asset
+Classification page (they name a category, not the specialist). Email subjects now read
+"[navi Ensemble] Automation Station cycle — …".
+
+## Build 493 — the navi Ensemble icon set
+
+The sidebar emoji are replaced by the navi Ensemble icon tiles (32 specialists, from the two icon-system
+sheets) wherever a specialist's icon appears: sidebar, home grid, page headers, intro panel, Meet and the
+one-pagers. "Run the Ensemble" keeps the navi Ensemble mark; the Explorer tabs, Tools and Logs and MCP
+Routing Reference keep their emoji until their tiles exist. See `web/assets/icons/README.md`.

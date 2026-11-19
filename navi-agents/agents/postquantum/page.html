@@ -17,7 +17,7 @@
   <header class="top" id="app-header"></header>
 
   <section class="card">
-    <div class="toolbar"><div><h2 style="margin:0">⚛️ Post-Quantum</h2>
+    <div class="toolbar"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/postquantum.png?v=1" alt="" aria-hidden="true" draggable="false"> Post-Quantum</h2>
       <p class="sub" style="margin:2px 0 0">Heimdall finds the crypto that won't survive a quantum computer. <b>RSA, ECC and DSA are broken by Shor's algorithm, whatever the key length.</b> It reads certificates, TLS/SSH key exchange, OpenSSH/OpenSSL versions and Tenable's Post-Quantum plugins (277650 / 277652 / 277653), weights each asset by ACR and CISA KEV, and ranks the migration. It tags <b>the assets</b> under <span class="tagval">Post-Quantum</span>, <span class="tagval">PQC Priority</span>, <span class="tagval">PQC Risk</span>, <span class="tagval">PQC Harvest-Now</span>, <span class="tagval">PQC Transport</span> and <span class="tagval">PQC Agility</span>. Writes are gated and tracked in the <a href="/web/tags-log.html">Tagging log</a>.</p></div>
       <button class="btn run sm" id="run" data-run style="margin-left:auto">▶ Run</button></div>
     <div id="flash" class="flash"></div>
@@ -262,7 +262,7 @@ function tagUuids(cat,val,uuids,btn,sel){
 }
 document.getElementById('tagShown').onclick=function(){ tagUuids('PQC Priority','Migrate',roadShown().map(p=>p.uuid),this,{kind:'roadmap',filter:FILTER||null}); };
 document.getElementById('tagCrown').onclick=function(){ tagUuids('PQC Priority','Crown Jewel',rows().filter(p=>p.acr>=7).map(p=>p.uuid),this,{kind:'roadmap',filter:'crown'}); };
-document.getElementById('acrHint').onclick=()=>flash('flash','⚖ To raise ACR, tag first, then add an <a href="/agents/contract/page.html">Automation</a> rule such as <b>PQC Priority : Crown Jewel → set ACR 9</b> or <b>PQC Harvest-Now : Priority → set ACR 9</b>. The contract applies it on its next armed cycle.','warn');
+document.getElementById('acrHint').onclick=()=>flash('flash','⚖ To raise ACR, tag first, then add an <a href="/agents/contract/page.html">Automation Station</a> rule such as <b>PQC Priority : Crown Jewel → set ACR 9</b> or <b>PQC Harvest-Now : Priority → set ACR 9</b>. The contract applies it on its next armed cycle.','warn');
 document.getElementById('tagHn').onclick=function(){ tagUuids('PQC Harvest-Now','Priority',hnShown().map(h=>h.uuid),this,{kind:'harvest',hz:+document.getElementById('hz').value}); };
 document.getElementById('tagAg').onclick=function(){ if(AGT) tagUuids('PQC Agility',AGT,agShown().map(h=>h.uuid),this,{kind:'agility',tier:AGT}); };
 document.getElementById('tagSurface').onclick=function(){ gated(this,'queuing Post-Quantum : Cipher Analysis',()=>API.post('tag',{confirm:true}),

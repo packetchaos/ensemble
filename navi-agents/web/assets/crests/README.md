@@ -15,12 +15,12 @@ test checks it).
 |---|---|---|---|
 | cisakev | Laelaps | CISA KEV | Exploited Now |
 | attackpath | Fenrir | Attack Paths | Exploited Now |
-| classify | Linnaeus | Classification | Asset Truth |
+| classify | Linnaeus | Asset Classification | Asset Truth |
 | eol | Charon | End of Life | Asset Truth |
 | certificate | Certania | Certificates | Crypto & Certificates |
 | postquantum | Heimdall | Post-Quantum | Crypto & Certificates |
-| iot_squad | Argos | Device Discovery | OT, IoT & Unmanaged |
+| iot_squad | Argos | IoT Discovery | OT, IoT & Unmanaged |
 | ai | Pythia | AI Inventory | AI Exposure |
-| was | Arachne | Web App Scanning | Web Apps |
+| was | Arachne | Web App Report | Web Apps |
 
 Everyone else shows its plain name only — no codename, no lore, no crest.

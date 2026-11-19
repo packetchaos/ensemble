@@ -32,12 +32,12 @@
   ],
   [
    "Share it",
-   "email the dashboard through Notify & Reports, or promote it to a standalone, refreshable Custom Dashboard page."
+   "email the dashboard through Notify & Report, or promote it to a standalone, refreshable Custom Dashboard page."
   ]
  ],
  "how": "Dashboard Builder sends your request and navi.db's schema to the configured AI model, validates the SQL it returns, and runs it read-only against your local navi.db. Starter metrics use built-in queries. Charts render as email-safe SVG, so they look the same on screen and in an inbox.",
  "who": "Analysts with a one-off question, VM leads who want a team view without a BI project, and anyone who needs a chart for a meeting this afternoon.",
- "better": "Dashboard Builder visualizes what the Ensemble writes into navi.db — Laelaps's KEV, Exposure Routes' owners, Scan Health's coverage, Charon's EOL — and Notify & Reports delivers the result.",
+ "better": "Dashboard Builder visualizes what the Ensemble writes into navi.db — Laelaps's KEV, Exposure Routes' owners, Scan Health's coverage, Charon's EOL — and Notify & Report delivers the result.",
  "different": [
   [
    "You see the SQL",

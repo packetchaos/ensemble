@@ -33,7 +33,7 @@
   ],
   [
    "CSV and email",
-   "export the rows or send them through Notify & Reports."
+   "export the rows or send them through Notify & Report."
   ]
  ],
  "how": "Explorer › Web Apps reads the WAS apps table in your local navi.db, filled by `navi config update was` (needs a Tenable WAS license). It changes nothing.",

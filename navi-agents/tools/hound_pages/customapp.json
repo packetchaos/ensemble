@@ -37,6 +37,6 @@
  ],
  "how": "Custom App Discovery reads the application routes and filesystem paths in your local navi.db and compares them with the software inventory. Tags go through navi's tag commands behind the write gate and a confirm. Route and path evidence depends on scan coverage.",
  "who": "Application owners who know what that mystery route is, and vulnerability management teams closing the unnamed-software gap.",
- "better": "Software Inventory covers the packaged software; Custom App Discovery covers what never got packaged. Explorer › Routes and Explorer › Paths explore the same routes and paths in depth, Exposure Routes maps them to owners, and Automation re-applies Custom App tags on its schedule.",
+ "better": "Software Inventory covers the packaged software; Custom App Discovery covers what never got packaged. Explorer › Routes and Explorer › Paths explore the same routes and paths in depth, Exposure Routes maps them to owners, and Automation Station re-applies Custom App tags on its schedule.",
  "cta": "Show Custom App Discovery your unnamed routes — and put a name on every one."
 }

@@ -48,8 +48,8 @@ _ENV_FIELDS = [
      "help": "Back-compat alias for the model when provider=anthropic. NAVI_LLM_MODEL wins."},
     {"key": "NAVI_ALLOW_WRITES", "label": "Allow tag writes", "bool": True, "guarded": True,
      "help": "1 = Execute-tags / ACR writes actually run; 0 = gated (planned only)."},
-    {"key": "NAVI_EMAIL", "label": "Allow email (Notify & Reports)", "bool": True, "guarded": True,
-     "help": "1 = Notify & Reports can send mail — a SEPARATE opt-in on top of writes. SMTP is set out-of-band via `navi config smtp`."},
+    {"key": "NAVI_EMAIL", "label": "Allow email (Notify & Report)", "bool": True, "guarded": True,
+     "help": "1 = Notify & Report can send mail — a SEPARATE opt-in on top of writes. SMTP is set out-of-band via `navi config smtp`."},
     {"key": "NAVI_REMOTE_CODE_EXECUTION", "label": "Allow remote execution (Remote Remediation)", "bool": True,
      "guarded": True,
      "help": "1 = Remote Remediation can run `navi action push` — remote code execution over SSH to a Linux host. "

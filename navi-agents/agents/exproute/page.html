@@ -10,7 +10,7 @@
   <header class="top" id="app-header"></header>
 
   <section class="card">
-    <div class="toolbar"><div><div class="acode">Exposure Routes</div><h2 style="margin:0">🧭 Exposure Routes</h2>
+    <div class="toolbar"><div><div class="acode">Exposure Routes</div><h2 style="margin:0"><img class="bicon" src="/static/icons/exproute.png?v=1" alt="" aria-hidden="true" draggable="false"> Exposure Routes</h2>
       <p class="sub" style="margin:2px 0 0">Pull users &amp; groups (<b>navi</b> primary · <b>Tenable MCP</b> backup) and map exposure <b>routes</b> &amp; <b>paths</b> to owners in plain English. Each mapping tags every asset on the matched route/path with <span class="tagval">Owner : &lt;group/user&gt;</span> (gated). One <b>▶ Run</b> loads everything below — owners, coverage, the Sankey and the Ownership Map.</p></div>
       <span style="margin-left:auto;display:flex;gap:6px">
         <button id="load" class="btn run sm" data-run title="Load owners, routes and paths, ownership coverage, the Sankey and the Ownership Map">▶ Run</button></span></div>
@@ -82,7 +82,7 @@
       <p class="sub" style="margin:2px 0 0">Users &amp; groups available to assign — source: navi <span class="mono">explore info</span> (users · user_groups · agent_groups), cached for 6 hours.</p></div>
       <input id="ownerQ" class="fld" style="margin-left:auto;min-width:200px" placeholder="filter owners…">
       <button class="btn ghost sm" id="ownersRefresh" title="Re-pull users &amp; groups from Tenable (cached for 6 hours otherwise)">↻ Refresh owners</button>
-      <a class="btn ghost sm" href="/agents/email/page.html" title="Hand off to Notify &amp; Reports — email each owner ONLY their assets, with Tenable deep-links">📧 Email owners → Notify &amp; Reports</a></div>
+      <a class="btn ghost sm" href="/agents/email/page.html" title="Hand off to Notify &amp; Report — email each owner ONLY their assets, with Tenable deep-links">📧 Email owners → Notify &amp; Report</a></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;align-items:start;margin-top:8px">
       <div>
         <div class="toolbar" style="margin:0 0 6px"><h3 style="margin:0;font-size:15px">👤 Users <span class="sub" id="usersCount"></span></h3></div>
@@ -543,7 +543,7 @@ document.getElementById('qaBack').onclick=e=>{ e.preventDefault(); const m=docum
 mountAgentHeader({id:'exproute',icon:'🧭',name:'Exposure Routes',sub:'Exposure Routes · owner mapping · Sankey · Ownership Map'});
 mountTagScope({agent:'exproute', note:'the routes and paths their findings sit on, their Owner tags and coverage; the owner directory is the whole tenant'});
 if(tagScope()){ const a=document.querySelector('#secMap a[href="/web/ownermap.html"]'); if(a){ a.textContent='Whole-estate map ↗'; a.title='The standalone Ownership Map covers the whole estate'; } }
-// ⛶ full screen + 📧 picture & list (Notify & Reports) on the ownership Sankey
+// ⛶ full screen + 📧 picture & list (Notify & Report) on the ownership Sankey
 hWidget('snkCard',{title:'Ownership Sankey — routes / paths → owners', visual:()=>document.querySelector('#snkGraph svg')||document.getElementById('snkGraph'),
   columns:['route / path','type','owner','assets','status'],
   note:()=>'Band thickness = assets · ⛔ Unassigned = Ownerless Risk',

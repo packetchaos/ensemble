@@ -198,7 +198,7 @@
 <script src="/static/brand.js"></script>
 <script src="/static/console.js"></script>
 <script>
-// direct jpost (not agentApi) — a settings screen shouldn't feed the Notify & Reports finding-harvester
+// direct jpost (not agentApi) — a settings screen shouldn't feed the Notify & Report finding-harvester
 const API={post:(action,body)=>jpost('/api/settings/'+action, body||{})};
 let STAT=null;
 

@@ -93,7 +93,7 @@ function render(){
     <td><span class="st ${esc(r.result||'')}">${esc(r.result||'')}</span></td>
     <td class="bc">${r.business_case?esc(r.business_case):'<span class="dim">—</span>'}</td>
     <td style="font-size:11px;color:var(--mut);white-space:normal;max-width:280px">${esc((r.message||'').slice(0,200))}</td></tr>`).join('')
-    : '<tr><td colspan="10" class="sub">'+(TOTAL||Object.values(filters()).some(x=>x)?'No rows match the filters.':'No ACR changes yet. Apply one on the <a href="/agents/acr/page.html">ACR agent</a> (or let Automation run its ACR rules) and every asset it touched appears here.')+'</td></tr>';
+    : '<tr><td colspan="10" class="sub">'+(TOTAL||Object.values(filters()).some(x=>x)?'No rows match the filters.':'No ACR changes yet. Apply one on the <a href="/agents/acr/page.html">ACR agent</a> (or let Automation Station run its ACR rules) and every asset it touched appears here.')+'</td></tr>';
 }
 function kpis(fc){ const R={}; (fc.result||[]).forEach(x=>R[x.v]=x.n); const tot=Object.values(R).reduce((a,b)=>a+b,0);
   const card=(v,l,res)=>`<a class="k" href="?result=${encodeURIComponent(res)}" data-res="${esc(res)}"><div class="v">${N(v)}</div><div class="l">${esc(l)}</div></a>`;

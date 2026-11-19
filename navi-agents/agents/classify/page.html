@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Linnaeus · Classification — navi Ensemble</title>
+<title>Linnaeus · Asset Classification — navi Ensemble</title>
 <link rel="stylesheet" href="/static/console.css"/>
 <style>
   .cov{display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin:6px 0 2px}
@@ -62,7 +62,7 @@
   <header class="top" id="app-header"></header>
 
   <section class="card" style="background:var(--panel)">
-    <div class="toolbar"><div><div class="acode">Linnaeus</div><h2 style="margin:0">📇 Classification</h2>
+    <div class="toolbar"><div><div class="acode">Linnaeus</div><h2 style="margin:0"><img class="bicon" src="/static/icons/classify.png?v=1" alt="" aria-hidden="true" draggable="false"> Asset Classification</h2>
       <p class="sub" style="margin:2px 0 0">Every asset, classified by <b>what it is</b> — so nothing is unknown. Unknown assets are what stall ownership, so the <b>Unclassified</b> bucket is a reason-tagged worklist that should shrink over time. IoT and OT are separate. Rule: <i>you can't pull a software inventory off an IoT device</i>, so software enum ⇒ general-purpose host.</p></div>
       <span style="margin-left:auto;display:flex;gap:6px"><a class="btn ghost sm" href="/web/ownermap.html" title="Hand classified assets to Exposure Routes for ownership">🗺 Ownership Map</a>
       <button class="btn run sm" id="run" data-run>▶ Run</button></span></div>
@@ -242,7 +242,7 @@ function renderPageGlance(){
                             :mk('0',what+' on classified assets',{j:'classCard',sev,u:'classes ↓'});
   const ru=g.riskiest_unclassified;
   renderGlance(host, [
-    {title:'Classification',
+    {title:'Asset Classification',
      hero:mk(fnum(DATA.classified),'classified · '+(DATA.coverage_pct||0)+'% coverage'+(SC()?' of this tag':''),{j:'sunCard',sev:'ok',u:'🌐 Environment Explorer ↓',t:'Assets carrying a classification tag (or cloud metadata)'}),
      bar:[{label:'Classified',value:DATA.classified||0,color:'ok'},{label:'Unclassified',value:DATA.unclassified||0,color:'crit'}], legend:false,
      chips:[mk(fnum(DATA.total),popAssets(),{j:'classCard',sev:'info',u:'🗂 classes ↓'}),

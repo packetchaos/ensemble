@@ -1,6 +1,6 @@
 {
   "id": "classify",
-  "name": "Classification",
+  "name": "Asset Classification",
   "icon": "📇",
   "order": 3,
   "category": "Discovery",

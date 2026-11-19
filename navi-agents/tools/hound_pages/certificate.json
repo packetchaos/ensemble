@@ -41,7 +41,7 @@
  ],
  "how": "Certania reads the certs table in your local navi.db (it understands every date format navi stores) and certificate plugins in vulns. It is deterministic — no AI reasoning. Lists page and search on the server; tags are written through navi's tag commands behind the write gate and a confirm.",
  "who": "PKI owners who need a renewal calendar, ops and SRE teams tired of expiry-driven incidents, and vulnerability management teams closing the trust gap.",
- "better": "Heimdall reads the same certificates for quantum-vulnerable crypto, Exposure Score counts weak or expiring crypto in its score, Alerts can warn when certificates expire within 30 days, and Ensemble Report's expired card opens Certania already filtered. Automation re-applies the Cert failure tags on its schedule.",
+ "better": "Heimdall reads the same certificates for quantum-vulnerable crypto, Exposure Score counts weak or expiring crypto in its score, Alerts can warn when certificates expire within 30 days, and Ensemble Report's expired card opens Certania already filtered. Automation Station re-applies the Cert failure tags on its schedule.",
  "different": [
   [
    "A calendar, not a list",

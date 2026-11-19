@@ -24,7 +24,7 @@
   ],
   [
    "Act now",
-   "the assets over 80, 60 or 40 today, with one-click hand-offs: tag Priority, tag owners (Ownership), email owners (Notify & Reports), raise ACR (Criticality Calibration) or add to the Contract."
+   "the assets over 80, 60 or 40 today, with one-click hand-offs: tag Priority, tag owners (Ownership), email owners (Notify & Report), raise ACR (Criticality Calibration) or add to the Contract."
   ],
   [
    "Worst from each specialist",
@@ -41,7 +41,7 @@
  ],
  "how": "Direct signals (KEV, EPSS, VPR, ACR, EOL, certificates, compliance, WAS, SLA aging) come straight from your local navi.db; the rest are read from the tags other specialists write. Per-asset aggregation runs inside the database, so it holds up on very large estates. Results are cached per navi.db and weighting, and rebuilt in the background.",
  "who": "VM leads who need one ranked list, and executives who want to know which assets carry the most danger — and why.",
- "better": "Exposure Score is the Ensemble's convergence point: Laelaps, Fenrir, Identity Inventory, Compliance Overview, Arachne, Charon, Pythia, Certania, Heimdall, SLA Tracker, Ownership and ATT&CK Mapping all feed it. Ensemble Report's crown-jewel and score cards open its evidence, Asset Dossier shows any asset's score and rank, and Automation can tag the top of the list P1.",
+ "better": "Exposure Score is the Ensemble's convergence point: Laelaps, Fenrir, Identity Inventory, Compliance Overview, Arachne, Charon, Pythia, Certania, Heimdall, SLA Tracker, Ownership and MITRE ATT&CK Map all feed it. Ensemble Report's crown-jewel and score cards open its evidence, Asset Dossier shows any asset's score and rank, and Automation Station can tag the top of the list P1.",
  "different": [
   [
    "A rank, not a count",

@@ -32,7 +32,7 @@
   ],
   [
    "CSV and email",
-   "export the rows or send them through Notify & Reports."
+   "export the rows or send them through Notify & Report."
   ]
  ],
  "how": "Explorer › Fixed reads the fixed table in your local navi.db (filled by `navi config update fixed`; navi's SLA calculation stamps each row Pass / Fail) and changes nothing.",

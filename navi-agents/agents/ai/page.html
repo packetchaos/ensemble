@@ -54,7 +54,7 @@
   <header class="top" id="app-header"></header>
 
   <section class="card" style="background:var(--panel)">
-    <div class="toolbar"><div><div class="acode">Pythia</div><h2 style="margin:0">🤖 AI Inventory</h2>
+    <div class="toolbar"><div><div class="acode">Pythia</div><h2 style="margin:0"><img class="bicon" src="/static/icons/ai.png?v=1" alt="" aria-hidden="true" draggable="false"> AI Inventory</h2>
       <p class="sub" style="margin:2px 0 0">Discovers AI/ML by <b>content</b>: the Tenable AI plugin family <b>plus</b> the <span class="mono">software</span> &amp; <span class="mono">cpes</span> inventories, plugin output and network <b>endpoints</b>. Classifies each asset by <b>role</b>, flags <b>exposed / unauthenticated endpoints</b>, maps <b>data egress</b> (shadow vs sanctioned) and <b>MITRE ATLAS</b>, and checks each asset's <b>ACR</b> against its role. Every row has a <b>🔍 Why</b> to inspect the evidence and dismiss false positives. Tags <b>the assets</b> via <span class="mono">navi tag --query</span>; writes are gated and tracked in the <a href="/web/tags-log.html">Tagging log</a>.</p></div>
       <button class="btn run sm" id="run" data-run style="margin-left:auto">▶ Run</button></div>
     <div id="flash" class="flash"></div>
@@ -440,7 +440,7 @@ document.getElementById('tagAll').onclick=function(){ if(DATA&&DATA.asset_count)
 mountAgentHeader({id:'ai',icon:'🧠',name:'AI Inventory',sub:'Pythia · content-first AI/ML discovery'});
 mountTagScope({agent:'ai', note:'the AI assets found among them, with each asset\'s role, exposure, risk and ACR exactly as in the whole estate'});
 mountSectionNav();
-// ⛶ full screen + 📧 picture & list (Notify & Reports) on the ATLAS map
+// ⛶ full screen + 📧 picture & list (Notify & Report) on the ATLAS map
 hWidget('secAtlas',{title:'MITRE ATLAS — AI threat map', visual:()=>document.getElementById('atlMx'),
   columns:['technique','name','tactic','ai assets','why'],
   note:()=>DATA?(N(DATA.asset_count||0)+' AI asset(s)'+tagScopeNote()+' · capability-based, not observed'):'',

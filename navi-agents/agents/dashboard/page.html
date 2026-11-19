@@ -69,7 +69,7 @@
 <div class="wrap">
   <header class="top" id="app-header"></header>
   <section class="card">
-    <div class="toolbar"><div><h2 style="margin:0">📊 Dashboard Builder</h2>
+    <div class="toolbar"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/dashboard.png?v=1" alt="" aria-hidden="true" draggable="false"> Dashboard Builder</h2>
       <p class="sub" style="margin:2px 0 0">Describe a view in plain English. The model writes <b>one read-only</b> <span class="mono">SELECT</span> over navi.db and renders it as KPI tiles, a bar chart, or a table — a build-your-own dashboard for anything we didn't ship a page for. <b>Read-only: nothing is ever written.</b></p></div></div>
     <div class="needs-llm">
       <textarea id="prompt" rows="2" placeholder="e.g. Top 10 plugins by number of affected assets" style="width:100%;box-sizing:border-box;font-size:14px;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--bg-2);color:var(--ink)"></textarea>
@@ -603,7 +603,7 @@ function addToDashboard(){ if(!_dashCurrent){flash('flash','Generate a dashboard
   flash('flash','✓ pinned to “'+esc(dashActive().name)+'” below — generate another to keep building.','ok');
   const w=document.getElementById('dashGridWrap'); if(w)w.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-/* compose the pinned board as an HTML email (chart + small table each) and hand off to Notify & Reports */
+/* compose the pinned board as an HTML email (chart + small table each) and hand off to Notify & Report */
 function emailDashboard(){
   if(!DASHBOARD.length){ alert('Pin at least one component with “Add to dashboard” first.'); return; }
   var subject='[Tenable] Custom dashboard — '+DASHBOARD.length+' component'+(DASHBOARD.length!=1?'s':'');

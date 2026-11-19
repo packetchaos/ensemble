@@ -1,6 +1,6 @@
 {
   "id": "mitre",
-  "name": "ATT&CK Mapping",
+  "name": "MITRE ATT&CK Map",
   "icon": "🎯",
   "order": 5,
   "category": "Tagging",

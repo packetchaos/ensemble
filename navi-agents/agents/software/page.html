@@ -13,7 +13,7 @@
   <header class="top" id="app-header"></header>
 
   <section class="card" style="background:var(--panel)">
-    <div class="toolbar"><div><div class="acode">Software Inventory</div><h2 style="margin:0">📦 Software Inventory</h2>
+    <div class="toolbar"><div><div class="acode">Software Inventory</div><h2 style="margin:0"><img class="bicon" src="/static/icons/software.png?v=1" alt="" aria-hidden="true" draggable="false"> Software Inventory</h2>
       <p class="sub" style="margin:2px 0 0">Mines the <span class="mono">software</span> table (reconciled with the <span class="mono">cpes</span> inventory) to find <b>version sprawl</b> — the same product at many versions — plus most-deployed, standardized vs fragmented, and single-install software. Check <b>lifecycle</b> (endoflife.date), flag <b>crown jewels</b>, and rank a <b>risk leaderboard</b>. Tag any product or version (gated).</p></div>
       <button class="btn run sm" id="swRun" data-run style="margin-left:auto">▶ Run</button><button class="btn run sm" id="runAll" data-run data-run-all="swRun,swEol,swCrown,swRisk" title="Inventory → lifecycle (endoflife.date) → crown jewels → risk leaderboard">▶ Run all</button>
       <button class="btn run sm" id="swEol" data-run style="margin-left:6px" disabled title="Enrich with endoflife.date lifecycle data (cached)">▶ Run lifecycle check</button>
@@ -106,7 +106,7 @@ async function tagByKey(category,value,key,n,name,btn){ const res=document.getEl
   scroll(); reset();
 }
 function acrNote(cat,val,acr){ document.getElementById('swTagRes').innerHTML=
-  '<div class="callbox" style="color:#e7c66b">⚖ Recommended ACR rule: <b>'+esc(cat)+' : '+esc(val)+' → set ACR '+esc(acr)+'</b>. Tag the assets first (button above), then add this rule on the <a href="/agents/contract/page.html">Automation / Automation</a> page (or set ACR directly on the <a href="/agents/acr/page.html">Criticality Calibration / ACR</a> page) so Tenable One risk reflects their true value.</div>'; }
+  '<div class="callbox" style="color:#e7c66b">⚖ Recommended ACR rule: <b>'+esc(cat)+' : '+esc(val)+' → set ACR '+esc(acr)+'</b>. Tag the assets first (button above), then add this rule on the <a href="/agents/contract/page.html">Automation Station</a> page (or set ACR directly on the <a href="/agents/acr/page.html">Criticality Calibration / ACR</a> page) so Tenable One risk reflects their true value.</div>'; }
 
 async function runSoftware(){
   const b=document.getElementById('swRun'); if(b)b.disabled=true;
@@ -295,13 +295,13 @@ mountAgentHeader({id:'software',icon:'📦',name:'Software Analyzer',sub:'Softwa
 mountTagScope({agent:'software', note:'a product\'s assets, versions, EOL and risk counts cover only them; the ✨ Ask box still searches the whole estate'});
 if(tagScope()){ const ns=document.getElementById('swNLscope'); if(ns){ ns.style.display=''; ns.innerHTML='⚠ The Ask box is <b>not</b> limited to <b>'+esc(tagScopeLabel())+'</b> — it searches the whole estate. Add the tag to your question to narrow it.'; } }
 mountSectionNav();
-// ⛶ full screen + 📧 picture & list (Notify & Reports) on the risk leaderboard
+// ⛶ full screen + 📧 picture & list (Notify & Report) on the risk leaderboard
 hWidget('secRisk',{title:'Software risk leaderboard', visual:()=>document.getElementById('swRiskOut'),
   note:()=>(SW&&SW.risk&&SW.risk.summary)?(fmtN(SW.risk.summary.total)+' product(s) with findings · '+fmtN(SW.risk.summary.named)+' with findings that name the package'+tagScopeNote()):'',
   columns:['rank','product','risk','named KEV / crit','named finds','assets','KEV assets','critical','max VPR','EOL'],
   rows:()=>((SW&&SW.risk&&SW.risk.top)||[]).map((r,i)=>({rank:i+1, product:r.name, risk:Math.round(r.risk||0),
     'named KEV / crit':(r.pk||r.pc)?((r.pk||0)+' / '+(r.pc||0)):'', 'named finds':r.pf||'', assets:r.nasset, 'KEV assets':r.kev,
     critical:r.crit, 'max VPR':r.vpr, EOL:r.eol?'yes':''}))});
-try{ hMailAuto(); }catch(e){}   /* pack-wide widget + dashboard email (Notify & Reports) */
+try{ hMailAuto(); }catch(e){}   /* pack-wide widget + dashboard email (Notify & Report) */
 </script>
 </body></html>

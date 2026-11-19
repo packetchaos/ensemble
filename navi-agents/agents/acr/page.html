@@ -22,7 +22,7 @@
   <header class="top" id="app-header"></header>
 
   <section class="card">
-    <div class="toolbar"><div><h2 style="margin:0">⚖️ Criticality Calibration</h2>
+    <div class="toolbar"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/acr.png?v=1" alt="" aria-hidden="true" draggable="false"> Criticality Calibration</h2>
       <p class="sub" style="margin:2px 0 0">Adjust ACR for assets carrying a tag. <b>Set</b> absolute 1–10, or nudge <b>+N / −N</b>. Justification required. Tags from <span class="mono">navi explore info tags</span>. navi never changes the ACR of an asset tagged <span class="tagval">NO : UPDATE</span> — <b>protect</b> an ACR here once it is right; every change is recorded per asset in the <a class="applink" href="/web/acr-log.html">ACR log</a>.</p></div>
       <span style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <a class="btn ghost sm" href="/web/acr-log.html" title="Per-asset registry of every ACR change the Ensemble made">🎯 ACR log →</a>
@@ -39,7 +39,7 @@
 
   <section class="card" id="secProtect" data-nav="Protection" data-nav-icon="🛡️">
     <h2 style="margin:0 0 2px">🛡️ Protection <span class="sub" style="font-weight:400">· assets the Ensemble changed</span></h2>
-    <p class="sub" style="margin:2px 0 6px">Tagging an asset <span class="tagval">NO : UPDATE</span> locks its ACR: <span class="mono">navi enrich acr</span> skips it on every later change (by any specialist, Automation or a script). navi reads the tag from navi.db, so protection takes effect <b>after the next navi.db sync</b> (<span class="mono">navi update assets</span>; Tenable needs ~30 min to propagate a tag) — until then a row shows <span class="pst pending">pending</span>. The tag is always written exactly <b>NO : UPDATE</b>, even with Settings → Test run on. To <b>remove</b> protection use <a class="applink" href="/agents/tagremoval/page.html">🗑️ Tag Removal</a> — only Tag Removal removes tags.</p>
+    <p class="sub" style="margin:2px 0 6px">Tagging an asset <span class="tagval">NO : UPDATE</span> locks its ACR: <span class="mono">navi enrich acr</span> skips it on every later change (by any specialist, Automation Station or a script). navi reads the tag from navi.db, so protection takes effect <b>after the next navi.db sync</b> (<span class="mono">navi update assets</span>; Tenable needs ~30 min to propagate a tag) — until then a row shows <span class="pst pending">pending</span>. The tag is always written exactly <b>NO : UPDATE</b>, even with Settings → Test run on. To <b>remove</b> protection use <a class="applink" href="/agents/tagremoval/page.html">🗑️ Tag Removal</a> — only Tag Removal removes tags.</p>
     <div class="toolbar" style="gap:8px;flex-wrap:wrap">
       <span class="tseg" id="pSeg"></span>
       <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">

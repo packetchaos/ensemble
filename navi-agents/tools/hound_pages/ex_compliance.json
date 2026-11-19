@@ -40,7 +40,7 @@
   ],
   [
    "CSV and email",
-   "export the whole search (up to 50,000 rows) or send it through Notify & Reports."
+   "export the whole search (up to 50,000 rows) or send it through Notify & Report."
   ]
  ],
  "how": "Explorer › Compliance runs read-only searches over the compliance table in your local navi.db (filled by `navi config update compliance`), joined to assets for hostname and IP. Results page on the server, 20 rows a page (up to 50), so it stays fast on large estates.",

@@ -41,6 +41,6 @@
  ],
  "how": "Ownership reads ownership from tags in your local navi.db. Business Owner and Asset Owner tags are written through navi's tag commands behind the write gate and a confirm; Refresh runs a background `navi update assets` so new tags show up.",
  "who": "Vulnerability management leads who route work to owners, risk and GRC teams who need accountability, and IT leaders asking \"what do we own that nobody is watching?\"",
- "better": "Exposure Routes maps routes and paths to owners; Ownership rolls that up to the asset. SLA Tracker measures SLA by Owner, Notify & Reports emails each owner their findings, Exposure Score counts an ownership gap in its score, and Ensemble Report links its unclaimed card straight here.",
+ "better": "Exposure Routes maps routes and paths to owners; Ownership rolls that up to the asset. SLA Tracker measures SLA by Owner, Notify & Report emails each owner their findings, Exposure Score counts an ownership gap in its score, and Ensemble Report links its unclaimed card straight here.",
  "cta": "Ask Ownership who owns what — and what nobody does."
 }

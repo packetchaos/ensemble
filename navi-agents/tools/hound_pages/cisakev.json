@@ -41,7 +41,7 @@
  ],
  "how": "Laelaps reads the cross-references on findings in your local navi.db and joins CISA's KEV catalog by CVE. Vulnerable and date-added tags use navi's own `--xrefs CISA-KNOWN-EXPLOITED` / `--xid` selectors; Due and Ransomware tags use a tag-by-query on the assets with an open finding for those CVEs. All behind the write gate and a confirm.",
  "who": "Vulnerability management leads who need a defensible \"patch this first\" list, and teams accountable for CISA due dates.",
- "better": "KEV drives Exposure Score's exploitability factor, the largest in its exposure score. Fenrir uses KEV exploits as attack-path steps, Pythia and Heimdall weight their risk by it, Alerts can fire on new KEV exposure, and Ensemble Report's KEV card opens the exact asset list. Automation re-applies the KEV tags on its schedule.",
+ "better": "KEV drives Exposure Score's exploitability factor, the largest in its exposure score. Fenrir uses KEV exploits as attack-path steps, Pythia and Heimdall weight their risk by it, Alerts can fire on new KEV exposure, and Ensemble Report's KEV card opens the exact asset list. Automation Station re-applies the KEV tags on its schedule.",
  "different": [
   [
    "Due dates, not just IDs",

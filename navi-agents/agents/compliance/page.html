@@ -34,7 +34,7 @@ a.barlink:hover{background:var(--panel-2)} a.barlink:hover .bl{color:var(--accen
 <div class="wrap">
   <header class="top" id="app-header"></header>
   <section class="card">
-    <div class="toolbar"><div><h2 style="margin:0">⚖️ Compliance Overview <span class="sub" style="font-weight:400" id="weighs">· Compliance Overview weighs the estate</span></h2>
+    <div class="toolbar"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/compliance.png?v=1" alt="" aria-hidden="true" draggable="false"> Compliance Overview <span class="sub" style="font-weight:400" id="weighs">· Compliance Overview weighs the estate</span></h2>
       <p class="sub" style="margin:2px 0 0">Every asset judged against its audit benchmarks: pass / fail / warning, the controls failing the most assets, framework coverage, and per-asset scorecards. Click an asset for its full <b>deep-dive</b>.</p></div>
       <span style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <a class="btn ghost sm" href="/agents/compliance_asset/page.html" title="Per-asset checks + audit↔vuln correlation">🔍 Asset deep-dive →</a>
@@ -205,7 +205,7 @@ document.getElementById('refresh').onclick=run;
 mountAgentHeader({id:'compliance',icon:'⚖️',name:'Compliance',sub:'Compliance Overview · audit benchmarks, judged'});
 mountTagScope({agent:'compliance', note:'pass rates, failing controls, frameworks and benchmarks are rebuilt from their audit results; each asset\'s own scorecard is the same as in the whole estate'});
 if(tagScope()) document.getElementById('weighs').textContent='· Compliance Overview weighs '+POP();
-try{ hMailAuto(); }catch(e){}   /* pack-wide widget + dashboard email (Notify & Reports) */
+try{ hMailAuto(); }catch(e){}   /* pack-wide widget + dashboard email (Notify & Report) */
 /* explicit-run like every specialist — returning visits are restored by the shared page cache */
 document.getElementById('body').innerHTML='<section class="card"><div class="setupcard"><div class="big">Press ▶ Run</div><p class="sub">Weighs every compliance audit'+(tagScope()?' of the assets tagged <b>'+esc(tagScopeLabel())+'</b>':' in navi.db')+' against its benchmark — framework coverage, failing checks and owners. Your last run is kept on the server, so coming back restores it instantly (and Run the Ensemble can run it for you).</p></div></section>';
 </script>

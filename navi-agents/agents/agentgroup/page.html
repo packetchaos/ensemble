@@ -8,7 +8,7 @@
   <header class="top" id="app-header"></header>
 
   <section class="card">
-    <div class="toolbar"><div><h2 style="margin:0">🛰️ Agent Group Sync</h2>
+    <div class="toolbar"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/agentgroup.png?v=1" alt="" aria-hidden="true" draggable="false"> Agent Group Sync</h2>
       <p class="sub" style="margin:2px 0 0">Agent Group Sync tags every asset in a Tenable <b>agent group</b> with <span class="tagval">Agent Group : &lt;name&gt;</span> — runs <span class="mono">navi enrich tag --c "Agent Group" --v "&lt;name&gt;" --group "&lt;name&gt;"</span> per group, on the background queue (see the <a href="/web/tags-log.html">Tagging log</a>). Three ways below. Writes are gated.</p></div>
       <button id="load" style="margin-left:auto" class="btn run sm" data-run title="Pull the agent-group list (navi explore info agent-groups) — nothing loads on its own">▶ Load</button></div>
     <div id="flash" class="flash"></div>

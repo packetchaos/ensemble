@@ -33,7 +33,7 @@
  ],
  "how": "Tag Removal reads the tags table in your local navi.db and removes with `navi enrich tag … -remove`, which strips the category : value from the assets navi.db says carry it. Removals go behind the write gate and a confirm.",
  "who": "Tag governance owners and security operations teams who need the tag estate to stay meaningful as it grows.",
- "better": "Explorer › Tags shows who carries a tag before you remove it, Automation turns Tag Removal's list into a recurring clean-and-re-tag cycle, and NO : UPDATE protection set by Criticality Calibration can only be removed here.",
+ "better": "Explorer › Tags shows who carries a tag before you remove it, Automation Station turns Tag Removal's list into a recurring clean-and-re-tag cycle, and NO : UPDATE protection set by Criticality Calibration can only be removed here.",
  "different": [
   [
    "One place to remove",

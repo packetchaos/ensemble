@@ -50,7 +50,7 @@ _TAG_INTEL = [
               "why": "Certificate condition flagged — check the chain of trust."}),
     ("post-quantum", {"hound": "Heimdall", "agent": "postquantum", "weight": 2, "band": "medium",
                       "why": "Quantum-vulnerable cryptography detected — on the harvest-now-decrypt-later roadmap."}),
-    ("mitre", {"hound": "ATT&CK Mapping", "agent": "mitre", "weight": 4, "band": "high",
+    ("mitre", {"hound": "MITRE ATT&CK Map", "agent": "mitre", "weight": 4, "band": "high",
                "why": "Maps to a MITRE ATT&CK technique — carries known adversary tradecraft."}),
     ("lifecycle", {"hound": "Charon", "agent": "eol", "weight": 4, "band": "high",
                    "why": "End-of-life / unsupported software — no more security patches will ship."}),

@@ -41,6 +41,6 @@
  ],
  "how": "Ensemble Report reads the cached results of the last Run the Ensemble plus Exposure Score's fused scores; it writes nothing. Evidence lists are computed on demand by the specialist that owns each number, so they match the card.",
  "who": "CISOs who want the estate on one page, VM leads running the morning stand-up, and anyone building executive reporting that survives questions.",
- "better": "Ensemble Report is where the Ensemble converges — Exposure Score's scores, Laelaps, Scan Health, Linnaeus, Ownership, Criticality Calibration, Pythia, Charon, Heimdall and the rest. Explorer › Assets shows the evidence behind each card, and Notify & Reports can send the briefing.",
+ "better": "Ensemble Report is where the Ensemble converges — Exposure Score's scores, Laelaps, Scan Health, Linnaeus, Ownership, Criticality Calibration, Pythia, Charon, Heimdall and the rest. Explorer › Assets shows the evidence behind each card, and Notify & Report can send the briefing.",
  "cta": "Open Ensemble Report tomorrow morning — and see what you weren't seeing."
 }

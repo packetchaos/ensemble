@@ -37,7 +37,7 @@
  ],
  "how": "Fenrir reads your local navi.db — open findings and their ports, KEV references, EPSS, VPR, failed compliance checks, accounts found on hosts (Identity Inventory's engine), credential state and ACR. There is no flow or firewall data in navi.db, so reachability is inferred from an assumed internal foothold, and every edge says how. Tags are written behind the write gate and a confirm.",
  "who": "SOC and threat-led vulnerability teams, red and purple teams validating paths, and CISOs who need to show the chain — and how it was broken.",
- "better": "Criticality Calibration's calibrated ACR decides what a crown jewel is; Identity Inventory supplies the accounts; Scan Health's coverage tells you which hosts Fenrir can't see into. Exposure Score adds an attack-path factor to each asset's score, and Automation re-applies the Entry Point and Target tags on its schedule.",
+ "better": "Criticality Calibration's calibrated ACR decides what a crown jewel is; Identity Inventory supplies the accounts; Scan Health's coverage tells you which hosts Fenrir can't see into. Exposure Score adds an attack-path factor to each asset's score, and Automation Station re-applies the Entry Point and Target tags on its schedule.",
  "different": [
   [
    "Many signals, one list",

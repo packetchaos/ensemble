@@ -1,6 +1,6 @@
 {
  "codename": "Arachne",
- "discipline": "Web App Scanning",
+ "discipline": "Web App Report",
  "category": "Risk",
  "tagline": "See every web app's exposure — by OWASP category, severity and technology.",
  "lore": "Arachne, the weaver Athena turned into the first spider — here she walks your web apps’ hidden surface: the dynamic findings a network scan never sees.",
@@ -30,6 +30,6 @@
  ],
  "how": "Arachne reads the apps and findings tables in your local navi.db, filled by `navi config update was` (needs a Tenable WAS license); she parses navi's stored OWASP and tech lists for you. Tags go through navi behind the write gate and a confirm.",
  "who": "AppSec teams running a WAS program, and VM leads who want web-app exposure next to the rest of the estate.",
- "better": "Explorer › Web Apps finds an app, Web App Dossier maps one app's surface, and Arachne gives the program view. Exposure Score counts web-app exposure in each asset's score, and Automation re-applies the WAS tags on its schedule.",
+ "better": "Explorer › Web Apps finds an app, Web App Dossier maps one app's surface, and Arachne gives the program view. Exposure Score counts web-app exposure in each asset's score, and Automation Station re-applies the WAS tags on its schedule.",
  "cta": "Let Arachne walk your web — and show you where it's weakest."
 }

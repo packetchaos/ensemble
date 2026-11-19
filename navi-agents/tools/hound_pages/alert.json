@@ -37,6 +37,6 @@
  ],
  "how": "Every metric is a read-only query over your local navi.db, or a built-in check (credential coverage uses the Ensemble's shared credentialed rule). Alerts are saved locally. They are evaluated on demand or in the Contract's loop; the digest is sent with navi mail only when email is enabled (NAVI_EMAIL) and the recipient is allowed.",
  "who": "Vulnerability management leads and SOC teams who want to hear about a change without watching a dashboard all day.",
- "better": "Alerts watches the numbers the other specialists produce — Scan Health's coverage, Laelaps's KEV, Certania's certificates, Exposure Routes' ownership, Charon's EOL. Automation runs its checks in the Contract loop, and the digest goes out through navi mail, the same path Notify & Reports uses.",
+ "better": "Alerts watches the numbers the other specialists produce — Scan Health's coverage, Laelaps's KEV, Certania's certificates, Exposure Routes' ownership, Charon's EOL. Automation Station runs its checks in the Contract loop, and the digest goes out through navi mail, the same path Notify & Report uses.",
  "cta": "Let the raven watch the sky — you'll hear when something changes."
 }

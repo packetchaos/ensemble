@@ -1,6 +1,6 @@
 {
  "codename": "Argos",
- "discipline": "Device Discovery",
+ "discipline": "IoT Discovery",
  "category": "Discovery",
  "tagline": "Find unmanaged devices at the edge — and learn to find more.",
  "lore": "Argos, Odysseus’s dog, who knew his master after twenty years by the smallest signs — here he recognises the devices at your network edge from their fingerprints, and learns to recognise more.",
@@ -41,6 +41,6 @@
  ],
  "how": "Argos reads findings and plugin output in your local navi.db; nothing changes until you approve. If your scans are all credentialed agent or SSH scans of servers, the identity signals are absent and the squad finds little — the page says so instead of guessing. Tags go through navi behind the write gate and a confirm.",
  "who": "OT and IoT security teams who need an inventory they can defend, network teams hunting the unmanaged edge, and VM teams extending coverage beyond agents.",
- "better": "Argos's device tags share Linnaeus's Asset Inventory scheme, so classified devices can be owned (Ownership) and calibrated (Criticality Calibration); single candidate tags (IoT : <name>) feed Exposure Score's exposure factor. Automation re-applies the device tags on its schedule.",
+ "better": "Argos's device tags share Linnaeus's Asset Inventory scheme, so classified devices can be owned (Ownership) and calibrated (Criticality Calibration); single candidate tags (IoT : <name>) feed Exposure Score's exposure factor. Automation Station re-applies the device tags on its schedule.",
  "cta": "Let Argos watch the gate — and learn every device that walks through it."
 }

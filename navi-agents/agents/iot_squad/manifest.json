@@ -1,6 +1,6 @@
 {
   "id": "iot_squad",
-  "name": "Device Discovery",
+  "name": "IoT Discovery",
   "icon": "📡",
   "order": 2,
   "category": "Discovery",

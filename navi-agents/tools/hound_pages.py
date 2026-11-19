@@ -81,6 +81,13 @@ def png_b64(path):
 def icon(hid, name):
     """The specialist's own icon (the sidebar's) — in place of the retired crests."""
     from core import brand
+    if hid in brand.ICON_IMG:      # build 493: the navi Ensemble tile, embedded so the page stands alone
+        p = os.path.join(ROOT, "web", "assets", "icons", hid + ".png")
+        if os.path.exists(p):
+            with open(p, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("ascii")
+            return ('<img class="crest icotile" src="data:image/png;base64,%s" alt="%s">'
+                    % (b64, html.escape(name)))
     ico = (brand.ROSTER.get(hid) or ("", "", "", "", ""))[3] or "✦"
     return '<div class="crest ph" style="font-size:72px" aria-label="%s">%s</div>' % (html.escape(name), html.escape(ico))
 

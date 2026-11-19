@@ -237,7 +237,7 @@ def _resume_schedules():
         from core import release_pipeline
         if release_pipeline.resume().get("running"):
             t, _r = release_pipeline.next_run()
-            print("  Run the Ensemble is scheduled — next start %s (Automation)" % (
+            print("  Run the Ensemble is scheduled — next start %s (Automation Station)" % (
                 time.strftime("%a %H:%M", time.localtime(t)) if t else "—"))
     except Exception as e:                              # never block the server from starting
         print("  (release schedule not resumed: %s)" % e)

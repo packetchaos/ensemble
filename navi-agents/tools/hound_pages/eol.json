@@ -37,6 +37,6 @@
  ],
  "how": "Charon reads open findings and plugin output in your local navi.db. Lifecycle group tags use `navi enrich tag --name`; date tags use the exact asset list, never --plugin (which would tag every version's hosts). All writes are behind the write gate and a confirm.",
  "who": "Vulnerability management teams carrying risk they can't patch away, and IT modernization owners who need an evidence-backed replacement queue.",
- "better": "Software Inventory adds a second view — software versions checked against endoflife.date. Exposure Score counts EOL in each asset's exposure score, Alerts can watch EOL rising, and Ensemble Report's EOL card opens the exact asset list. Automation re-applies the Lifecycle tags on its schedule.",
+ "better": "Software Inventory adds a second view — software versions checked against endoflife.date. Exposure Score counts EOL in each asset's exposure score, Alerts can watch EOL rising, and Ensemble Report's EOL card opens the exact asset list. Automation Station re-applies the Lifecycle tags on its schedule.",
  "cta": "Ask Charon what is already past saving — and plan the replacement on your terms."
 }

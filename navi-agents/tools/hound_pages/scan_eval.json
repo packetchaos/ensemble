@@ -41,6 +41,6 @@
  ],
  "how": "Scan Health reproduces `navi scan evaluate` over your local navi.db — no extra scanning. The rule exactly: plugin 19506 says \"Credentialed checks : yes\", or plugin 141118 or 110095 is present. The asset list pages and filters on the server and exports to CSV. Tagging re-runs the evaluation on the server and tags the exact assets under Scan Health, behind the write gate and a confirm.",
  "who": "Scan engineers tuning credentials, scanners and policies, and VM leads who want to know how much of the estate their numbers actually describe.",
- "better": "Scan Health's rule decides \"blind\" for the whole pack — Exposure Score's confidence, Identity Inventory's coverage, Fenrir's uncredentialed hosts, Alerts's coverage alert and Ensemble Report's funnel. Remote Remediation's credential test tells you why a login fails, and Automation re-applies the Scan Health tags on its schedule.",
+ "better": "Scan Health's rule decides \"blind\" for the whole pack — Exposure Score's confidence, Identity Inventory's coverage, Fenrir's uncredentialed hosts, Alerts's coverage alert and Ensemble Report's funnel. Remote Remediation's credential test tells you why a login fails, and Automation Station re-applies the Scan Health tags on its schedule.",
  "cta": "Ask Scan Health what your scans are missing — trust is measured, not assumed."
 }

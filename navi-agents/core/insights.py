@@ -904,7 +904,7 @@ def scent_digest(db_path=None):
             card("scan_eval", se.get("blind", max(0, (se.get("assets") or total) - cred_ok)), "scanned without a credentialed login",
                  _V("scan_eval", "view", "blind", "secAssets"), "crit", "🧾 the assets · Scan Health →"),
             card("classify", cl.get("unclassified", 0), "unclassified", _V("classify", "cls", "Unclassified"), "warn",
-                 "🧾 the assets · Classification →"),
+                 "🧾 the assets · Asset Classification →"),
             card("asset_ownership", own.get("unclaimed", 0), "unclaimed by any owner", _V("asset_ownership", "scope", "unclaimed"),
                  "warn", "🧾 the assets · Exposure Routes →")]},
     ]

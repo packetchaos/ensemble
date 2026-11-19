@@ -37,7 +37,7 @@
   ],
   [
    "Email the dashboard",
-   "send it to the people who need it through Notify & Reports."
+   "send it to the people who need it through Notify & Report."
   ]
  ],
  "how": "SLA Tracker reads findings, the fixed table and your SLA thresholds from your local navi.db and writes no tags. Ages are computed from navi's timestamps (not navi's stored text value). Results are cached per navi.db and SLA policy and rebuilt in the background; the trend lives in the app's own store, not in navi.db.",

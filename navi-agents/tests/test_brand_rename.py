@@ -4,7 +4,7 @@ Scans web/ (except the generated one-pagers' embedded images), agents/*/page.htm
 and tools/hound_pages/*.json for retired brand words, codenames and dog breeds. Stable identifiers that
 users' saved state, scripts and dashboards depend on are ALLOWED (see ALLOW — each has a reason).
 Also checks: core/brand.py ⇄ web/assets/brand.js agree, every manifest matches the roster, only the nine
-heroes carry a codename, Argos now names Device Discovery (iot_squad), and the version is 2.<n>.<build>.
+heroes carry a codename, Argos now names IoT Discovery (iot_squad), and the version is 2.<n>.<build>.
 Run: python3 tests/test_brand_rename.py"""
 import glob
 import json
@@ -28,7 +28,8 @@ from core import brand, version  # noqa: E402
 
 # ── 1. the retired-term sweep ───────────────────────────────────────────────────────────────
 RETIRED = [r"\bhounds?\b", r"Release the Hounds", r"\bthe pack\b", r"On the Scent", r"AI Contract", "🐾",
-           r"Command (?:&amp;|&) Control", r"Standing Orders", r"\bBriefing\b", r"Route Mapping"]
+           r"Command (?:&amp;|&) Control", r"Standing Orders", r"\bBriefing\b", r"Route Mapping", r"ATT&(?:amp;)?CK Mapping", r"Notify (?:&amp;|&) Reports",
+            r"(?<!Peripheral )Device Discovery", r"Web App Scanning(?! program)"]
 RETIRED += [r"\b%s\b" % w for w in (
     "Covenant Cerberus Anubis Orthrus Cavall Janus Mimir Chronos Terminus Sköll Skoll Nemesis Sphinx Daedalus "
     "Gabriel Minos Tiresias Draco Amarok Garmr Sirius Atlas Bloodhound Hellhound Foxhound Wolfhound Greyhound "
@@ -68,8 +69,8 @@ for f in FILES:
     for pat in RETIRED:
         for m in re.finditer(pat, s, re.I if pat.startswith(r"\bhound") else 0):
             w = m.group(0)
-            # "Argos" is allowed only where it now means Device Discovery (iot_squad)
-            # "Argos" now names Device Discovery (iot_squad): allowed, EXCEPT on the old asset deep-dive's own
+            # "Argos" is allowed only where it now means IoT Discovery (iot_squad)
+            # "Argos" now names IoT Discovery (iot_squad): allowed, EXCEPT on the old asset deep-dive's own
             # files or next to a link to it (that one is "Asset Dossier" now)
             if w == "Argos" and "agents/argos/" not in rel and "/agents/argos/" not in s[max(0, m.start() - 160):m.end() + 160]:
                 continue
@@ -83,14 +84,18 @@ js = open(os.path.join(ROOT, "web", "assets", "brand.js"), encoding="utf-8").rea
 m = re.search(r"window\.BRAND = (\{.*?\});\n", js, re.S)
 check(m and json.loads(m.group(1)) == brand.as_dict(), "web/assets/brand.js is generated from core/brand.py (run tools/brand_js.py)")
 check(brand.BRAND == "navi Ensemble" and brand.HOME_ACTION == "Run the Ensemble", "brand + home action")
-check(brand.ORCHESTRATOR == "Automation" and brand.OVERVIEW == "Ensemble Report"
-      and brand.name("contract") == "Automation" and brand.name("insights") == "Ensemble Report",
-      "build 491: Standing Orders → Automation, Briefing → Ensemble Report")
+check(brand.ORCHESTRATOR == "Automation Station" and brand.OVERVIEW == "Ensemble Report"
+      and brand.name("contract") == "Automation Station" and brand.name("insights") == "Ensemble Report",
+      "build 491: Standing Orders → Automation Station, Briefing → Ensemble Report")
 check(brand.name("exproute") == "Exposure Routes", "build 491: Route Mapping → Exposure Routes")
+check([brand.name(i) for i in ("mitre", "iot_squad", "was", "classify", "email", "contract")] ==
+      ["MITRE ATT&CK Map", "IoT Discovery", "Web App Report", "Asset Classification", "Notify & Report", "Automation Station"]
+      and brand.display("iot_squad") == "Argos · IoT Discovery", "build 492: the final names")
+check("['🛠','Tools and Logs','/web/tools.html']" in open(os.path.join(ROOT, "web", "assets", "console.js"), encoding="utf-8").read(), "build 492: Tools → Tools and Logs")
 check(len(brand.HEROES) == 9 and set(brand.HEROES) == {"cisakev", "attackpath", "classify", "eol", "certificate",
                                                       "postquantum", "iot_squad", "ai", "was"}, "nine heroes")
 check(brand.ROSTER["iot_squad"][1] == "Argos" and brand.ROSTER["argos"][0] == "Asset Dossier",
-      "Argos now names Device Discovery; the asset deep-dive is Asset Dossier")
+      "Argos now names IoT Discovery; the asset deep-dive is Asset Dossier")
 check(brand.display("eol") == "Charon · End of Life" and brand.display("acr") == "Criticality Calibration",
       "display rule: heroes 'Codename · Plain job', others the plain name")
 
@@ -115,7 +120,7 @@ keys = set(re.findall(r"^\s*([a-z_0-9]+):\{name:", cm.group(1), re.M)) if cm els
 check(keys == set(brand.HEROES), "CODENAMES holds exactly the nine heroes")
 check("_isHero(id)" in cjs and "_NO_CODENAME" not in cjs, "the codename banner shows only for heroes (manifest.hero)")
 check("function crestSrc(id)" in cjs, "crestSrc() kept as is (test_security_client checks it)")
-check(".hcrest{display:inline-block;background:url('/static/brand-mark.png" in
+check(".hcrest{display:inline-block;background:#fff url('/static/brand-mark.png" in
       open(os.path.join(ROOT, "web", "assets", "console.css"), encoding="utf-8").read(), "the brand mark replaces the pack crest")
 
 # ── 5. stable identifiers survived ──────────────────────────────────────────────────────────
@@ -127,6 +132,18 @@ check("https://github.com/packetchaos/ensemble/tree/main/navi-agents/agents/" in
 check(os.path.exists(os.path.join(ROOT, "hounds_mcp.py")), "hounds_mcp.py (MCP tool names) unchanged")
 idx = open(os.path.join(ROOT, "web", "index.html"), encoding="utf-8").read()
 check("get('release')==='1'" in idx, "/?release=1 deep link still opens the run dialog")
+
+# ── 6. build 493: the navi Ensemble icon tiles ─────────────────────────────────────────────
+_cj = open(os.path.join(ROOT, "web", "assets", "console.js"), encoding="utf-8").read()
+for i, src in sorted(brand.ICON_IMG.items()):
+    f = os.path.join(ROOT, "web", "assets", "icons", i + ".png")
+    check(i in brand.ROSTER and src == "/static/icons/%s.png" % i and os.path.exists(f)
+          and open(f, "rb").read(8) == b"\x89PNG\r\n\x1a\n", "%s: icon tile exists (%s)" % (i, src))
+check("hub" not in brand.ICON_IMG, "Run the Ensemble keeps the navi Ensemble mark")
+check(all(brand.as_dict()["roster"][i]["img"] == brand.ICON_IMG.get(i, "") for i in brand.ROSTER),
+      "brand.js roster carries each tile's path (img)")
+check("function brandIconHtml(" in _cj and "_sideIco(it)" in _cj, "sidebar + intro panel render the tiles")
+check("brandIconHtml(a.id" in open(os.path.join(ROOT, "web", "index.html"), encoding="utf-8").read(), "home grid renders the tiles")
 
 print()
 print("%d failure(s)" % len(fails) if fails else "ALL PASS")

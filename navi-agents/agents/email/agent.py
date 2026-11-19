@@ -14,7 +14,7 @@ class GabrielAgent(Agent):
     id = "email"
     name = "Email & Reports"
     icon = "📧"
-    description = ("Notify & Reports — turns the Ensemble's findings into owner-routed remediation, "
+    description = ("Notify & Report — turns the Ensemble's findings into owner-routed remediation, "
                    "KEV alarms, cert countdowns and briefings, emailed to the right humans "
                    "with Tenable deep-links. Owner routing comes from Exposure Routes Owner: tags.")
 
@@ -34,5 +34,5 @@ class GabrielAgent(Agent):
             n = 0
         return {"ready": True, "owner_count": n,
                 "email_enabled": navi_cli.email_enabled(),
-                "hint": "Pick a report on the Notify & Reports page, preview it, then send "
+                "hint": "Pick a report on the Notify & Report page, preview it, then send "
                         "(sending needs NAVI_ALLOW_WRITES=1 + NAVI_EMAIL=1 + confirm)."}

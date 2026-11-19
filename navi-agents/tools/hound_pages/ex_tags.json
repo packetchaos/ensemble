@@ -28,7 +28,7 @@
   ],
   [
    "Email the result",
-   "send the list through Notify & Reports."
+   "send the list through Notify & Report."
   ]
  ],
  "how": "Explorer › Tags reads the tags and assets tables in your local navi.db and changes nothing. New tags appear after the next navi asset sync.",

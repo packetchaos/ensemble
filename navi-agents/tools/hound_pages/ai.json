@@ -45,6 +45,6 @@
  ],
  "how": "Pythia reads your local navi.db (vulns, plugin output, software, cpes); with Optimize the egress search runs inside the database. The ATLAS mapping is built in. Tags go through navi's tag-by-query and ACR through navi enrich acr — each behind the write gate and a confirm.",
  "who": "AI governance and risk teams who need a defensible inventory, security architects deciding what to sanction, and CISOs asked \"how much AI do we run, and where does its data go?\"",
- "better": "Pythia's exposure and egress signals feed Exposure Score's AI-risk factor, and its KEV view matches Laelaps. Criticality Calibration can calibrate further from the AI Role tags, and Automation re-applies the AI, AI Role, AI Exposed, AI Priority and AI ATLAS tags on its schedule.",
+ "better": "Pythia's exposure and egress signals feed Exposure Score's AI-risk factor, and its KEV view matches Laelaps. Criticality Calibration can calibrate further from the AI Role tags, and Automation Station re-applies the AI, AI Role, AI Exposed, AI Priority and AI ATLAS tags on its schedule.",
  "cta": "Ask Pythia what AI is running in your estate — the oracle already knows."
 }

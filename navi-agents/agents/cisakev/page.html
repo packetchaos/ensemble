@@ -25,7 +25,7 @@
   <header class="top" id="app-header"></header>
 
   <section class="card">
-    <div class="toolbar"><div><h2 style="margin:0">🛡️ CISA KEV</h2>
+    <div class="toolbar"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/cisakev.png?v=1" alt="" aria-hidden="true" draggable="false"> CISA KEV</h2>
       <p class="sub" style="margin:2px 0 0">Laelaps finds the <b>Known Exploited Vulnerabilities</b> on your assets and tags <b>those assets</b>. It joins navi.db to <b>CISA's KEV catalog</b> by CVE, so you see each KEV's <b>CISA remediation due date</b>, ransomware use and vendor. Tags: <span class="tagval">CISA KEV : Vulnerable</span>, by date added <span class="tagval">CISA KEV : &lt;Mon&gt; - &lt;DD&gt; - &lt;YYYY&gt;</span>, by due date <span class="tagval">CISA KEV Due : &lt;YYYY-MM-DD&gt;</span>, and <span class="tagval">CISA KEV : Ransomware</span>. All gated; tracked in the <a href="/web/tags-log.html">Tagging log</a>.</p></div>
       <button class="btn run sm" id="load" data-run style="margin-left:auto">▶ Run</button></div>
     <div id="flash" class="flash"></div>
@@ -306,7 +306,7 @@ mountTagScope({agent:'cisakev', note:'KEV CVEs, due dates, crown jewels and vend
 if(tagScope()){ const tv=document.getElementById('tagVuln'); tv.title='Tags the assets tagged '+tagScopeLabel()+' that have a CISA-KNOWN-EXPLOITED xref';
   tv.textContent='🏷️ Tag this tag\'s KEV assets → CISA KEV : Vulnerable'; }
 mountSectionNav();
-// ⛶ full screen + 📧 picture & list (Notify & Reports) on the remediation due dates
+// ⛶ full screen + 📧 picture & list (Notify & Report) on the remediation due dates
 hWidget('secDue',{title:'CISA KEV — remediation due dates', visual:()=>document.getElementById('dueVis'),
   columns:['due date','status','days left','KEV CVEs','assets','crown jewels','ransomware','tag value'],
   note:()=>K?'Overdue = past CISA\'s due date and still open':'',

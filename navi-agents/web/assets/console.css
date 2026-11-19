@@ -242,7 +242,7 @@ section.card,.agent,.acard,.itile{
 [data-theme="light"] .agent:hover{border-color:#c3ccdd;transform:translateY(-2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.9), 0 4px 8px rgba(40,54,100,.07), 0 22px 48px rgba(60,72,130,.14)}
 
 /* general Hounds crest (logo + Release-the-Hounds) */
-.hcrest{display:inline-block;background:url('/static/brand-mark.png?v=1') center/contain no-repeat;border-radius:7px;vertical-align:middle}   /* the navi Ensemble iris mark */
+.hcrest{display:inline-block;background:#fff url('/static/brand-mark.png?v=1') center/80% no-repeat;border-radius:7px;vertical-align:middle;box-shadow:0 0 0 1px rgba(20,16,48,.10)}   /* the navi Ensemble iris mark */
 .logo .hcrest.brand{width:100%;height:100%;border-radius:7px}
 .hcrest.sm{width:20px;height:20px;border-radius:5px;margin-right:6px;position:relative;top:-1px}
 
@@ -380,3 +380,8 @@ body.navcollapsed .wrap{padding-left:calc(62px + 26px)}
 .glx .glx-h .glx-v2{font-size:12.5px}
 .glx .glx-more{display:block;font-size:11px;color:var(--ink-3);margin-top:3px}
 .glx a.glx-more,.glx .glx-more.glx-act{color:var(--accent);cursor:pointer}
+
+/* build 493: navi Ensemble icon tiles (web/assets/icons/) — wherever a specialist's icon shows */
+img.bicon{display:inline-block;width:1.35em;height:1.35em;border-radius:24%;vertical-align:middle;object-fit:contain;flex:0 0 auto}
+#topnav button .ico img.bicon{width:20px;height:20px;border-radius:5px}
+h2 img.bicon{width:26px;height:26px;border-radius:7px;vertical-align:-6px;margin-right:4px}

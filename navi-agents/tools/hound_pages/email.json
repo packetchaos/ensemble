@@ -1,13 +1,13 @@
 {
  "codename": "",
- "discipline": "Notify & Reports",
+ "discipline": "Notify & Report",
  "category": "Delivery",
  "tagline": "Deliver every finding to the person who owns it.",
  "lore": "",
  "problem": "Findings that never reach the right person never get fixed. A report sent to everyone is read by no one, and an owner who has to dig through a portal for their own assets usually doesn't.",
- "does": "Notify & Reports turns the Ensemble's findings into email routed by owner: each owner gets only their assets, with links back into Tenable. He also sends CISA KEV fire alarms, certificate countdowns, the Ensemble Report morning briefing, Contract plans and results — and any chart, list or dashboard in the app. You always preview first; sending is gated.",
+ "does": "Notify & Report turns the Ensemble's findings into email routed by owner: each owner gets only their assets, with links back into Tenable. He also sends CISA KEV fire alarms, certificate countdowns, the Ensemble Report morning briefing, Contract plans and results — and any chart, list or dashboard in the app. You always preview first; sending is gated.",
  "glance": {
-  "caption": "Notify & Reports's owner routing: owners read from Exposure Routes' Owner tags, each with their asset count and KEV / critical exposure — preview the message for any owner before it goes."
+  "caption": "Notify & Report's owner routing: owners read from Exposure Routes' Owner tags, each with their asset count and KEV / critical exposure — preview the message for any owner before it goes."
  },
  "capabilities": [
   [
@@ -35,8 +35,8 @@
    "the exact previewed messages are sent, and every send is recorded in the Tagging log."
   ]
  ],
- "how": "Notify & Reports composes from your local navi.db without changing it, and sends with `navi action mail` — SMTP is configured once, outside the app, with `navi config smtp`. A send needs writes enabled, email enabled (NAVI_EMAIL) and an explicit confirm.",
+ "how": "Notify & Report composes from your local navi.db without changing it, and sends with `navi action mail` — SMTP is configured once, outside the app, with `navi config smtp`. A send needs writes enabled, email enabled (NAVI_EMAIL) and an explicit confirm.",
  "who": "Vulnerability management teams who need findings to reach asset owners, team leads who want each owner to see only their work, and CISOs who want the briefing in their inbox.",
- "better": "Exposure Routes' Owner tags decide who gets what; Laelaps supplies the KEV alarm, Certania the certificate countdown, Ensemble Report the morning briefing, and Automation the per-cycle summary. Alerts sends its digest through the same mail path.",
- "cta": "Let Notify & Reports put every finding in the right inbox — one click from the fix."
+ "better": "Exposure Routes' Owner tags decide who gets what; Laelaps supplies the KEV alarm, Certania the certificate countdown, Ensemble Report the morning briefing, and Automation Station the per-cycle summary. Alerts sends its digest through the same mail path.",
+ "cta": "Let Notify & Report put every finding in the right inbox — one click from the fix."
 }

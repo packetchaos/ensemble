@@ -41,6 +41,6 @@
  ],
  "how": "Identity Inventory reads plugin output and identity plugins in your local navi.db; with Optimize his output search runs inside the database. The identity list pages and searches on the server. Tagging rebuilds the exact host list on the server from navi.db, behind the write gate and a confirm.",
  "who": "IAM and identity-security teams who need visibility beyond the directory, AD and Linux admins hunting reuse and default credentials, and threat teams tracing the accounts an attacker would use.",
- "better": "Fenrir turns Identity Inventory's accounts into lateral-movement pivots, Exposure Score counts identity exposure in its score, and Scan Health explains why a host is blind. Automation re-applies his Identity, Identity Risk and Identity Coverage tags on its schedule.",
+ "better": "Fenrir turns Identity Inventory's accounts into lateral-movement pivots, Exposure Score counts identity exposure in its score, and Scan Health explains why a host is blind. Automation Station re-applies his Identity, Identity Risk and Identity Coverage tags on its schedule.",
  "cta": "Ask Identity Inventory who can walk through your doors — before an attacker does."
 }

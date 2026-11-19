@@ -50,7 +50,7 @@ tr.hl td{background:var(--crit-bg)}
 <div class="wrap">
   <header class="top" id="app-header"></header>
   <section class="card">
-    <div class="toolbar"><div><h2 style="margin:0">🔍 Compliance Drill-down <span class="sub" style="font-weight:400">· Compliance Drill-down investigates</span></h2>
+    <div class="toolbar"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/compliance_asset.png?v=1" alt="" aria-hidden="true" draggable="false"> Compliance Drill-down <span class="sub" style="font-weight:400">· Compliance Drill-down investigates</span></h2>
       <p class="sub" id="lensSub" style="margin:2px 0 0">One asset in full: every audit check it passed, failed or warned — and the inferred link between a failed control and the real findings backing it.</p></div>
       <a class="btn ghost sm" href="/agents/compliance/page.html" style="margin-left:auto" title="Back to the compliance overview">← Overview</a></div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px">
@@ -339,7 +339,7 @@ document.querySelectorAll('#lensSeg .seg').forEach(s=>s.onclick=()=>setLens(s.ge
 document.getElementById('afsel').onchange=e=>{ AFILE=e.target.value; renderAudit(); };
 
 mountAgentHeader({id:'compliance_asset',icon:'🔍',name:'Compliance Deep-Dive',sub:'Compliance Drill-down · audit + vuln links · by asset or audit file'});
-try{ hMailAuto(); }catch(e){}   /* pack-wide widget + dashboard email (Notify & Reports) */
+try{ hMailAuto(); }catch(e){}   /* pack-wide widget + dashboard email (Notify & Report) */
 CURR=q('asset')||q('target');
 const _afq=q('audit')||q('file');
 if(_afq){ AFILE=_afq; setLens('audit'); } else { setLens('asset'); }

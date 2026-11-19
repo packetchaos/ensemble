@@ -26,8 +26,8 @@
   <header class="top" id="app-header"></header>
   <section class="card" style="background:radial-gradient(120% 140% at 90% -20%,var(--amber-glow),transparent 60%),var(--panel)">
     <div class="acode">Alerts</div>
-    <div class="toolbar" style="margin:0"><div><h2 style="margin:0">🐦‍⬛ Alerts</h2>
-      <p class="sub" style="margin:2px 0 0">Ravens ride with the wolf pack — scouting ahead and calling out where the danger is. <b>Alerts</b> watches <span class="mono">navi.db</span> for conditions worth an email. Alerts fire <b>on change</b> (once, until they clear), evaluation runs in the <a href="/agents/contract/page.html">Automation</a> loop, and delivery is a gated digest. Detection is read-only.</p></div>
+    <div class="toolbar" style="margin:0"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/alert.png?v=1" alt="" aria-hidden="true" draggable="false"> Alerts</h2>
+      <p class="sub" style="margin:2px 0 0">Ravens ride with the wolf pack — scouting ahead and calling out where the danger is. <b>Alerts</b> watches <span class="mono">navi.db</span> for conditions worth an email. Alerts fire <b>on change</b> (once, until they clear), evaluation runs in the <a href="/agents/contract/page.html">Automation Station</a> loop, and delivery is a gated digest. Detection is read-only.</p></div>
       <span style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <button class="btn run sm" id="evalBtn" title="Evaluate every enabled alert now — no email, just show what would fire">▶ Run</button>
         <button class="btn sm" id="sendBtn" title="Evaluate + email a digest of what newly fired (gated)">📧 Run &amp; send digest</button></span></div>

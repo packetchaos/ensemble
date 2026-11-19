@@ -153,7 +153,7 @@
   <header class="top" id="app-header"></header>
   <section class="card" id="hero" style="background:radial-gradient(120% 140% at 90% -20%,var(--amber-glow),transparent 60%),var(--panel)">
     <div class="acode">Ensemble Report · the estate brain</div>
-    <h2 style="margin:2px 0 0">📰 Ensemble Report</h2>
+    <h2 style="margin:2px 0 0"><img class="bicon" src="/static/icons/insights.png?v=1" alt="" aria-hidden="true" draggable="false"> Ensemble Report</h2>
     <p class="story" id="story">Reading the Ensemble's last release…</p>
     <div class="fresh run" id="fresh"><span class="spin"></span><span>peeking the stored summary (reads the release's caches only)…</span></div>
     <div id="flash" class="flash"></div>
@@ -248,7 +248,7 @@ function renderFresh(){
 }
 
 /* ---------------------------------------------------------------- sections */
-const SECT={  // per-section rows: the "table view" (⬇ CSV) and 📧 Email (Notify & Reports `data`) of each chart
+const SECT={  // per-section rows: the "table view" (⬇ CSV) and 📧 Email (Notify & Report `data`) of each chart
   secGlance:{title:'At a glance',rows:()=>D.glance.flatMap(g=>g.cards.map(c=>({chart:g.group,item:c.l,value:c.v==null?'—':c.v,detail:c.v==null?'not in this release':c.u.replace(/\s*→$/,'')})))},
   secExposure:{title:'How exposed',rows:()=>{const E=D.exposure||{};
     return [{chart:'Estate score',item:'average exposure / 100',value:E.avg,detail:'estate '+fmt(E.estate)+' pts over '+fmt(E.assets)+' assets'}]
@@ -281,7 +281,7 @@ function boardHtml(){
   return sec('secGlance','At a glance','📊','At a glance','Every number comes from the specialist that owns it, as of the last release — click it to see the assets behind it (the evidence) and act on them.','<div id="glance"></div>')+
   sec('secNext','Next moves','➡️','What to do next','Ranked hand-offs — each opens the specialist that does the work (writes stay gated on that specialist\'s page).',
     `<div class="nx" id="nx"></div>
-     <div style="margin-top:12px"><a class="btn ghost sm" href="/agents/email/page.html" title="Hand this board to Notify & Reports to email">📧 Email this board</a></div>`)+
+     <div style="margin-top:12px"><a class="btn ghost sm" href="/agents/email/page.html" title="Hand this board to Notify & Report to email">📧 Email this board</a></div>`)+
   sec('secClock','On the clock','⏳','On the clock','Certania\'s expiry wall (click a month → Certificate Dashboard for that month) and the other deadlines the Ensemble tracks.',
     `<div class="certtl" id="certtl"></div><div class="clk" id="clk"></div>`)+
   sec('secRed','Projected reduction','📉','The reduction — what the recommended play buys','Exposure Score\'s recommended play on the act-now assets: exposure now → after every fix is applied, justified by the signals each fix clears · click → Exposure Score to toggle the plays.',

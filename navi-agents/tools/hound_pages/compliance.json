@@ -45,6 +45,6 @@
  ],
  "how": "Compliance Overview reads the compliance table in your local navi.db (it parses the framework references navi stores for each check). It changes nothing except the Audit Owner tag, which goes through navi's tag commands behind the write gate and a confirm.",
  "who": "GRC and audit teams, compliance owners preparing for an assessment, and security leads who need to show how the estate measures against a framework.",
- "better": "Compliance Drill-down is his twin for one asset at a time. Fenrir turns failed controls such as LAPS and SMB signing into attack-path steps, and Exposure Score counts compliance failures in its score. Automation can keep Audit Owner tags current once an owner is set.",
+ "better": "Compliance Drill-down is his twin for one asset at a time. Fenrir turns failed controls such as LAPS and SMB signing into attack-path steps, and Exposure Score counts compliance failures in its score. Automation Station can keep Audit Owner tags current once an owner is set.",
  "cta": "Put the estate on trial with Compliance Overview — and name who fixes each failure."
 }

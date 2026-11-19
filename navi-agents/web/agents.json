@@ -2,7 +2,7 @@
   "agents": [
     {
       "id": "contract",
-      "name": "Automation",
+      "name": "Automation Station",
       "icon": "📜",
       "summary": "Turns the captured Tagging log + your plain-English policy into an autonomous workflow — tags, ACR changes, wait periods, and a scheduled loop that runs every few hours. Plans first, then executes when armed.",
       "category": "Orchestration",
@@ -106,7 +106,7 @@
     },
     {
       "id": "iot_squad",
-      "name": "Device Discovery",
+      "name": "IoT Discovery",
       "icon": "📡",
       "summary": "Four cooperating agents: discover IoT devices, harvest carrier plugins, cross-term hunt the population, and learn new detections (HITL).",
       "category": "Discovery",
@@ -159,7 +159,7 @@
     },
     {
       "id": "classify",
-      "name": "Classification",
+      "name": "Asset Classification",
       "icon": "📇",
       "summary": "Classifies every asset by WHAT IT IS — Windows / Linux / macOS / IoT (by device type) / OT / Network / Virtual / Cloud / Unclassified — to close the asset-detection loop that stalls ownership. Uses the 'no software enum = not IoT' rule, overlays ownership + risk per class, turns the Unclassified bucket into a reason-tagged worklist, and writes gated Class:<type> tags.",
       "category": "Discovery",
@@ -214,7 +214,7 @@
     },
     {
       "id": "mitre",
-      "name": "ATT&CK Mapping",
+      "name": "MITRE ATT&CK Map",
       "icon": "🎯",
       "summary": "Tags assets by the ATT&CK impact of their vulnerabilities: fetches the live ATT&CK→CVE mapping and tags every asset whose findings cite a mapped CVE with its Primary/Secondary Impact + Exploit Technique, via navi's tag-by-CVE selector.",
       "category": "Tagging",
@@ -506,7 +506,7 @@
     },
     {
       "id": "was",
-      "name": "Web App Scanning",
+      "name": "Web App Report",
       "icon": "🕸️",
       "summary": "Arachne — consolidated WAS overview + per-app scan reports: severity, OWASP Top-10, tech stack, scan coverage. Two dashboards over the apps/findings tables, with a jump nav; every metric, severity/OWASP bar, tech chip and tag cohort opens the matching apps in Web App Recon.",
       "category": "Risk",
@@ -649,7 +649,7 @@
     },
     {
       "id": "email",
-      "name": "Notify & Reports",
+      "name": "Notify & Report",
       "icon": "📧",
       "summary": "The loop-closer. Turns the pack's findings into owner-routed remediation, KEV fire-alarms, cert countdowns, and morning briefings — emailed to the right humans with deep-links back into the Tenable platform. Reads Atlas Owner: tags to send each owner only THEIR assets. Preview first; sending is double-gated (writes + email + confirm).",
       "category": "Loop",

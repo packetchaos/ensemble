@@ -15,7 +15,7 @@ BRAND = "navi Ensemble"
 SHORT = "Ensemble"
 TAGLINE = "Specialist AI agents for exposure management, grounded in your Tenable data"
 HOME_ACTION = "Run the Ensemble"          # was "Release the Hounds"
-ORCHESTRATOR = "Automation"               # 491; was "Standing Orders" (490), "Covenant · AI Contract" before
+ORCHESTRATOR = "Automation Station"       # 492; was "Automation" (491), "Standing Orders" (490), "Covenant · AI Contract" before
 ORCHESTRATOR_RUNNER = "the Lead"
 OVERVIEW = "Ensemble Report"              # 491; was "Briefing" (490), "Sphinx · On the Scent" before
 MEMBER = "specialist"                     # never "hound"; together they are "the Ensemble"
@@ -29,9 +29,9 @@ MISSIONS = ["Exploited Now", "Asset Truth", "Coverage", "Ownership & SLA", "Cryp
 ROSTER = {
     "cisakev":          ("CISA KEV", "Laelaps", "Exploited Now", "🛡️", "hero"),
     "attackpath":       ("Attack Paths", "Fenrir", "Exploited Now", "🕸️", "hero"),
-    "mitre":            ("ATT&CK Mapping", "", "Exploited Now", "🎯", "specialist"),
+    "mitre":            ("MITRE ATT&CK Map", "", "Exploited Now", "🎯", "specialist"),
     "fused_score":      ("Exposure Score", "", "Exploited Now", "🎯", "instrument"),
-    "classify":         ("Classification", "Linnaeus", "Asset Truth", "📇", "hero"),
+    "classify":         ("Asset Classification", "Linnaeus", "Asset Truth", "📇", "hero"),
     "eol":              ("End of Life", "Charon", "Asset Truth", "🔩", "hero"),
     "identity":         ("Identity Inventory", "", "Asset Truth", "🪪", "specialist"),
     "software":         ("Software Inventory", "", "Asset Truth", "📦", "specialist"),
@@ -43,17 +43,17 @@ ROSTER = {
     "exproute":         ("Exposure Routes", "", "Ownership & SLA", "🧭", "specialist"),
     "sla":              ("SLA Tracker", "", "Ownership & SLA", "⏱", "specialist"),
     "acr":              ("Criticality Calibration", "", "Ownership & SLA", "⚖️", "specialist"),
-    "email":            ("Notify & Reports", "", "Ownership & SLA", "📧", "instrument"),
+    "email":            ("Notify & Report", "", "Ownership & SLA", "📧", "instrument"),
     "certificate":      ("Certificates", "Certania", "Crypto & Certificates", "🔐", "hero"),
     "postquantum":      ("Post-Quantum", "Heimdall", "Crypto & Certificates", "⚛️", "hero"),
-    "iot_squad":        ("Device Discovery", "Argos", "OT, IoT & Unmanaged", "📡", "hero"),
+    "iot_squad":        ("IoT Discovery", "Argos", "OT, IoT & Unmanaged", "📡", "hero"),
     "ai":               ("AI Inventory", "Pythia", "AI Exposure", "🤖", "hero"),
-    "was":              ("Web App Scanning", "Arachne", "Web Apps", "🕸️", "hero"),
+    "was":              ("Web App Report", "Arachne", "Web Apps", "🕸️", "hero"),
     "was_asset":        ("Web App Dossier", "", "Web Apps", "🔬", "instrument"),
     "compliance":       ("Compliance Overview", "", "Compliance", "⚖️", "specialist"),
     "compliance_asset": ("Compliance Drill-down", "", "Compliance", "🔍", "instrument"),
     "custom_audit":     ("Audit Authoring", "", "Compliance", "📜", "specialist"),
-    "contract":         ("Automation", "", "Platform", "📜", "instrument"),
+    "contract":         ("Automation Station", "", "Platform", "📜", "instrument"),
     "insights":         ("Ensemble Report", "", "Platform", "📰", "instrument"),
     "c2":               ("Remote Remediation", "", "Platform", "🐺", "instrument"),
     "tagremoval":       ("Tag Removal", "", "Platform", "🗑️", "instrument"),
@@ -74,6 +74,17 @@ ROSTER = {
     "hub":              ("Run the Ensemble", "", "Platform", "", "instrument"),
 }
 HEROES = [i for i, r in ROSTER.items() if r[4] == "hero"]
+
+# build 493: the navi Ensemble icon set (dark tiles, web/assets/icons/<id>.png, served at /static/icons/).
+# A specialist listed here shows its tile everywhere its icon appears (sidebar, home grid, page header,
+# intro panel, Meet, one-pager); everyone else keeps the emoji in ROSTER until their tile is drawn.
+# "hub" (Run the Ensemble) keeps the navi Ensemble mark.
+ICON_IMG = {i: "/static/icons/%s.png" % i for i in (
+    "insights", "mitre", "cisakev", "eol", "certificate", "iot_squad", "postquantum", "ai", "identity",
+    "software", "customapp", "was", "compliance", "attackpath", "scan_eval",
+    # sheet 2 (Organize / Operationalize / Views)
+    "agentgroup", "classify", "exproute", "asset_ownership", "acr", "custom_audit", "sla", "email", "alert",
+    "tagremoval", "c2", "contract", "fused_score", "dashboard", "argos", "was_asset", "compliance_asset")}
 KIND_ORDER = {"hero": 0, "specialist": 1, "instrument": 2, "explorer": 3}
 
 
@@ -105,4 +116,4 @@ def as_dict():
             "orchestrator": ORCHESTRATOR, "runner": ORCHESTRATOR_RUNNER, "overview": OVERVIEW,
             "member": MEMBER, "mark": BRAND_MARK, "missions": MISSIONS,
             "roster": {i: {"name": r[0], "codename": r[1], "mission": r[2], "icon": r[3], "kind": r[4],
-                           "hero": r[4] == "hero"} for i, r in ROSTER.items()}}
+                           "hero": r[4] == "hero", "img": ICON_IMG.get(i, "")} for i, r in ROSTER.items()}}

@@ -97,7 +97,7 @@ js = open(os.path.join(ROOT, "web", "assets", "console.js"), encoding="utf-8").r
 check("return Infinity; })();" in js and "let h=24" not in js, "no 24 h cutoff unless a browser opts in")
 check("over a day old" in js and "toLocaleTimeString" in js, "the restored run shows its age, date and time")
 check("/api/hub/bg_status" in js and "Run the Ensemble is running" in js and "is queued in Run the Ensemble" in js
-      and "location.reload()" in js and "Automation is running this specialist" in js,
+      and "location.reload()" in js and "Automation Station is running this specialist" in js,
       "the activity bar: queued / running / Contract, then loads the result")
 
 print()

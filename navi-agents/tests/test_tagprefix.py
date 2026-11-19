@@ -1,7 +1,7 @@
 """Regression tests for Settings → Test run (core/tagname.py): every tag CATEGORY a Hound
 writes becomes '<phrase>-<category>' while it is on; removals and user-typed ACR stay exact;
 every reader that recognises a Hound's own output (What the Hounds know, Done so far, SLA
-dispositions, Exposure Score identity/ownership, Classification, Argos, Insights, applied
+dispositions, Exposure Score identity/ownership, Asset Classification, Argos, Insights, applied
 badges) matches both the plain and the prefixed name; and with the setting OFF the plan /
 export / navi command are byte-identical to build 440 (/home/claude/base440, when present).
 Tiny synthetic navi.db in a temp dir; navi + subprocess are stubbed — no navi, no network.

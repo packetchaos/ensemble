@@ -8,8 +8,8 @@
   <header class="top" id="app-header"></header>
 
   <section class="card">
-    <div class="toolbar"><div><h2 style="margin:0">🗑️ Tag Removal</h2>
-      <p class="sub" style="margin:2px 0 0">Tag Removal lists the tags <b>in navi.db</b> — the only ones navi can strip. Each removal runs <span class="mono">navi enrich tag … -remove</span> against the assets navi.db says carry it and shows in the <a href="/web/tags-log.html">Tagging log</a> as a <b>remove</b> job. Tags that exist only in Tenable are listed separately in the <a href="#cmpCard">compare</a> below — they sit on assets navi.db doesn't hold, so they can't be removed from here. Send your picks to the <a href="/agents/contract/page.html">Automation</a> and it will remove them first, pause, refresh navi.db, then re-run the tagging workflow.</p></div></div>
+    <div class="toolbar"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/tagremoval.png?v=1" alt="" aria-hidden="true" draggable="false"> Tag Removal</h2>
+      <p class="sub" style="margin:2px 0 0">Tag Removal lists the tags <b>in navi.db</b> — the only ones navi can strip. Each removal runs <span class="mono">navi enrich tag … -remove</span> against the assets navi.db says carry it and shows in the <a href="/web/tags-log.html">Tagging log</a> as a <b>remove</b> job. Tags that exist only in Tenable are listed separately in the <a href="#cmpCard">compare</a> below — they sit on assets navi.db doesn't hold, so they can't be removed from here. Send your picks to the <a href="/agents/contract/page.html">Automation Station</a> and it will remove them first, pause, refresh navi.db, then re-run the tagging workflow.</p></div></div>
 
     <div class="flash" id="syncBanner" style="display:block;margin-top:10px;background:rgba(251,191,36,.12);color:var(--warn);border:1px solid rgba(251,191,36,.4)">
       <b>⚠ Removals only reach the assets in navi.db.</b> navi's asset sync pulls assets seen in the last <b>N days</b> (90 by default) and never deletes the ones that age out or fall off licensing — so navi.db can hold assets Tenable no longer licenses, and Tenable can hold tagged assets navi.db never pulled. <span class="mono">-remove</span> strips from navi.db's view, so tags on assets outside it stay put. Keep navi.db current (assets sync), and if it has drifted, <a href="/web/settings.html#secRebuild">rebuild navi.db</a> with the window you need.
@@ -33,7 +33,7 @@
     <div id="flash" class="flash"></div>
     <div class="toolbar" style="margin-top:6px">
       <button class="btn sm" id="removeBtn" disabled>🗑️ Remove selected</button>
-      <button class="btn sm" id="contractBtn" disabled>➕ Add selected to Automation</button>
+      <button class="btn sm" id="contractBtn" disabled>➕ Add selected to Automation Station</button>
       <span class="chip" id="selCount">0 selected</span>
     </div>
   </section>
@@ -202,10 +202,10 @@ async function removeSel(){
 }
 async function toContract(){
   const tags=selected(); if(!tags.length) return;
-  flash('flash','<span class="spin"></span> adding to Automation removal phase…','run');
+  flash('flash','<span class="spin"></span> adding to Automation Station removal phase…','run');
   let o; try{ o=await API.post('add_to_contract',{tags}); }catch(e){ o={ok:false,error:e.message}; }
   if(!o.ok){ flash('flash','✗ '+esc(o.error||'failed'),'crit'); return; }
-  flash('flash','✓ added '+o.added+' tag(s) to the contract ('+o.total+' total in the removal list). Open the <a href="/agents/contract/page.html">Automation</a> → Tag removal to review. When armed, the contract removes these first, pauses, runs navi update, then re-tags.','ok');
+  flash('flash','✓ added '+o.added+' tag(s) to the contract ('+o.total+' total in the removal list). Open the <a href="/agents/contract/page.html">Automation Station</a> → Tag removal to review. When armed, the contract removes these first, pauses, runs navi update, then re-tags.','ok');
 }
 document.getElementById('loadBtn').onclick=()=>{ load(); compare(); loadDelta(); };
 document.getElementById('trFilter').onclick=()=>{ TRF=!TRF; PAGE=0; if(TAGS.length) renderTags(); else renderTrFilter(); };

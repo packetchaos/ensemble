@@ -263,7 +263,7 @@ async function pathDetail(path,app){ const el=document.getElementById('pathDetai
   const rowsH=(d.assets||[]).map(a=>'<tr><td><b>'+esc(a.hostname||a.ip||a.uuid)+'</b> <span class="sub">'+esc(a.ip||'')+'</span></td><td class="mono">'+(a.acr||'—')+'</td><td class="mono">'+(a.plugins||0)+'</td><td>'+(safeUrl(a.url,'')?'<a href="'+esc(safeUrl(a.url))+'" target="_blank">open ↗</a>':'<span class="sub">—</span>')+'</td></tr>').join('');
   el.innerHTML='<div class="card" style="margin:0;border:1px solid var(--accent)">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><b>🕳 Newly-found gap:</b> <span class="mono">'+esc(d.path)+'</span><div class="sub">under <b>'+esc(app.trim())+'</b> · '+(d.asset_count||0)+' asset(s) · '+(d.plugins||[]).length+' plugin(s) · '+(d.findings||[]).length+' finding(s)'+((d.owners||[]).length?(' · owner: '+esc(d.owners.join(', '))):'')+'</div></div>'
-    +'<button class="btn" id="gapEmail" style="white-space:nowrap">📧 Email this gap → Notify & Reports</button></div>'
+    +'<button class="btn" id="gapEmail" style="white-space:nowrap">📧 Email this gap → Notify & Report</button></div>'
     +((d.assets||[]).length?'<div style="overflow:auto;margin-top:8px"><table style="width:100%"><thead><tr><th>Asset</th><th>ACR</th><th>Plugins here</th><th>Tenable</th></tr></thead><tbody>'+rowsH+'</tbody></table></div>':'<p class="sub" style="margin-top:8px">No assets resolved for this path.</p>')
     +(d.findings&&d.findings.length?'<p class="sub" style="margin-top:8px">Finding IDs ('+d.findings.length+'): <span class="mono">'+esc(d.findings.slice(0,60).join(', '))+(d.findings.length>60?' …':'')+'</span></p>':'')
     +'</div>';
@@ -285,14 +285,14 @@ function drawViz(){
   document.getElementById('flowCtrls').style.display='flex';
   document.getElementById('legendT').style.display='block';
   document.getElementById('graphHint').textContent=sankey
-    ? 'A Sankey of the surface flowing to its owners — each route/path streams into the owner(s) assigned to it, band thickness ∝ assets. The red ⛔ Unassigned node is Ownerless Risk. Click a route to drill into its paths & assets (then email the owner via Notify & Reports).'
+    ? 'A Sankey of the surface flowing to its owners — each route/path streams into the owner(s) assigned to it, band thickness ∝ assets. The red ⛔ Unassigned node is Ownerless Risk. Click a route to drill into its paths & assets (then email the owner via Notify & Report).'
     : 'Only routes/paths with an owner draw a thread. Un-owned ones are listed as gaps below. Hover a node to trace its threads.';
   if(sankey) drawSankey(); else drawGraph();
   syncThreatReadouts();
 }
 /* Sankey: routes/paths → owners. Owned assets split across a route's owners; the un-owned
    remainder flows to a red ⛔ Unassigned node (Ownerless Risk). Built from DATA (no query).
-   Click a route node/band → drill into its paths + assets (then email the owner via Notify & Reports). */
+   Click a route node/band → drill into its paths + assets (then email the owner via Notify & Report). */
 function drawSankey(){ const wrap=document.getElementById('graph');
   const N=parseInt((document.getElementById('flowTop')||{}).value||'15',10);
   const pool=(DATA.routes||[]).concat(DATA.paths||[]).filter(it=>GF==='both'||it.type===GF).filter(_threatPass).filter(it=>it.assets>0||DISP_NODE[it.status]);

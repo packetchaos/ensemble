@@ -24,7 +24,7 @@
   ],
   [
    "Email the result",
-   "send the rows through Notify & Reports."
+   "send the rows through Notify & Report."
   ]
  ],
  "how": "Explorer › Paths reads the filesystem paths in your local navi.db without changing it; results page on the server, 20 rows a page (up to 50). Tags go through navi's tag-by-query.",

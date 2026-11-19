@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>ATT&amp;CK Mapping — navi Ensemble</title>
+<title>MITRE ATT&amp;CK Map — navi Ensemble</title>
 <link rel="stylesheet" href="/static/console.css"/>
 <style>.plink{color:var(--accent);text-decoration:none}.plink:hover{text-decoration:underline}
 /* 📊 At a glance: the shared renderGlance template (console.js / console.css) */
@@ -30,7 +30,7 @@
 <div class="wrap">
   <header class="top" id="app-header"></header>
   <section class="card">
-    <div class="toolbar"><div><h2 style="margin:0">🎯 ATT&amp;CK Mapping</h2>
+    <div class="toolbar"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/mitre.png?v=1" alt="" aria-hidden="true" draggable="false"> MITRE ATT&amp;CK Map</h2>
       <p class="sub" style="margin:2px 0 0">Tags <b>assets</b> with the ATT&amp;CK impact of the vulnerabilities they carry. It fetches the ATT&amp;CK→CVE mapping, finds the assets in navi.db whose findings cite each mapped CVE, and tags those assets <span class="tagval">Mitre : Primary Impact / Secondary Impact / Exploit Technique</span>. The CVE is only the selector (navi <span class="mono">tag-by-CVE</span>); the tag lands on the assets. Writes are gated.</p></div>
       <button class="btn run sm" id="run" data-run style="margin-left:auto">▶ Run</button></div>
     <div id="flash" class="flash"></div>
@@ -260,7 +260,7 @@ document.getElementById('apply').onclick=async()=>{
 mountAgentHeader({icon:'🎯',name:'MITRE ATT&CK Tagging',sub:'tags assets by the ATT&CK impact of their CVEs'});
 mountTagScope({agent:'mitre', note:'the CVEs, techniques and ACR > 7 list are those on the tagged assets; 🏷️ Tag assets tags only them'});
 mountSectionNav();
-// ⛶ full screen + 📧 picture & list (Notify & Reports) on the ATT&CK map
+// ⛶ full screen + 📧 picture & list (Notify & Report) on the ATT&CK map
 hWidget('secMatrix',{title:'MITRE ATT&CK matrix', visual:()=>document.getElementById('mx'),
   columns:['technique','name','tactics','assets','cves','mapping types'],
   note:()=>PLAN?('Techniques behind the planned tags · '+(scope==='navidb'?'CVEs '+inNavi():'full mapping')+tagScopeNote()):'',

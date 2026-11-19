@@ -596,7 +596,7 @@ const HC = (function(){
 
 /* ===== Background activity on a specialist's page (build 484) =====================================
    A specialist can be run by something other than this page: Run the Ensemble (the home page's
-   ▶, or its daily schedule in Automation) or an Automation cycle running its discovery.
+   ▶, or its daily schedule in Automation Station) or an Automation Station cycle running its discovery.
    /api/hub/bg_status says so; this bar shows it with the elapsed time. While a Release is
    working on THIS specialist its ▶ Run buttons are held (a second run would duplicate the work),
    and when it finishes the page reloads to show the result the Release saved. */
@@ -643,8 +643,8 @@ const BG = (function(){
            ' — ▶ Run is held until it finishes; this page then loads the result · <a href="/">Run the Ensemble</a>';
       d.style.borderLeftColor='var(--accent)';
     } else {
-      h='<span class="spin"></span> <b>Automation is running this specialist\'s discovery</b> for its tagging plan · <b class="mono">'+
-        fmt(now()-(c.started||now()))+'</b> — it doesn\'t change this page; ▶ Run still works · <a href="/agents/contract/page.html">Automation</a>';
+      h='<span class="spin"></span> <b>Automation Station is running this specialist\'s discovery</b> for its tagging plan · <b class="mono">'+
+        fmt(now()-(c.started||now()))+'</b> — it doesn\'t change this page; ▶ Run still works · <a href="/agents/contract/page.html">Automation Station</a>';
       d.style.borderLeftColor='var(--warn,#d9a400)';
     }
     d.querySelector('.hb-msg').innerHTML=h;
@@ -931,7 +931,7 @@ function crestSrc(id){ return /^[a-z0-9_-]{1,40}$/i.test(String(id||'')) ? '/sta
 
 /* Per-agent API helper: posts to /api/<agentId>/<action>.
    Every response is quietly scanned for the finding IDs + asset UUIDs + tag the agent just
-   worked with, and offered to Notify & Reports via the floating "Email findings" button — the Ensemble's
+   worked with, and offered to Notify & Report via the floating "Email findings" button — the Ensemble's
    uniform "second option" (email the findings, as an alternative/complement to tagging). */
 function agentApi(agentId){
   window.__AGENT_ID = agentId;   // used by the header to show this agent's codename
@@ -981,7 +981,7 @@ async function hJobBadge(){
   }catch(e){ el.innerHTML=''; }
 }
 /* Deep-scan a run/tag response for asset UUIDs, plugin (finding) IDs, and a tag
-   category:value, then registerFindings() so any agent gets the Notify & Reports hand-off for free.
+   category:value, then registerFindings() so any agent gets the Notify & Report hand-off for free.
    Named the email agent's own calls are ignored. */
 const _UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function _harvestFindings(agentId, action, resp, reqBody){
@@ -1008,7 +1008,7 @@ function _harvestFindings(agentId, action, resp, reqBody){
   walk(resp,0);
   // The REQUEST body is an equally good (often BETTER) source: a tag action sends the
   // exact asset uuids / items it is tagging, while many agents' responses only echo a
-  // count. Without this, those specialists (e.g. Pythia) hand Notify & Reports a tag but zero assets.
+  // count. Without this, those specialists (e.g. Pythia) hand Notify & Report a tag but zero assets.
   walk(reqBody,0);
   // a tag the caller just requested (reqBody) is a good source too
   if(!tag && reqBody && reqBody.category && reqBody.value) tag={category:reqBody.category, value:reqBody.value};
@@ -1228,13 +1228,13 @@ const AGENT_INTRO = {
    "<b>Estate-wide links<\/b> — the audit-to-vulnerability correlations across every asset, not just one.",
    "<b>Opened from Compliance Overview<\/b> — a Compliance Overview card (failed, a control, a framework, an audit file, under 50% pass) narrows the asset list and opens its worst asset.",
    "<b>Audit-Vuln Link tags<\/b> — tag the asset with a correlated topic you choose, so the joint fix can be routed."]},
- contract:{does:"Automation turns your tagging history and a plain-English policy into a workflow: which specialists tag, with what logic, which ACR changes to make, which stale tags to clear first, and how often to run. It always shows the plan first; only when you arm it does the loop execute — every few hours, behind the same write gate as everything else.",caps:[
+ contract:{does:"Automation Station turns your tagging history and a plain-English policy into a workflow: which specialists tag, with what logic, which ACR changes to make, which stale tags to clear first, and how often to run. It always shows the plan first; only when you arm it does the loop execute — every few hours, behind the same write gate as everything else.",caps:[
    "<b>Start from what you did<\/b> — build the contract from the Tagging log (or an exported tag-log CSV): the specialists you used and the ACR changes you made become the starting policy.",
    "<b>Per-specialist policy<\/b> — 19 tagging specialists, each on or off with plain-English logic; without a policy a specialist proposes its riskiest top 50.",
-   "<b>ACR rules in plain English<\/b> — describe a calibration and Automation writes the rule; optionally protect the changed assets with NO : UPDATE.",
+   "<b>ACR rules in plain English<\/b> — describe a calibration and Automation Station writes the rule; optionally protect the changed assets with NO : UPDATE.",
    "<b>Tag Removal removal phase<\/b> — clear the tags you list at the top of a cycle, pause for Tenable to catch up, then re-tag — without deleting the tags themselves.",
    "<b>Plan first, armed to act<\/b> — disarmed, the loop only plans; armed (with writes enabled) it runs on a schedule, every 4 hours by default. A one-off cycle runs only when you confirm it.",
-   "<b>Each cycle checked and reported<\/b> — a QA pass on what landed, the loop log, Alerts's checks, and a run-summary email through Notify &amp; Reports.",
+   "<b>Each cycle checked and reported<\/b> — a QA pass on what landed, the loop log, Alerts's checks, and a run-summary email through Notify &amp; Report.",
    "<b>Escape hatch<\/b> — export the plan as a runnable navi script for when writes must run somewhere else."]},
  custom_audit:{does:"Audit Authoring writes custom Tenable .audit files two ways: describe the check in plain English and an AI model drafts Nessus checks, or build each check field by field from a platform catalog. Every file is previewed live, syntax-validated and mapped to frameworks before you download it — and you can seed a whole CIS benchmark and adjust it in one prompt.",caps:[
    "<b>Describe it<\/b> — \"password minimum length must be 14 on Windows servers\" becomes drafted checks you can edit; with no AI model configured it says so and the builder still works.",
@@ -1256,8 +1256,8 @@ const AGENT_INTRO = {
    "<b>34 starter metrics, no model needed<\/b> — from findings by severity and VPR band to stale assets, weak-key certificates and the remediation funnel.",
    "<b>25 chart types<\/b> — KPI, bar, column, stacked, pie, donut, line, area, scatter, heatmap, Sankey, treemap, funnel, waterfall, Pareto, gauge, table and more.",
    "<b>Your dashboard<\/b> — pin components, drag to reorder, size each one, switch chart type, export CSV or show the SQL; saved in your browser.",
-   "<b>Share it<\/b> — email the dashboard through Notify &amp; Reports, or promote it to a standalone, refreshable Custom Dashboard page."]},
- email:{does:"Notify &amp; Reports turns the Ensemble's findings into email routed by owner: each owner gets only their assets, with links back into Tenable. He also sends CISA KEV fire alarms, certificate countdowns, the Ensemble Report morning briefing, Contract plans and results — and any chart, list or dashboard in the app. You always preview first; sending is gated.",caps:[
+   "<b>Share it<\/b> — email the dashboard through Notify &amp; Report, or promote it to a standalone, refreshable Custom Dashboard page."]},
+ email:{does:"Notify &amp; Report turns the Ensemble's findings into email routed by owner: each owner gets only their assets, with links back into Tenable. He also sends CISA KEV fire alarms, certificate countdowns, the Ensemble Report morning briefing, Contract plans and results — and any chart, list or dashboard in the app. You always preview first; sending is gated.",caps:[
    "<b>Owner-routed remediation<\/b> — reads Owner tags from Exposure Routes and emails each owner only their assets, each with its Tenable asset link and the plugin links for its findings.",
    "<b>Seven report types<\/b> — owner remediation, vulnerability detail, KEV fire alarm, certificate countdown, morning briefing, Contract plan and Contract result.",
    "<b>Board or technical<\/b> — summary counts for leadership, or per-asset, per-finding detail for the people who fix it.",
@@ -1277,7 +1277,7 @@ const AGENT_INTRO = {
    "<b>Context<\/b> — technology stack and top OWASP category.",
    "<b>Open the report<\/b> — an app opens Arachne's App Report.",
    "<b>Ask in plain English<\/b> — a question becomes one read-only SQL query over the web-app table that you can edit before it runs (needs an AI model).",
-   "<b>CSV and email<\/b> — export the rows or send them through Notify &amp; Reports."]},
+   "<b>CSV and email<\/b> — export the rows or send them through Notify &amp; Report."]},
  ex_assets:{does:"Explorer › Assets searches every asset by hostname, IP, OS or network. It is also where Ensemble Report's At a glance cards land: each card opens the exact assets behind its number — computed by the specialist that owns it — riskiest (highest ACR) first, ready to page, search and export.",caps:[
    "<b>Search every asset<\/b> — hostname, IP, OS or network in one box.",
    "<b>Evidence lists<\/b> — KEV-exploitable assets, assets scored 60 or more, crown jewels (all, with KEV, or scanned without credentials), assets flagged by four or more specialists, EOL software, quantum-vulnerable crypto.",
@@ -1292,19 +1292,19 @@ const AGENT_INTRO = {
    "<b>One check, every asset<\/b> — click a check ID to see it on every asset that ran it.",
    "<b>Into the deep-dives<\/b> — each asset opens Asset Dossier, or Compliance Drill-down for every check on that asset.",
    "<b>Ask in plain English<\/b> — a question becomes one read-only SQL query over the audit-result table that you can edit before it runs (needs an AI model).",
-   "<b>CSV and email<\/b> — export the whole search (up to 50,000 rows) or send it through Notify &amp; Reports."]},
+   "<b>CSV and email<\/b> — export the whole search (up to 50,000 rows) or send it through Notify &amp; Report."]},
  ex_fixed:{does:"Explorer › Fixed searches navi's remediation history: every fixed finding with each finding's first-seen and fixed dates, days to fix (computed, not trusted from navi's text field) and navi's own SLA Pass / Fail, SLA failures first.",caps:[
    "<b>Remediation history<\/b> — every fixed finding with plugin, name, severity and state.",
    "<b>Days to fix<\/b> — computed from first seen to fixed.",
    "<b>SLA verdict<\/b> — navi's own Pass / Fail, from navi's SLA calculation.",
    "<b>Worst first<\/b> — SLA failures first, then by severity; the asset opens Asset Dossier.",
    "<b>Ask in plain English<\/b> — a question becomes one read-only SQL query over the remediation-history table that you can edit before it runs (needs an AI model).",
-   "<b>CSV and email<\/b> — export the rows or send them through Notify &amp; Reports."]},
+   "<b>CSV and email<\/b> — export the rows or send them through Notify &amp; Report."]},
  ex_paths:{does:"Explorer › Paths searches the filesystem paths found on assets by path text, with the plugin that found each and the host and IP. Tag applies Path : &lt;name&gt; to every asset carrying that exact path.",caps:[
    "<b>Search paths<\/b> — by any part of the path.",
    "<b>Where it was found<\/b> — the plugin, host and IP for each path; the host opens Asset Dossier.",
    "<b>Tag a path<\/b> — Path : &lt;name&gt; on every asset with that exact path, with an editable value, behind the write gate and a confirm.",
-   "<b>Email the result<\/b> — send the rows through Notify &amp; Reports."]},
+   "<b>Email the result<\/b> — send the rows through Notify &amp; Report."]},
  ex_plugins:{does:"Explorer › Plugins lists every distinct plugin in navi.db with its family and the number of assets it fires on, searchable by ID, name or family. Any plugin on assets can be handed to Remote Remediation for a remediation plan.",caps:[
    "<b>Every distinct plugin<\/b> — ID, name and family, with how many assets it fires on.",
    "<b>Search<\/b> — by ID, name or family.",
@@ -1314,7 +1314,7 @@ const AGENT_INTRO = {
    "<b>Search routes<\/b> — by app name or vulnerability type.",
    "<b>Route detail<\/b> — total findings and the plugins behind each route.",
    "<b>Tag a route<\/b> — Route : &lt;name&gt; on every asset on that route, with an editable value, behind the write gate and a confirm.",
-   "<b>Email the result<\/b> — send the rows through Notify &amp; Reports."]},
+   "<b>Email the result<\/b> — send the rows through Notify &amp; Report."]},
  ex_software:{does:"Explorer › Software searches the software inventory in navi.db by product name, one version, or an affected version range, and shows where the software is installed: assets, versions, operating systems, networks and asset criticality, with every asset sorted into in range, distro build, no version, or not in range. Its ✨ zero-day lookup reads the affected products and versions from NVD, CVE.org, OSV or an advisory page — only from the sites you approve — and counts each product in your inventory.",caps:[
    "<b>Where it's installed<\/b> — assets, distinct versions and products for any search, with breakdowns by version, operating system, network and asset criticality — counted over the whole search, not just the page.",
    "<b>Affected-range check<\/b> — give a range like <span class='mono'>&gt;=2.0 &lt;2.17.1; &gt;=2.18 &lt;2.18.2<\/span> and every asset is sorted into in range, distro build, no version or not in range, with crown jewels in range called out.",
@@ -1324,19 +1324,19 @@ const AGENT_INTRO = {
    "<b>Every site approved, every time<\/b> — nothing is fetched until you approve it, the approval is never remembered, and the lookup only reaches public addresses — never your internal network.",
    "<b>Affected products, counted for you<\/b> — each product and version range from the lookup — with CISA KEV, CVSS and the fixed versions — is counted in your inventory in one pass; one click searches it.",
    "<b>Versions compared properly<\/b> — 2.4.9 &lt; 2.4.10, 1.0.2k &lt; 1.0.2u, 2.0-rc1 &lt; 2.0, epochs ignored — the same way for every product.",
-   "<b>CSV and email<\/b> — export every install in the search (up to 50,000) or send it through Notify &amp; Reports; each asset opens in Asset Dossier."]},
+   "<b>CSV and email<\/b> — export every install in the search (up to 50,000) or send it through Notify &amp; Report; each asset opens in Asset Dossier."]},
  ex_tags:{does:"Explorer › Tags lists every tag in navi.db — one row per category : value with its asset count — searchable by category or value. Click a tag to see exactly which assets carry it, each linking to Asset Dossier and to the asset in Tenable.",caps:[
    "<b>Every tag<\/b> — one row per category : value, with its asset count and when it was first and last applied.",
    "<b>Search<\/b> — by category or value.",
    "<b>Who carries it<\/b> — every asset carrying the tag — host, IP, OS, ACR, AES, when it was tagged, and a Tenable link.",
    "<b>Deep-dive<\/b> — every host opens Asset Dossier.",
-   "<b>Email the result<\/b> — send the list through Notify &amp; Reports."]},
+   "<b>Email the result<\/b> — send the list through Notify &amp; Report."]},
  ex_vulns:{does:"Explorer › Vulnerabilities searches every finding in navi.db, one row each, by plugin name or ID, CVE, severity or finding ID, and shows each finding with its asset and VPR. A finding ID opens it in Tenable, the asset opens Asset Dossier, and a fix can be handed to Remote Remediation.",caps:[
    "<b>Search by anything<\/b> — plugin name, plugin ID, CVE, severity or finding ID.",
    "<b>Findings in context<\/b> — asset, severity and VPR on every row.",
    "<b>Open in Tenable<\/b> — a finding ID opens that finding in Tenable.",
    "<b>Deep-dive and fix<\/b> — the asset opens Asset Dossier; Remediate hands the plugin and host to Remote Remediation, pre-filled, never auto-run.",
-   "<b>Email the result<\/b> — send the rows to an owner through Notify &amp; Reports."]},
+   "<b>Email the result<\/b> — send the rows to an owner through Notify &amp; Report."]},
  exproute:{does:"Exposure Routes maps every application route and filesystem path to an owner, in plain English — \"give the payment routes to VM Team, put /opt under Networking, ignore the ICMP route\" — and tags every asset on a matched route or path Owner : &lt;route or path&gt;: &lt;owner&gt;. He measures coverage honestly: an asset is closed only when every route it sits on has an owner.",caps:[
    "<b>Owners in plain English<\/b> — describe the mapping; Exposure Routes resolves each owner against your Tenable users and groups and previews it before tagging.",
    "<b>Owners from Tenable<\/b> — users, user groups and agent groups pulled live through navi (the Tenable MCP as a backup), cached so the page stays fast.",
@@ -1349,7 +1349,7 @@ const AGENT_INTRO = {
    "<b>16 signals, one number<\/b> — weights sum to 100, so a score reads as the share of the most danger one asset can carry; dispositions discount it, and Scan Health's coverage flags how far to trust it.",
    "<b>Your weighting<\/b> — drag any weight to re-rank the estate to what matters to you; each weighting is cached separately.",
    "<b>Your assets, or the whole estate<\/b> — score one tag's assets — an owner, a business tier, an environment — and every count, band, act-now set and leaderboard re-builds over just them, with each asset's score unchanged. Tag views keep their own cache, so you switch between a tag and the whole estate without rebuilding either.",
-   "<b>Act now<\/b> — the assets over 80, 60 or 40 today, with one-click hand-offs: tag Priority, tag owners (Ownership), email owners (Notify &amp; Reports), raise ACR (Criticality Calibration) or add to the Contract.",
+   "<b>Act now<\/b> — the assets over 80, 60 or 40 today, with one-click hand-offs: tag Priority, tag owners (Ownership), email owners (Notify &amp; Report), raise ACR (Criticality Calibration) or add to the Contract.",
    "<b>Worst from each specialist<\/b> — the top asset each specialist's signal points at — and the assets where several converge.",
    "<b>Explained<\/b> — every asset's score broken down by factor, and how widespread each signal is across the estate.",
    "<b>Priority tags<\/b> — Priority : P1 to P4 on the act-now set, recomputed on the server from navi.db — not taken from the browser."]},
@@ -1382,7 +1382,7 @@ const AGENT_INTRO = {
    "<b>Limits that force a hand-off<\/b> — rule-based tags cap at about 1,024 IPs / 1,999 UUIDs; OS, app and device tagging needs plugin-output fingerprinting; only navi writes ACR; native dashboards are Tenable-only.",
    "<b>When they disagree<\/b> — suspect a stale navi.db first; different tenants are the rare case; navi can tell you which key and container it holds.",
    "<b>navi-side snapshot<\/b> — the tag categories, asset count and freshness navi sees right now."]},
- mitre:{does:"ATT&amp;CK Mapping fetches the public ATT&amp;CK-to-CVE mapping from MITRE's Center for Threat-Informed Defense, matches it to the CVEs in your findings, and shows the techniques and tactics your unpatched estate enables on an ATT&amp;CK matrix. He tags the affected assets with each CVE's primary impact, secondary impact and exploit technique.",caps:[
+ mitre:{does:"MITRE ATT&amp;CK Map fetches the public ATT&amp;CK-to-CVE mapping from MITRE's Center for Threat-Informed Defense, matches it to the CVEs in your findings, and shows the techniques and tactics your unpatched estate enables on an ATT&amp;CK matrix. He tags the affected assets with each CVE's primary impact, secondary impact and exploit technique.",caps:[
    "<b>Public mapping, approved download<\/b> — the Center for Threat-Informed Defense ATT&amp;CK→CVE mapping, fetched after you approve it (or auto-approve in Settings), with a bundled snapshot offline.",
    "<b>Only what's in your estate<\/b> — by default only CVEs present in navi.db, so every tag lands on real assets.",
    "<b>ATT&amp;CK matrix<\/b> — techniques and tactics your findings enable, by mapping type; full screen and email from the widget.",
@@ -1412,7 +1412,7 @@ const AGENT_INTRO = {
    "<b>Breach outlook<\/b> — open findings due within 7, 14 and 30 days, and already past SLA, by severity — before they breach.",
    "<b>Monthly trend charts<\/b> — adherence, backlog, new vs fixed, breaches opened, days to fix — each its own widget, full screen on demand.",
    "<b>Daily history<\/b> — an unscoped run records the day's point, so trends build without extra work.",
-   "<b>Email the dashboard<\/b> — send it to the people who need it through Notify &amp; Reports."]},
+   "<b>Email the dashboard<\/b> — send it to the people who need it through Notify &amp; Report."]},
  software:{does:"Software Inventory reconciles the software and CPE inventories into one product list, shows version sprawl, the most-deployed and the single-install products, checks versions against endoflife.date, flags the software that makes a host a crown jewel, and ranks a risk leaderboard by the KEV and critical exposure on the hosts that run each product.",caps:[
    "<b>One product list, two sources<\/b> — software and CPE inventories reconciled, each product badged with the source that saw it, and a delta view of what one source missed.",
    "<b>Sprawl, common, single-install<\/b> — the product on fourteen versions, the package on half the estate, the one-off install nobody owns.",
@@ -1458,6 +1458,7 @@ function _introStyle(){
   +'.introCrest{width:230px;height:230px;max-width:46vw;border-radius:16px;object-fit:cover;border:1px solid var(--line);box-shadow:0 10px 28px rgba(0,0,0,.5)}'
   +'.introIcoBig{display:flex;align-items:center;justify-content:center;font-size:96px;background:var(--panel2,var(--bg-2));width:160px;height:160px}'
   +'.introIco{font-size:15px;line-height:1;margin-right:2px}'
+  +'.introIcoBig .bicon{width:100%;height:100%;border-radius:16px}.introIco .bicon{width:18px;height:18px;vertical-align:-4px;border-radius:5px}'
   +'.introName{margin-top:9px;font-weight:700;font-size:13px;color:var(--ink-2);letter-spacing:.02em}'
   +'.introBody{flex:1 1 360px;min-width:280px}'
   +'.introSec{margin:0 0 15px}'
@@ -1487,8 +1488,8 @@ function _mountCodename(host){
   let cb=document.getElementById('agent-codename');
   if(!cb){ cb=document.createElement('div'); cb.id='agent-codename'; cb.className='codebanner'; cb.style.cssText='margin:0 0 12px'; host.insertAdjacentElement('afterend',cb); }
   // build 490: the specialist's own icon (the one in the sidebar) replaces the crest
-  const crestSm='<span class="introIco" aria-hidden="true">'+esc(icon)+'</span>';
-  const bigCrest='<div class="introCrest introIcoBig" aria-hidden="true">'+esc(icon)+'</div>';
+  const crestSm='<span class="introIco" aria-hidden="true">'+brandIconHtml(id, icon)+'</span>';
+  const bigCrest='<div class="introCrest introIcoBig" aria-hidden="true">'+brandIconHtml(id, icon)+'</div>';
   const doesHtml=(intro&&intro.does)?('<div class="introSec"><h4>What it does</h4><p class="introDoes">'+intro.does+'</p></div>'):'';
   const capsHtml=(intro&&intro.caps&&intro.caps.length)?('<div class="introSec"><h4>Key capabilities</h4><ul class="introCaps">'+intro.caps.map(c=>'<li>'+c+'</li>').join('')+'</ul></div>'):'';
   const loreHtml=cn?('<div class="introSec"><h4>What\'s in the name</h4><div class="introLore">'+cn.lore+'</div></div>'):'';
@@ -1579,7 +1580,7 @@ async function _sqlColChips(id, table){
     const ta=document.getElementById(id+'_sql'); if(ta) ta.value=ta.value.replace(/select\s+[\s\S]*?\s+from\s/i,'SELECT '+(chosen.length?chosen.join(', '):'*')+' FROM ');
   });
 }
-/* ===== Shared widget + dashboard email (Notify & Reports) — ONE UX for the whole pack =====
+/* ===== Shared widget + dashboard email (Notify & Report) — ONE UX for the whole pack =====
    hMail(container, getPayload, opts)
      container  — element the 📧 button is appended to (usually a card's .toolbar)
      getPayload — mode 'data':      () => {title, note?, sql?, columns?, rows:[{...}]}
@@ -1588,7 +1589,7 @@ async function _sqlColChips(id, table){
                   Return null / empty rows|components → "no data yet" message.
      opts       — {mode:'data'|'dashboard' (default 'data'), label}
    Double-gated server-side (confirm + NAVI_ALLOW_WRITES=1 + NAVI_EMAIL=1); a blocked
-   send surfaces Notify & Reports's exact gate reason. Recipient remembered in localStorage. */
+   send surfaces Notify & Report's exact gate reason. Recipient remembered in localStorage. */
 function _hmailStyle(){ if(document.getElementById('hmailStyle'))return;
   const st=document.createElement('style'); st.id='hmailStyle';
   st.textContent='.hmrow{display:none;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px;flex-basis:100%}'
@@ -1602,7 +1603,7 @@ function hMail(container, getPayload, opts){
   const EM=agentApi('email');
   const btn=document.createElement('button'); btn.className='btn ghost sm hmbtn';
   btn.textContent=opts.label||(mode==='dashboard'?'\ud83d\udce7 Email dashboard':'\ud83d\udce7');
-  btn.title=mode==='dashboard'?'Email the whole dashboard via Notify & Reports (gated)':mode==='widget'?"Email this widget via Notify & Reports — the picture (attached) and the list (gated)":"Email this widget's data via Notify & Reports (gated)";
+  btn.title=mode==='dashboard'?'Email the whole dashboard via Notify & Report (gated)':mode==='widget'?"Email this widget via Notify & Report — the picture (attached) and the list (gated)":"Email this widget's data via Notify & Report (gated)";
   const row=document.createElement('div'); row.className='hmrow';
   row.innerHTML='<input type="email" placeholder="recipient@company.com"><button class="btn run sm">\u25b6 Send</button><button class="btn ghost sm">\u2715</button><span class="res sub"></span>';
   container.appendChild(btn); container.appendChild(row);
@@ -1664,9 +1665,9 @@ function wireNlBox(table, ids){
 /* ===== hMailAuto — uniform email for ANY agent page, zero per-page logic =====
    Reads the LIVE DOM (so it never needs a page's data model):
      • a "📧 Email dashboard" button on the header — collects every KPI row + every
-       data table on the page into Notify & Reports `dashboard` components.
+       data table on the page into Notify & Report `dashboard` components.
      • a per-widget 📧 on each table (next to its nearest heading) — sends just that
-       table via Notify & Reports `data`.
+       table via Notify & Report `data`.
    Re-scans on every click, so it reflects whatever the agent has rendered. Call once
    at the end of a page's script: hMailAuto({title:'<Agent> — <Codename>'}).
    opts.title    — email subject/title base (default: document.title)
@@ -1709,7 +1710,7 @@ function _hmTableComponents(sel,skip){
      ⛶  full screen (Fullscreen API; an in-page overlay where the browser has none, e.g. iPhone).
         `grow` names an element whose height should fill the screen (the attack map's svg); the
         page's onResize() is called after entering / leaving so a chart can re-fit.
-     📧  Notify & Reports: the widget's picture as an attachment (PNG, rendered in the browser; a
+     📧  Notify & Report: the widget's picture as an attachment (PNG, rendered in the browser; a
         self-contained HTML snapshot where the browser can't rasterise it) + its list inline in
         the email body (a CSV rides along when it is long). Gated like every send.
    hSnapshot(el) → Promise<{png|null, html}> renders an element (HTML or SVG) with its computed
@@ -1843,12 +1844,12 @@ const _NAV_ITEMS = [
   ['📰 Ensemble Report', '/agents/insights/page.html'],
   ['SEP'],
   ['<span class="hcrest sm" aria-hidden="true"></span>Run the Ensemble', '/'],
-  ['📜 Automation', '/agents/contract/page.html'],
-  ['📧 Notify &amp; Reports', '/agents/email/page.html'],
+  ['📜 Automation Station', '/agents/contract/page.html'],
+  ['📧 Notify &amp; Report', '/agents/email/page.html'],
   ['SEP'],
   ['📊 Dashboards', '/web/dashboards.html'],
   ['🔎 Explorer', '/web/search.html'],
-  ['🛠 Tools', '/web/tools.html'],
+  ['🛠 Tools and Logs', '/web/tools.html'],
 ];
 function _navddStyle(){
   if(document.getElementById('navddStyle')) return;
@@ -1938,7 +1939,7 @@ function mountToolsNav(){
   const old = document.getElementById('toolssub'); if(old) old.remove();
   if(!isTools) return;
   const bar = document.createElement('nav'); bar.className = 'searchsub'; bar.id = 'toolssub';
-  bar.innerHTML = '<span class="lbl">🛠 Tools</span>' + TOOLS_PAGES.map(s => {
+  bar.innerHTML = '<span class="lbl">🛠 Tools and Logs</span>' + TOOLS_PAGES.map(s => {
     const a = (s[1] !== '#refresh' && (p === s[1] || p.endsWith(s[1])));
     return '<button class="' + (a ? 'active' : '') + '" data-href="' + s[1] + '">' + s[0] + '</button>';
   }).join('');
@@ -2059,6 +2060,17 @@ function mountDashTabs(containerId, onChange){
     done();
   });
 }
+/* build 493: a specialist's icon as HTML — its navi Ensemble tile (BRAND.roster[id].img, a fixed
+   /static/icons/ path from core/brand.py) when it has one, else its emoji (escaped). The src never comes
+   from the id itself: an id that isn't in the roster gets the escaped fallback. */
+function brandIconHtml(id, fallback, cls){
+  const r=(window.BRAND&&BRAND.roster&&Object.prototype.hasOwnProperty.call(BRAND.roster,id))?BRAND.roster[id]:null;
+  if(r&&r.img&&/^\/static\/icons\/[a-z0-9_]+\.png$/.test(r.img))
+    return '<img class="bicon'+(cls?' '+cls:'')+'" src="'+r.img+'?v=1" alt="" aria-hidden="true" draggable="false">';
+  return esc(fallback!=null?fallback:((r&&r.icon)||'✦'));
+}
+const _SIDE_ID_RE=/^\/agents\/([a-z0-9_]+)\/page\.html$/;
+const _SIDE_ID_ALIAS={'/web/dashboards.html':'dashboard'};   // views that wear a specialist's tile
 /* Left-sidebar navigation model — grouped, guided-flow order. Item: [iconHTML, label, href]. */
 const _SIDE_GROUPS=[
   [null,[
@@ -2066,26 +2078,26 @@ const _SIDE_GROUPS=[
     ['<span class="hcrest sm" aria-hidden="true"></span>','Run the Ensemble','/'],
   ]],
   ['Fast signal',[
-    ['🎯','ATT&CK Mapping','/agents/mitre/page.html'],
+    ['🎯','MITRE ATT&CK Map','/agents/mitre/page.html'],
     ['🛡️','CISA KEV','/agents/cisakev/page.html'],
     ['🔩','End of Life','/agents/eol/page.html'],
     ['🔐','Certificates','/agents/certificate/page.html'],
   ]],
   ['Deeper analysis',[
-    ['📡','Device Discovery','/agents/iot_squad/page.html'],
+    ['📡','IoT Discovery','/agents/iot_squad/page.html'],
     ['⚛️','Post-Quantum','/agents/postquantum/page.html'],
     ['🤖','AI Inventory','/agents/ai/page.html'],
     ['🪪','Identity Inventory','/agents/identity/page.html'],
     ['📦','Software Inventory','/agents/software/page.html'],
     ['🏷️','Custom App Discovery','/agents/customapp/page.html'],
-    ['🕸️','Web App Scanning','/agents/was/page.html'],
+    ['🕸️','Web App Report','/agents/was/page.html'],
     ['⚖️','Compliance Overview','/agents/compliance/page.html'],
     ['🕸️','Attack Paths','/agents/attackpath/page.html'],
     ['🩺','Scan Health','/agents/scan_eval/page.html'],
   ]],
   ['Organize',[
     ['🛰️','Agent Group Sync','/agents/agentgroup/page.html'],
-    ['📇','Classification','/agents/classify/page.html'],
+    ['📇','Asset Classification','/agents/classify/page.html'],
     ['🧭','Exposure Routes','/agents/exproute/page.html'],
     ['📌','Ownership','/agents/asset_ownership/page.html'],
     ['⚖️','Criticality Calibration','/agents/acr/page.html'],
@@ -2093,11 +2105,11 @@ const _SIDE_GROUPS=[
   ['Operationalize',[
     ['📜','Audit Authoring','/agents/custom_audit/page.html'],
     ['⏱','SLA Tracker','/agents/sla/page.html'],
-    ['📧','Notify & Reports','/agents/email/page.html'],
+    ['📧','Notify & Report','/agents/email/page.html'],
     ['🐦‍⬛','Alerts','/agents/alert/page.html'],
     ['🗑️','Tag Removal','/agents/tagremoval/page.html'],
     ['🐺','Remote Remediation','/agents/c2/page.html'],
-    ['📜','Automation','/agents/contract/page.html'],
+    ['📜','Automation Station','/agents/contract/page.html'],
   ]],
   ['Views',[
     ['🎯','Exposure Score','/agents/fused_score/page.html'],
@@ -2108,7 +2120,7 @@ const _SIDE_GROUPS=[
   ]],
   ['System',[
     ['🔎','Explorer','/web/search.html'],
-    ['🛠','Tools','/web/tools.html'],
+    ['🛠','Tools and Logs','/web/tools.html'],
   ]],
 ];
 const _phoneNav = () => { try{ return window.matchMedia('(max-width:640px)').matches; }catch(e){ return false; } };
@@ -2121,12 +2133,15 @@ function mountTopNav(){
   const active = href => href === '/' ? (p === '/' || p === '/index.html')
                                       : (p === href || p.endsWith(href));
   const nav = document.createElement('nav'); nav.className = 'tabs'; nav.id = 'topnav';
+  const _sideIco = it => { const m=_SIDE_ID_RE.exec(it[2]); const id=m?m[1]:(_SIDE_ID_ALIAS[it[2]]||'');
+    const r=id&&window.BRAND&&BRAND.roster&&BRAND.roster[id];
+    return (r&&r.img) ? brandIconHtml(id) : it[0]; };
   nav.innerHTML = _SIDE_GROUPS.map(g => {
     const head = g[0] ? '<div class="navgrp">' + g[0] + '</div>' : '';
     const items = g[1].map(it => {
       const lbl = String(it[1]).replace(/&/g,'&amp;');
       return '<button class="' + (active(it[2]) ? 'active' : '') + '" data-href="' + it[2] + '">' +
-        '<span class="ico">' + it[0] + '</span><span class="lbl">' + lbl + '</span></button>';
+        '<span class="ico">' + _sideIco(it) + '</span><span class="lbl">' + lbl + '</span></button>';
     }).join('');
     return head + items;
   }).join('');
@@ -2236,7 +2251,7 @@ function claudeChip(h){
 /* Mount the shared header (logo, title, live health chips). */
 /* ===== Guided flow — a fixed order through the Ensemble so each agent's header links to the
    next logical one. Highlight the Signal (fast → deeper) → Organize the Work → Operationalize,
-   ending on Automation. Agents not in the flow simply show no Next link. ===== */
+   ending on Automation Station. Agents not in the flow simply show no Next link. ===== */
 const AGENT_FLOW=['mitre','cisakev','eol','certificate',
                   'iot_squad','postquantum',
                   'ai','identity','software','customapp','attackpath','scan_eval',
@@ -2463,9 +2478,9 @@ function flash(el, html, kind){
 }
 function flashClear(el){ const n = typeof el==='string'?document.getElementById(el):el; if(n) n.className='flash'; }
 
-/* ===== Hand-off to Notify & Reports (the email agent) — the Ensemble's shared "second option" =====
+/* ===== Hand-off to Notify & Report (the email agent) — the Ensemble's shared "second option" =====
    Any specialist calls emailFindings({source_agent, source_hound, headline, finding_ids,
-   asset_uuids, tag}) after a search/tag. We stash the payload and open Notify & Reports, which
+   asset_uuids, tag}) after a search/tag. We stash the payload and open Notify & Report, which
    picks it up, composes the "agent findings" email (overview + the finding IDs that made
    up the search + the tagged assets with Tenable deep-links) and previews it — send stays
    gated. finding_ids = the plugin IDs that drove the asset search; asset_uuids = the
@@ -2474,13 +2489,13 @@ function emailFindings(payload){
   try{ sessionStorage.setItem('gabriel_handoff', JSON.stringify(payload||{})); }catch(e){}
   location.href='/agents/email/page.html';
 }
-/* Convenience: an "📧 Email findings → Notify & Reports" button HTML string. Pass a JS expression
+/* Convenience: an "📧 Email findings → Notify & Report" button HTML string. Pass a JS expression
    (as a string) that evaluates to the payload at click time, e.g.
    emailFindingsBtn('buildEmailPayload()'). */
 function emailFindingsBtn(exprOrPayload, label){
-  const lab = label || '📧 Email findings → Notify & Reports';
+  const lab = label || '📧 Email findings → Notify & Report';
   const k='efb'+(++_EFB_N); _EFB[k]=exprOrPayload;   // payload (or a global builder fn name) kept here, never inlined as JS
-  return `<button class="btn ghost sm" data-efb="${k}" title="Hand these findings to Notify & Reports — email the finding IDs + tagged assets with Tenable deep-links">${lab}</button>`;
+  return `<button class="btn ghost sm" data-efb="${k}" title="Hand these findings to Notify & Report — email the finding IDs + tagged assets with Tenable deep-links">${lab}</button>`;
 }
 const _EFB={}; let _EFB_N=0;
 document.addEventListener('click', e=>{ const b=e.target&&e.target.closest&&e.target.closest('[data-efb]'); if(!b) return;
@@ -2522,15 +2537,15 @@ function c2Link(intent, payload, label){
 document.addEventListener('click', e=>{ const a=e.target&&e.target.closest&&e.target.closest('[data-c2h]'); if(!a) return;
   const v=_C2H[a.dataset.c2h]; if(!v) return; e.preventDefault(); c2Handoff(v); });
 /* Uniform "second option" across the Ensemble: an agent calls registerFindings(payload) after
-   it runs/tags, and a floating "📧 Email findings → Notify & Reports" button appears bottom-right.
+   it runs/tags, and a floating "📧 Email findings → Notify & Report" button appears bottom-right.
    payload = {source_agent, source_hound, headline, finding_ids:[plugins], asset_uuids:[…],
    tag:{category,value}}. Clicking hands the finding IDs that made up the search — plus the
-   tagged assets with Tenable deep-links — to Notify & Reports. Skips the email agent's own page. */
+   tagged assets with Tenable deep-links — to Notify & Report. Skips the email agent's own page. */
 let __FINDINGS = null;
 function registerFindings(p){
   if(!p || (window.__AGENT_ID==='email')) return;
   const fids=(p.finding_ids||[]).map(String), uu=(p.asset_uuids||[]).map(String);
-  const hasTag = p.tag && p.tag.value;               // Notify & Reports can resolve assets from a tag
+  const hasTag = p.tag && p.tag.value;               // Notify & Report can resolve assets from a tag
   if(!fids.length && !uu.length && !hasTag) return;   // nothing to hand off yet
   __FINDINGS = Object.assign({}, p, {finding_ids:fids, asset_uuids:uu});
   let b=document.getElementById('gabrielFab');
@@ -2538,8 +2553,8 @@ function registerFindings(p){
     // sit ABOVE the fixed dark/light toggle (#naviTheme, bottom:16px) so they never overlap
     b.style.cssText='position:fixed;right:16px;bottom:64px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,.45);border-radius:999px';
     b.onclick=()=>emailFindings(__FINDINGS); document.body.appendChild(b); }
-  b.title='Email these findings to Notify & Reports — the finding IDs that made up this search + the tagged assets, with Tenable deep-links';
-  b.innerHTML='📧 Email findings → Notify & Reports'+(uu.length?(' · '+uu.length):'');
+  b.title='Email these findings to Notify & Report — the finding IDs that made up this search + the tagged assets, with Tenable deep-links';
+  b.innerHTML='📧 Email findings → Notify & Report'+(uu.length?(' · '+uu.length):'');
 }
 function clearFindings(){ __FINDINGS=null; const b=document.getElementById('gabrielFab'); if(b) b.remove(); }
 

@@ -30,6 +30,6 @@
  ],
  "how": "Agent Group Sync reads agent groups live through navi and tags with `navi enrich tag --c \"Agent Group\" --v <name> --group <name>` — one write per group, behind the write gate and a confirm, recorded in the Tagging log.",
  "who": "Security operations teams who own the tag estate, and anyone who wants scans and reports scoped by how agents are actually deployed.",
- "better": "Group tags give Ownership, Criticality Calibration and SLA Tracker a ready-made way to segment the estate. Automation keeps the group tags current on its schedule, and Tag Removal clears any that no longer belong.",
+ "better": "Group tags give Ownership, Criticality Calibration and SLA Tracker a ready-made way to segment the estate. Automation Station keeps the group tags current on its schedule, and Tag Removal clears any that no longer belong.",
  "cta": "Let Agent Group Sync lay down the structure — the whole pack navigates by the brightest star."
 }

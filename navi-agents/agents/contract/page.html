@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Automation — navi Ensemble</title>
+<title>Automation Station — navi Ensemble</title>
 <link rel="stylesheet" href="/static/console.css"/>
 <style>
 .arow{display:grid;grid-template-columns:minmax(150px,240px) 1fr;gap:10px;align-items:start;margin-bottom:8px}
@@ -31,7 +31,7 @@
   <header class="top" id="app-header"></header>
 
   <section class="card">
-    <div class="toolbar"><div><h2 style="margin:0">📜 Automation</h2>
+    <div class="toolbar"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/contract.png?v=1" alt="" aria-hidden="true" draggable="false"> Automation Station</h2>
       <p class="sub" style="margin:2px 0 0">Capture your policy once; the loop tags, sets ACR, waits, and re-runs every few hours — planning first, executing only when <b>armed</b>. With no per-agent policy it tags the <b>risk-weighted top-N</b> of everything.</p></div>
       <span class="badge" id="armBadge" style="margin-left:auto">…</span></div>
     <div class="kpi" id="kpi"></div>
@@ -47,7 +47,7 @@
       <button class="btn ghost sm" id="exportJson">⬇ Export JSON</button>
       <button class="btn ghost sm" id="importJson">⬆ Import JSON</button>
       <button class="btn ghost sm" id="exportBtn">⬇ Export navi script</button>
-      <button class="btn ghost sm" id="emailSummaryBtn" title="Hand this run to Notify &amp; Reports — email a summary: tags per category, assets, errors, and which agents didn't run / weren't enabled">📧 Email summary → Notify &amp; Reports</button>
+      <button class="btn ghost sm" id="emailSummaryBtn" title="Hand this run to Notify &amp; Report — email a summary: tags per category, assets, errors, and which agents didn't run / weren't enabled">📧 Email summary → Notify &amp; Report</button>
       <button class="btn ghost sm" id="saveBtn">💾 Save contract</button>
       <input type="file" id="cFile" accept="application/json" style="display:none">
     </div>
@@ -155,10 +155,10 @@
   </section>
 
   <section class="card">
-    <div class="toolbar"><h3 style="margin:0">📧 Run summary email (Notify &amp; Reports)</h3><span class="chip" id="notifyChip" style="margin-left:auto"></span></div>
-    <p class="sub" style="margin:2px 0 8px">Every cycle, Notify &amp; Reports emails a summary of what the contract did — tags queued, ACR applied, tags removed, and any Alerts alerts that fired. On by default; uncheck to stop getting an email each run. Sending is still gated by <span class="mono">NAVI_EMAIL</span>, so a gated inbox just records what would have gone out.</p>
+    <div class="toolbar"><h3 style="margin:0">📧 Run summary email (Notify &amp; Report)</h3><span class="chip" id="notifyChip" style="margin-left:auto"></span></div>
+    <p class="sub" style="margin:2px 0 8px">Every cycle, Notify &amp; Report emails a summary of what the contract did — tags queued, ACR applied, tags removed, and any Alerts alerts that fired. On by default; uncheck to stop getting an email each run. Sending is still gated by <span class="mono">NAVI_EMAIL</span>, so a gated inbox just records what would have gone out.</p>
     <div class="toolbar">
-      <label class="sub"><input type="checkbox" id="notifyEnabled"> email a summary via Notify &amp; Reports each cycle</label>
+      <label class="sub"><input type="checkbox" id="notifyEnabled"> email a summary via Notify &amp; Report each cycle</label>
       <label class="sub">to <input id="notifyTo" type="email" class="fld" placeholder="blank → default alert email" style="width:260px"></label>
     </div>
   </section>
@@ -167,7 +167,7 @@
     <div class="toolbar"><h3 style="margin:0">Loop log</h3></div>
     <div id="loop"><p class="sub">No cycles yet.</p></div>
   </section>
-  <footer>Automation · plans first · executes when armed · writes gated by NAVI_ALLOW_WRITES</footer>
+  <footer>Automation Station · plans first · executes when armed · writes gated by NAVI_ALLOW_WRITES</footer>
 </div>
 <script src="/static/brand.js"></script>
 <script src="/static/console.js"></script>
@@ -217,7 +217,7 @@ function renderRemoval(){ const r=C.removal||{enabled:false,tags:[],pause_minute
   document.getElementById('remPause').value=(r.pause_minutes!=null?r.pause_minutes:30);
   document.getElementById('remNaviupd').checked=(r.navi_update!==false);
   const box=document.getElementById('remList');
-  box.innerHTML=(r.tags&&r.tags.length?r.tags:[]).map(remRow).join('')||'<p class="sub">No tags to remove. Pick tags in the Tag Removal agent and "Add to Automation", or click <b>+ tag</b>.</p>';
+  box.innerHTML=(r.tags&&r.tags.length?r.tags:[]).map(remRow).join('')||'<p class="sub">No tags to remove. Pick tags in the Tag Removal agent and "Add to Automation Station", or click <b>+ tag</b>.</p>';
   box.querySelectorAll('.remdel').forEach(b=>b.onclick=()=>b.closest('.remrow').remove());
   const c=document.getElementById('remCount'); if(c)c.textContent=((r.tags||[]).length)+' tag(s)'+(r.enabled?' · armed-cycle removes first':'');
 }
@@ -322,7 +322,7 @@ document.getElementById('emailSummaryBtn').onclick=async()=>{
   if(!LASTPLAN){ await push(); flash('flash','<span class="spin"></span> planning for the summary…','run'); try{ const o=await API.post('plan'); renderPlan(o.plan); }catch(e){} flashClear('flash'); }
   const plan_agents=AGENTS.map(([id])=>{ const blk=((LASTPLAN&&LASTPLAN.agents)||[]).find(b=>b.agent===id)||{};
     return {agent:id, enabled:!!(C&&C.agents[id]&&C.agents[id].enabled), selected:blk.selected||0, error:blk.error||undefined}; });
-  // hand off to Notify & Reports — it reads the live tag log for deployed/errored tags + navi.db for
+  // hand off to Notify & Report — it reads the live tag log for deployed/errored tags + navi.db for
   // assets-per-category, and uses this plan for enabled/skipped/matched-nothing.
   emailFindings({report:'contract_summary', armed:LASTARMED, plan_agents});
 };
@@ -376,7 +376,7 @@ function cAcrAddAll(){
 document.getElementById('cAcrInterpret').onclick=cAcrInterpret;
 document.getElementById('cAcrAddAll').onclick=cAcrAddAll;
 
-mountAgentHeader({icon:'📜',name:'Automation',sub:'autonomous workflow · plan→arm→loop'});
+mountAgentHeader({icon:'📜',name:'Automation Station',sub:'autonomous workflow · plan→arm→loop'});
 try{ hMailAuto(); }catch(e){}
 refresh();
 /* Arriving from "Plan Run" (?plan=1) → auto-run the plan and land on the review below. */

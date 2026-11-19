@@ -41,6 +41,6 @@
  ],
  "how": "Heimdall reads the certs table, TLS / SSH and PQC plugin output, and software inventory in your local navi.db. Tags go through navi (by query, by plugin ID or on exact assets) behind the write gate and a confirm.",
  "who": "PKI and crypto owners planning the post-quantum migration, CISOs and compliance planners working to the CNSA 2.0 timeline, and GRC teams who need evidence, not estimates.",
- "better": "Heimdall reads the same certificates as Certania, weights by Criticality Calibration's ACR and Laelaps's KEV, and feeds Exposure Score's crypto factor. Ensemble Report's quantum card opens his exact asset list, and Automation re-applies the Post-Quantum : Cipher Analysis tag on its schedule.",
+ "better": "Heimdall reads the same certificates as Certania, weights by Criticality Calibration's ACR and Laelaps's KEV, and feeds Exposure Score's crypto factor. Ensemble Report's quantum card opens his exact asset list, and Automation Station re-applies the Post-Quantum : Cipher Analysis tag on its schedule.",
  "cta": "Map your quantum exposure with Heimdall — and move the riskiest crypto first."
 }

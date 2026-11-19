@@ -10,7 +10,7 @@ from core.agents.base import Agent
 
 class ContractAgent(Agent):
     id = "contract"
-    name = "Automation"
+    name = "Automation Station"
     icon = "📜"
     description = ("Turns the captured tag log + your policy into an autonomous, "
                    "scheduled workflow — plans first, executes when armed.")

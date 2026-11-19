@@ -49,7 +49,7 @@
   <header class="top" id="app-header"></header>
 
   <section class="card" style="background:var(--panel)">
-    <div class="toolbar"><div><div class="acode">Fenrir</div><h2 style="margin:0">🕸️ Attack Paths</h2>
+    <div class="toolbar"><div><div class="acode">Fenrir</div><h2 style="margin:0"><img class="bicon" src="/static/icons/attackpath.png?v=1" alt="" aria-hidden="true" draggable="false"> Attack Paths</h2>
       <p class="sub" style="margin:2px 0 0">Fenrir shows how the weaknesses Tenable already found <b>chain together</b> to reach your crown jewels: remotely exploitable vulnerabilities, local privilege escalation, credentials shared across hosts, NTLM relay, domain-controller flaws, and <b>failed compliance controls</b> (LAPS, SMB signing, LLMNR, WDigest, sudo…) that make each step easier. Then it finds the <b>fixes that break the most paths</b>. Everything comes from navi.db; reachability is <b>inferred</b> (no flow data), and every step shows its evidence. Tags <b>the assets</b> <span class="tagval">Attack Path : Entry Point | Pivot | Target | Choke Point</span>; writes are gated and tracked in the <a href="/web/tags-log.html">Tagging log</a>.</p></div>
       <span style="margin-left:auto;display:flex;gap:6px;align-items:center"><label class="sub" for="crownAcr">Crown jewels</label>
         <select id="crownAcr" class="fld" style="padding:6px;border-radius:7px"><option value="5">ACR ≥ 5</option><option value="6">ACR ≥ 6</option><option value="7" selected>ACR ≥ 7</option><option value="8">ACR ≥ 8</option><option value="9">ACR ≥ 9</option><option value="10">ACR = 10</option></select>
@@ -462,7 +462,7 @@ document.getElementById('mapBest').onchange=()=>{ HL=null; SEL=null; renderMap()
 document.getElementById('run').onclick=run;
 mountAgentHeader({id:'attackpath',icon:'🕸️',name:'Attack Path Analysis',sub:'Fenrir · exploit chains · credentials · relay · compliance enablers'});
 mountSectionNav();
-// ⛶ full screen (the map grows to the screen and re-fits) + 📧 picture & list (Notify & Reports)
+// ⛶ full screen (the map grows to the screen and re-fits) + 📧 picture & list (Notify & Report)
 hWidget('secMap',{title:'Attack map — attacker → crown jewels', visual:()=>document.getElementById('mapWrap'), grow:'#map', growOffset:230,
   onResize:()=>{ const f=document.getElementById('zfit'); if(f) f.click(); },
   columns:['crown jewel','ip','acr','likelihood','hops','way in','route'],

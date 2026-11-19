@@ -33,6 +33,6 @@
  ],
  "how": "Explorer › Assets reads your local navi.db and changes nothing. Evidence lists are built on request by the specialist that owns the number, so they reflect navi.db now — a card built at the last Run the Ensemble run can differ slightly.",
  "who": "Analysts and VM leads who need to see — and act on — the assets behind a metric.",
- "better": "Ensemble Report's cards open here; Asset Dossier takes over for one asset; Notify & Reports can email the list.",
+ "better": "Ensemble Report's cards open here; Asset Dossier takes over for one asset; Notify & Report can email the list.",
  "cta": "Give Explorer › Assets a number — it brings back every asset behind it."
 }

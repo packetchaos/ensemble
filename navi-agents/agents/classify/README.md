@@ -35,7 +35,7 @@ a *minimal* signal (Windows/macOS) because IoT is so often embedded Linux.
 A sticky **Jump to** nav (At a glance · Ask · Explorer · OS Signals · Classes · the drilled
 class) and a **📊 At a glance** section of metric cards, each linking to where you act on it:
 
-- **Classification** — assets, classified (coverage %), unclassified (→ the hand-classify
+- **Asset Classification** — assets, classified (coverage %), unclassified (→ the hand-classify
   worklist), untagged assets with an OS/device signal (→ OS Signals), cloud-by-metadata.
 - **Class breakdown** — servers, workstations, network, IoT (→ IoT Discovery), OT, hypervisors.
 - **Operating systems** — Windows / Linux / macOS classified, untagged OS hosts detected,

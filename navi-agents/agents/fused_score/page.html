@@ -91,7 +91,7 @@
 <div class="wrap">
   <header class="top" id="app-header"></header>
   <section class="card" style="background:radial-gradient(120% 140% at 90% -20%,var(--amber-glow),transparent 60%),var(--panel)">
-    <div class="toolbar"><div><div class="acode">Exposure Score</div><h2 style="margin:0">🎯 Exposure Score</h2>
+    <div class="toolbar"><div><div class="acode">Exposure Score</div><h2 style="margin:0"><img class="bicon" src="/static/icons/fused_score.png?v=1" alt="" aria-hidden="true" draggable="false"> Exposure Score</h2>
       <p class="sub" style="margin:2px 0 0">The Ensemble's convergence page — every specialist's signal fused into <b>one score per asset</b>. Surfaces the <b>worst from each specialist</b> and where they land on the <b>same</b> assets, ranks the estate worst-first, and turns a play into a <b>projected reduction justified by the signals it clears</b>. Scores climb as more specialists run and tag.</p></div>
       <button class="btn run sm" id="load" data-run style="margin-left:auto">▶ Run</button></div>
     <div id="flash" class="flash"></div>
@@ -420,7 +420,7 @@ function drawAct(){ const S=actSet(), st=actStats(), n=actN(), over=!!st.n;
   `<a class="abtn" href="/agents/asset_ownership/page.html">🏷️ Tag owners <b>${N(u)}</b></a>`+
   `<a class="abtn" href="/agents/email/page.html">📧 Email owners <b>${N(Math.max(0,n-u))}</b></a>`+
   `<a class="abtn" href="/agents/acr/page.html">⚖ Raise ACR <b>${N(ck)}</b></a>`+
-  `<a class="abtn" href="/agents/contract/page.html">📜 Add to Automation</a>`;
+  `<a class="abtn" href="/agents/contract/page.html">📜 Add to Automation Station</a>`;
  const tb=document.querySelector('#actbtns [data-a="tag"]'); if(tb)tb.onclick=()=>tagAct(tb);
  const CAP=100, shown=S.slice(0,CAP);
  document.getElementById('actAssetsLbl').innerHTML=S.length?('Assets over the line — <b>click any to open it in Asset Dossier</b>:'):'';

@@ -268,7 +268,7 @@ def _cert_rows(days):
 _SIGN = "\n— navi Ensemble · automated by navi (reply to reach the security team)"
 _HOUND_FOR = [("kev", "Laelaps (CISA KEV)"), ("cert", "Certania (certificates)"),
               ("eol", "Charon (end-of-life)"), ("lifecycle", "Charon (end-of-life)"),
-              ("post-quantum", "Heimdall (post-quantum)"), ("mitre", "ATT&CK Mapping (ATT&CK)"),
+              ("post-quantum", "Heimdall (post-quantum)"), ("mitre", "MITRE ATT&CK Map (ATT&CK)"),
               ("iot", "Argos (IoT/OT)"), ("ai", "Pythia (AI)")]
 
 
@@ -503,7 +503,7 @@ _AGENT_HOUND = {
     "cisakev": "Laelaps", "certificate": "Certania", "postquantum": "Heimdall",
     "attackpath": "Fenrir", "iot_squad": "Argos", "ai": "Pythia", "exproute": "Exposure Routes",
     "software": "Software Inventory", "eol": "Charon", "acr": "Criticality Calibration", "scan_eval": "Scan Health",
-    "agentgroup": "Agent Group Sync", "tagremoval": "Tag Removal", "mitre": "ATT&CK Mapping", "customapp": "Custom App Discovery",
+    "agentgroup": "Agent Group Sync", "tagremoval": "Tag Removal", "mitre": "MITRE ATT&CK Map", "customapp": "Custom App Discovery",
     "identity": "Identity Inventory", "insights": "Ensemble Report",
 }
 
@@ -1023,7 +1023,7 @@ def preview(p):
         if not msgs:
             return {"ok": True, "messages": [], "report": report,
                     "note": "No Owner: tags found in navi.db yet. Run the Ownership (Exposure Routes) "
-                            "agent first to assign owners, then Notify & Reports can route to them.",
+                            "agent first to assign owners, then Notify & Report can route to them.",
                     **_gate()}, 200
     elif report == "kev_alarm":
         msgs = [_kev_message(domain, to)]

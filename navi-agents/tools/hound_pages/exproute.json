@@ -41,6 +41,6 @@
  ],
  "how": "Exposure Routes reads routes and paths from your local navi.db and owners live through navi. Plain-English owner assignment uses the configured AI model; the Tag owner panel and ignore / accept / mitigate instructions work without one. Tags go through navi's tag commands behind the write gate and a confirm; Refresh runs a background `navi update assets` so new Owner tags count.",
  "who": "VM leads who need every finding to have an owner, team leads who want only their slice, and CISOs who must show accountability coverage.",
- "better": "Ownership rolls Exposure Routes' owners up to each asset, Notify & Reports emails each owner only their assets, SLA Tracker measures SLA by owner, and Explorer › Routes, Explorer › Paths and Custom App Discovery work the same routes and paths. Automation can keep the Owner tags current from a mapping in its policy.",
+ "better": "Ownership rolls Exposure Routes' owners up to each asset, Notify & Report emails each owner only their assets, SLA Tracker measures SLA by owner, and Explorer › Routes, Explorer › Paths and Custom App Discovery work the same routes and paths. Automation Station can keep the Owner tags current from a mapping in its policy.",
  "cta": "Ask Exposure Routes who owns your exposure — and where the gaps are."
 }

@@ -5,7 +5,7 @@ window.BRAND = {
  "short": "Ensemble",
  "tagline": "Specialist AI agents for exposure management, grounded in your Tenable data",
  "home": "Run the Ensemble",
- "orchestrator": "Automation",
+ "orchestrator": "Automation Station",
  "runner": "the Lead",
  "overview": "Ensemble Report",
  "member": "specialist",
@@ -29,7 +29,8 @@ window.BRAND = {
    "mission": "Exploited Now",
    "icon": "🛡️",
    "kind": "hero",
-   "hero": true
+   "hero": true,
+   "img": "/static/icons/cisakev.png"
   },
   "attackpath": {
    "name": "Attack Paths",
@@ -37,15 +38,17 @@ window.BRAND = {
    "mission": "Exploited Now",
    "icon": "🕸️",
    "kind": "hero",
-   "hero": true
+   "hero": true,
+   "img": "/static/icons/attackpath.png"
   },
   "mitre": {
-   "name": "ATT&CK Mapping",
+   "name": "MITRE ATT&CK Map",
    "codename": "",
    "mission": "Exploited Now",
    "icon": "🎯",
    "kind": "specialist",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/mitre.png"
   },
   "fused_score": {
    "name": "Exposure Score",
@@ -53,15 +56,17 @@ window.BRAND = {
    "mission": "Exploited Now",
    "icon": "🎯",
    "kind": "instrument",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/fused_score.png"
   },
   "classify": {
-   "name": "Classification",
+   "name": "Asset Classification",
    "codename": "Linnaeus",
    "mission": "Asset Truth",
    "icon": "📇",
    "kind": "hero",
-   "hero": true
+   "hero": true,
+   "img": "/static/icons/classify.png"
   },
   "eol": {
    "name": "End of Life",
@@ -69,7 +74,8 @@ window.BRAND = {
    "mission": "Asset Truth",
    "icon": "🔩",
    "kind": "hero",
-   "hero": true
+   "hero": true,
+   "img": "/static/icons/eol.png"
   },
   "identity": {
    "name": "Identity Inventory",
@@ -77,7 +83,8 @@ window.BRAND = {
    "mission": "Asset Truth",
    "icon": "🪪",
    "kind": "specialist",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/identity.png"
   },
   "software": {
    "name": "Software Inventory",
@@ -85,7 +92,8 @@ window.BRAND = {
    "mission": "Asset Truth",
    "icon": "📦",
    "kind": "specialist",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/software.png"
   },
   "customapp": {
    "name": "Custom App Discovery",
@@ -93,7 +101,8 @@ window.BRAND = {
    "mission": "Asset Truth",
    "icon": "🏷️",
    "kind": "specialist",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/customapp.png"
   },
   "argos": {
    "name": "Asset Dossier",
@@ -101,7 +110,8 @@ window.BRAND = {
    "mission": "Asset Truth",
    "icon": "🔦",
    "kind": "instrument",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/argos.png"
   },
   "scan_eval": {
    "name": "Scan Health",
@@ -109,7 +119,8 @@ window.BRAND = {
    "mission": "Coverage",
    "icon": "🩺",
    "kind": "specialist",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/scan_eval.png"
   },
   "agentgroup": {
    "name": "Agent Group Sync",
@@ -117,7 +128,8 @@ window.BRAND = {
    "mission": "Coverage",
    "icon": "🛰️",
    "kind": "specialist",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/agentgroup.png"
   },
   "asset_ownership": {
    "name": "Ownership",
@@ -125,7 +137,8 @@ window.BRAND = {
    "mission": "Ownership & SLA",
    "icon": "📌",
    "kind": "specialist",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/asset_ownership.png"
   },
   "exproute": {
    "name": "Exposure Routes",
@@ -133,7 +146,8 @@ window.BRAND = {
    "mission": "Ownership & SLA",
    "icon": "🧭",
    "kind": "specialist",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/exproute.png"
   },
   "sla": {
    "name": "SLA Tracker",
@@ -141,7 +155,8 @@ window.BRAND = {
    "mission": "Ownership & SLA",
    "icon": "⏱",
    "kind": "specialist",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/sla.png"
   },
   "acr": {
    "name": "Criticality Calibration",
@@ -149,15 +164,17 @@ window.BRAND = {
    "mission": "Ownership & SLA",
    "icon": "⚖️",
    "kind": "specialist",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/acr.png"
   },
   "email": {
-   "name": "Notify & Reports",
+   "name": "Notify & Report",
    "codename": "",
    "mission": "Ownership & SLA",
    "icon": "📧",
    "kind": "instrument",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/email.png"
   },
   "certificate": {
    "name": "Certificates",
@@ -165,7 +182,8 @@ window.BRAND = {
    "mission": "Crypto & Certificates",
    "icon": "🔐",
    "kind": "hero",
-   "hero": true
+   "hero": true,
+   "img": "/static/icons/certificate.png"
   },
   "postquantum": {
    "name": "Post-Quantum",
@@ -173,15 +191,17 @@ window.BRAND = {
    "mission": "Crypto & Certificates",
    "icon": "⚛️",
    "kind": "hero",
-   "hero": true
+   "hero": true,
+   "img": "/static/icons/postquantum.png"
   },
   "iot_squad": {
-   "name": "Device Discovery",
+   "name": "IoT Discovery",
    "codename": "Argos",
    "mission": "OT, IoT & Unmanaged",
    "icon": "📡",
    "kind": "hero",
-   "hero": true
+   "hero": true,
+   "img": "/static/icons/iot_squad.png"
   },
   "ai": {
    "name": "AI Inventory",
@@ -189,15 +209,17 @@ window.BRAND = {
    "mission": "AI Exposure",
    "icon": "🤖",
    "kind": "hero",
-   "hero": true
+   "hero": true,
+   "img": "/static/icons/ai.png"
   },
   "was": {
-   "name": "Web App Scanning",
+   "name": "Web App Report",
    "codename": "Arachne",
    "mission": "Web Apps",
    "icon": "🕸️",
    "kind": "hero",
-   "hero": true
+   "hero": true,
+   "img": "/static/icons/was.png"
   },
   "was_asset": {
    "name": "Web App Dossier",
@@ -205,7 +227,8 @@ window.BRAND = {
    "mission": "Web Apps",
    "icon": "🔬",
    "kind": "instrument",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/was_asset.png"
   },
   "compliance": {
    "name": "Compliance Overview",
@@ -213,7 +236,8 @@ window.BRAND = {
    "mission": "Compliance",
    "icon": "⚖️",
    "kind": "specialist",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/compliance.png"
   },
   "compliance_asset": {
    "name": "Compliance Drill-down",
@@ -221,7 +245,8 @@ window.BRAND = {
    "mission": "Compliance",
    "icon": "🔍",
    "kind": "instrument",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/compliance_asset.png"
   },
   "custom_audit": {
    "name": "Audit Authoring",
@@ -229,15 +254,17 @@ window.BRAND = {
    "mission": "Compliance",
    "icon": "📜",
    "kind": "specialist",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/custom_audit.png"
   },
   "contract": {
-   "name": "Automation",
+   "name": "Automation Station",
    "codename": "",
    "mission": "Platform",
    "icon": "📜",
    "kind": "instrument",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/contract.png"
   },
   "insights": {
    "name": "Ensemble Report",
@@ -245,7 +272,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "📰",
    "kind": "instrument",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/insights.png"
   },
   "c2": {
    "name": "Remote Remediation",
@@ -253,7 +281,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "🐺",
    "kind": "instrument",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/c2.png"
   },
   "tagremoval": {
    "name": "Tag Removal",
@@ -261,7 +290,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "🗑️",
    "kind": "instrument",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/tagremoval.png"
   },
   "alert": {
    "name": "Alerts",
@@ -269,7 +299,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "🐦‍⬛",
    "kind": "instrument",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/alert.png"
   },
   "dashboard": {
    "name": "Dashboard Builder",
@@ -277,7 +308,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "📊",
    "kind": "instrument",
-   "hero": false
+   "hero": false,
+   "img": "/static/icons/dashboard.png"
   },
   "mcpcmp": {
    "name": "MCP Routing Reference",
@@ -285,7 +317,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "⚖",
    "kind": "instrument",
-   "hero": false
+   "hero": false,
+   "img": ""
   },
   "ex_assets": {
    "name": "Explorer › Assets",
@@ -293,7 +326,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "🔎",
    "kind": "explorer",
-   "hero": false
+   "hero": false,
+   "img": ""
   },
   "ex_vulns": {
    "name": "Explorer › Vulnerabilities",
@@ -301,7 +335,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "🔎",
    "kind": "explorer",
-   "hero": false
+   "hero": false,
+   "img": ""
   },
   "ex_plugins": {
    "name": "Explorer › Plugins",
@@ -309,7 +344,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "🔎",
    "kind": "explorer",
-   "hero": false
+   "hero": false,
+   "img": ""
   },
   "ex_routes": {
    "name": "Explorer › Routes",
@@ -317,7 +353,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "🔎",
    "kind": "explorer",
-   "hero": false
+   "hero": false,
+   "img": ""
   },
   "ex_paths": {
    "name": "Explorer › Paths",
@@ -325,7 +362,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "🔎",
    "kind": "explorer",
-   "hero": false
+   "hero": false,
+   "img": ""
   },
   "ex_software": {
    "name": "Explorer › Software",
@@ -333,7 +371,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "💿",
    "kind": "explorer",
-   "hero": false
+   "hero": false,
+   "img": ""
   },
   "ex_tags": {
    "name": "Explorer › Tags",
@@ -341,7 +380,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "🏷️",
    "kind": "explorer",
-   "hero": false
+   "hero": false,
+   "img": ""
   },
   "ex_fixed": {
    "name": "Explorer › Fixed",
@@ -349,7 +389,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "🩹",
    "kind": "explorer",
-   "hero": false
+   "hero": false,
+   "img": ""
   },
   "ex_compliance": {
    "name": "Explorer › Compliance",
@@ -357,7 +398,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "📋",
    "kind": "explorer",
-   "hero": false
+   "hero": false,
+   "img": ""
   },
   "ex_apps": {
    "name": "Explorer › Web Apps",
@@ -365,7 +407,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "🌐",
    "kind": "explorer",
-   "hero": false
+   "hero": false,
+   "img": ""
   },
   "advanced": {
    "name": "Explorer › Advanced",
@@ -373,7 +416,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "🔎",
    "kind": "explorer",
-   "hero": false
+   "hero": false,
+   "img": ""
   },
   "hub": {
    "name": "Run the Ensemble",
@@ -381,7 +425,8 @@ window.BRAND = {
    "mission": "Platform",
    "icon": "",
    "kind": "instrument",
-   "hero": false
+   "hero": false,
+   "img": ""
   }
  }
 };
