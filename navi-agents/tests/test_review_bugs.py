@@ -24,6 +24,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+from _sample import ensure_sample  # noqa: E402  (builds sample_navi.db on a fresh clone)
 sys.path.insert(0, ROOT)
 TMP = tempfile.mkdtemp(prefix="hounds-review-")
 atexit.register(shutil.rmtree, TMP, ignore_errors=True)
@@ -40,7 +41,7 @@ def check(cond, msg):
         fails.append(msg)
 
 
-shutil.copy(os.path.join(ROOT, "sample_navi.db"), DB)
+shutil.copy(ensure_sample(ROOT), DB)
 c = sqlite3.connect(DB)
 U = c.execute("SELECT uuid FROM assets ORDER BY uuid LIMIT 1").fetchone()[0]
 for i in range(30):

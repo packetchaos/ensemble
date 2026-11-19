@@ -38,7 +38,7 @@ for _imp in ("fastmcp", "mcp.server.fastmcp"):   # standalone fastmcp, or the of
     except Exception:
         continue
 if FastMCP is None:                              # pragma: no cover
-    sys.stderr.write("The Hounds MCP needs FastMCP — run `pip install -r requirements-mcp.txt`\n")
+    sys.stderr.write("The navi Ensemble MCP server needs FastMCP — run `pip install -r requirements-mcp.txt`\n")
     raise SystemExit(1)
 
 mcp = FastMCP("hounds")

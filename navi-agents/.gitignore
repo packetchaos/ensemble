@@ -39,3 +39,6 @@ allow_remote_exec
 # linking keys…) and per-hound metric history from your navi.db
 data/c2_uploads/
 data/history_*.jsonl
+
+# runtime state — rewritten by every alert check (and the tests); never commit it
+alerts/state.json

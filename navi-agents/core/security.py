@@ -234,7 +234,7 @@ def startup_warning() -> str:
     if is_loopback_bind(b):
         return ""
     return ("!" * 72 + "\n"
-            f"  WARNING: HOUNDS_BIND={b} — The Hounds is reachable from OTHER HOSTS.\n"
+            f"  WARNING: HOUNDS_BIND={b} — navi Ensemble is reachable from OTHER HOSTS.\n"
             "  Anyone who can reach this port and holds the access token below controls\n"
             "  the console (and, if writes are enabled, your Tenable tenant). Every /api\n"
             "  call needs the token; share the URL only with people you trust, prefer an\n"

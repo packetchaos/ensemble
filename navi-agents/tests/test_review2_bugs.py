@@ -20,6 +20,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+from _sample import ensure_sample  # noqa: E402  (builds sample_navi.db on a fresh clone)
 sys.path.insert(0, ROOT)
 TMP = tempfile.mkdtemp(prefix="hounds-review2-")
 atexit.register(shutil.rmtree, TMP, ignore_errors=True)
@@ -38,7 +39,7 @@ def check(cond, msg):
 
 # sample_navi.db with its software table rewritten to navi's real shape: ONE row per software
 # string, asset_uuid = the Python-list text "['uuid', …]"
-shutil.copy(os.path.join(ROOT, "sample_navi.db"), DB)
+shutil.copy(ensure_sample(ROOT), DB)
 con = sqlite3.connect(DB)
 rows = con.execute("SELECT software_string, asset_uuid FROM software WHERE software_string IS NOT NULL "
                    "AND software_string<>'' AND asset_uuid IS NOT NULL").fetchall()

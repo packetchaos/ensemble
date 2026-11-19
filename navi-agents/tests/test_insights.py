@@ -17,12 +17,13 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+from _sample import ensure_sample  # noqa: E402  (builds sample_navi.db on a fresh clone)
 sys.path.insert(0, ROOT)
 TMP = tempfile.mkdtemp(prefix="hounds-scent-")
 atexit.register(shutil.rmtree, TMP, ignore_errors=True)
 SRC = "/home/claude/act/navi_test.db"
 if not os.path.exists(SRC):
-    SRC = os.path.join(ROOT, "sample_navi.db")
+    SRC = ensure_sample(ROOT)
 DB = os.path.join(TMP, "navi.db")
 shutil.copy(SRC, DB)
 os.environ["NAVI_DB_PATH"] = DB

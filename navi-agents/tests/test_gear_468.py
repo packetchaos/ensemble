@@ -11,13 +11,14 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+from _sample import ensure_sample  # noqa: E402  (builds sample_navi.db on a fresh clone)
 sys.path.insert(0, ROOT)
 _TMP = tempfile.mkdtemp(prefix="hounds-468-")
 os.environ["NAVI_CACHE_DIR"] = os.path.join(_TMP, "cache")
 # a readable navi.db of our own (the sample) — the red "navi.db can't be read" check must not
 # depend on whatever navi.db this machine has configured
 import shutil  # noqa: E402
-shutil.copy(os.path.join(ROOT, "sample_navi.db"), os.path.join(_TMP, "navi.db"))
+shutil.copy(ensure_sample(ROOT), os.path.join(_TMP, "navi.db"))
 os.environ["NAVI_DB_PATH"] = os.path.join(_TMP, "navi.db")
 fails = []
 

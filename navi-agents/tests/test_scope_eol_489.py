@@ -23,11 +23,12 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+from _sample import ensure_sample  # noqa: E402  (builds sample_navi.db on a fresh clone)
 sys.path.insert(0, ROOT)
 TMP = tempfile.mkdtemp(prefix="hounds-eol-489-")
 atexit.register(shutil.rmtree, TMP, ignore_errors=True)
 SAMPLE = os.path.join(TMP, "sample.db")
-shutil.copy(os.path.join(ROOT, "sample_navi.db"), SAMPLE)
+shutil.copy(ensure_sample(ROOT), SAMPLE)
 RICH = os.path.join(TMP, "rich.db")
 os.environ.update({"NAVI_DB_PATH": RICH, "NAVI_CACHE_DIR": os.path.join(TMP, "cache"),
                    "HOUNDS_CONFIG": os.path.join(TMP, "cfg.json"), "NAVI_TAGLOG_DB": os.path.join(TMP, "t.db")})
