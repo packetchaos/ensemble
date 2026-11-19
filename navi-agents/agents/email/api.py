@@ -722,7 +722,7 @@ def _findings_message(payload, template, domain, to):
     kev_n = sum(1 for u in uuids if u in kev)
 
     # high-level overview
-    lines = [f"🐾 {headline}", "",
+    lines = [f"{headline}", "",
              f"{hound} identified {n} asset{'s' if n!=1 else ''}"
              + (f" using {len(fids)} detection signal{'s' if len(fids)!=1 else ''}." if fids else ".")]
     if kev_n:
@@ -784,7 +784,7 @@ def _findings_message(payload, template, domain, to):
              + (f"<p><a href='{_esc(_tag_filter_url(tcat, tval))}'>View this tagged set in Tenable ↗</a></p>" if tcat and tval else "")
              + f"<p style='color:#8a99ad;font-size:12px'>Details produced by {_esc(hound)}"
              + (f" ({_esc(agent)})" if agent else "") + "</p>")
-    subject = f"🐾 [Tenable] {headline} — {n} asset{'s' if n!=1 else ''}" + (f", {kev_n} KEV" if kev_n else "")
+    subject = f"[Tenable] {headline} — {n} asset{'s' if n!=1 else ''}" + (f", {kev_n} KEV" if kev_n else "")
     return {"to": to, "owner": hound, "subject": subject, "body_text": "\n".join(lines),
             "body_html": _html_wrap(subject, inner + _sign_html()),
             "asset_count": n, "kev_count": kev_n, "needs_address": not bool(to)}
@@ -978,12 +978,12 @@ def _sphinx_message(to):
                       f"border-radius:6px;margin:8px 0;font-size:13px'><b>🏆 One fix, {champ['cve_count']:,} CVEs</b> — "
                       f"patch <b>{_esc(champ.get('name') or '')}</b> to clear {champ['cve_count']:,} CVEs on "
                       f"{champ.get('assets', 0)} asset{'s' if champ.get('assets', 0) != 1 else ''}.</div>")
-    inner = (f"<p style='color:#64748b;margin:0 0 10px'>🐾 On the Scent · daily unknown-unknowns digest · {date}</p>"
+    inner = (f"<p style='color:#64748b;margin:0 0 10px'>Ensemble Report · daily unknown-unknowns digest · {date}</p>"
              + kpis + "<h3 style='margin:14px 0 6px;font-size:14px'>Coverage &amp; blind spots</h3>" + cov + redu + champ_html
              + (f"<div style='margin:12px 0 4px'>{sev_svg}</div>" if sev_svg else "")
              + (f"<div style='margin:12px 0 4px'>{top_svg}</div>" if top_svg else ""))
-    subject = f"[Tenable] On the Scent digest — {kev} KEV · {ownerless} Ownerless · {date}"
-    lines = [f"On the Scent — daily digest ({date})", "",
+    subject = f"[Tenable] Ensemble Report digest — {kev} KEV · {ownerless} Ownerless · {date}"
+    lines = [f"Ensemble Report — daily digest ({date})", "",
              f"Assets: {total}", f"KEV assets: {kev}", f"Ownerless Risk: {ownerless}",
              f"Certs failing <=12mo: {certN}", f"Shadow software: {shadow}", f"Cloud assets: {cloud}", "",
              f"Ownership coverage: {pct(owned, total)}%", f"Inventory coverage: {pct(inv, total)}%",
@@ -1135,7 +1135,7 @@ def graph(p):
             fh.write(raw)
         # Body is a short note; the graph rides as an attachment (renders/previews inline in
         # Gmail's attachment strip, Outlook, and Apple Mail — unlike a stripped data-URI img).
-        inner = (f"<p style='margin:0 0 10px'><b>{_esc(title)}</b> — from the Hounds Ownership Map.</p>"
+        inner = (f"<p style='margin:0 0 10px'><b>{_esc(title)}</b> — from the navi Ensemble Ownership Map.</p>"
                  f"<p style='margin:0 0 10px;color:#475569'>The graph is attached as "
                  f"<b>{_esc(safe)}.{ext}</b>. (Mail clients strip embedded images, so it rides "
                  f"as an attachment — open it to view the {_esc(title.lower())}.)</p>"
@@ -1264,7 +1264,7 @@ def dashboard(p):
         return {"ok": False, "error": "no dashboard components to send"}, 400
     title = p.get("title") or "Custom Dashboard"
     subject = p.get("subject") or f"[Tenable] {title}"
-    intro = (f"<p style='margin:0 0 12px;color:#475569'>{len(comps)} component(s) from the Hounds "
+    intro = (f"<p style='margin:0 0 12px;color:#475569'>{len(comps)} component(s) from the navi Ensemble "
              f"Custom Dashboard — a point-in-time navi.db snapshot.</p>")
     body_inner = intro + "".join(_dash_component(c) for c in comps[:30]) + _sign_html()
     body = _html_wrap(subject, body_inner)

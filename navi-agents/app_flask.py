@@ -159,5 +159,5 @@ if __name__ == "__main__":
     _warn = security.startup_warning()
     if _warn:
         print(_warn)
-    print("  The Hounds (Flask) →  " + security.startup_url(_port))
+    print("  navi Ensemble (Flask) →  " + security.startup_url(_port))
     app.run(host=security.bind_host(), port=_port, request_handler=_Timeout)

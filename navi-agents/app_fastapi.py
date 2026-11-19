@@ -186,6 +186,6 @@ if __name__ == "__main__":
     _warn = security.startup_warning()
     if _warn:
         print(_warn)
-    print("  The Hounds (FastAPI) →  " + security.startup_url(_port))
+    print("  navi Ensemble (FastAPI) →  " + security.startup_url(_port))
     uvicorn.run("app_fastapi:app", host=security.bind_host(), port=_port, reload=False,
                 timeout_keep_alive=int(min(security.SOCKET_TIMEOUT, 30)))

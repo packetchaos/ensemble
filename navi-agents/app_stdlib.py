@@ -273,7 +273,7 @@ def main():
     if warn:
         print("\n" + warn)
     print("\n" + "=" * 60)
-    print(f"  The Hounds is running.  Open this in your browser:")
+    print(f"  navi Ensemble is running.  Open this in your browser:")
     print(f"      →  {security.startup_url(port)}")
     if security.token_required(None):
         print("  (the URL carries this launch's access token — it is printed only here)")

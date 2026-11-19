@@ -303,7 +303,7 @@ function renderArgosGlance(d){
      chips:[card(N(f.critical)+' / '+N(f.high),'open critical / high','→ Top findings ↓','#vulnCard',f.critical?'crit':(f.high?'high':'ok'),!(f.critical||f.high)),
             card(N(f.kev),'CISA KEV findings',f.kev?'exploited in the wild → CISA KEV':'→ CISA KEV','/agents/cisakev/page.html',f.kev?'crit':'ok',!f.kev)]},
     {title:'Remediation clock',
-     hero:sla&&sla.first_found?card(N(sla.past),'findings past SLA',Object.entries(sla.windows||{}).map(([k,v])=>k.slice(0,4)+' > '+v+' d').join(' · ')+' → SLA Adherence','/agents/sla/page.html',sla.past?'high':'ok',!sla.past)
+     hero:sla&&sla.first_found?card(N(sla.past),'findings past SLA',Object.entries(sla.windows||{}).map(([k,v])=>k.slice(0,4)+' > '+v+' d').join(' · ')+' → SLA Tracker','/agents/sla/page.html',sla.past?'high':'ok',!sla.past)
        :card('—','findings past SLA','no first-found dates in navi.db','/agents/sla/page.html','none',true),
      chips:[sla&&sla.oldest_critical_days!=null?card(N(sla.oldest_critical_days)+' days','oldest open critical','first found '+(sla.oldest_critical_since||'—'),'#vulnCard','crit')
        :(f.critical?card(N(f.critical),'oldest open critical',(sla&&sla.first_found)?'no first-found date on them':'no first-found dates in navi.db','#vulnCard','crit')

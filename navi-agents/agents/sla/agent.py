@@ -256,7 +256,7 @@ def cached_or_compute(db_path=None, tag_key=None, tag_value=None) -> tuple:
 
 class SkollAgent(Agent):
     id = "sla"
-    name = "SLA Adherence"
+    name = "SLA Tracker"
     icon = "⏱"
     description = ("SLA Tracker — chases the SLA clock. Remediation adherence on closed findings "
                    "and open-vuln aging vs the per-severity SLA window, by owner/tag. Records "

@@ -68,7 +68,7 @@ details.defs ul{margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--ink-
   </section>
 
   <div id="body"></div>
-  <footer>SLA Adherence · SLA Tracker · read-only navi.db · thresholds &amp; the Fixed table are set in <a href="/web/settings.html">Settings</a></footer>
+  <footer>SLA Tracker · read-only navi.db · thresholds &amp; the Fixed table are set in <a href="/web/settings.html">Settings</a></footer>
 </div>
 <script src="/static/brand.js"></script>
 <script src="/static/console.js"></script>
@@ -454,13 +454,13 @@ function emailComponents(){
 hMail(document.getElementById('dashMail'), ()=>{
   if(!DASH||!(DASH.readiness||{}).sla_set) return null;
   const scope=DASH.tag_value?(' — '+DASH.tag_key+': '+DASH.tag_value):'';
-  return {title:'SLA Adherence — SLA Tracker'+scope, subject:'[Tenable] SLA Adherence (SLA Tracker)'+scope, components:emailComponents()};
+  return {title:'SLA Tracker'+scope, subject:'[Tenable] SLA Tracker'+scope, components:emailComponents()};
 }, {mode:'dashboard'});
 
 document.getElementById('refresh').onclick=()=>run();
 document.getElementById('tagsel').onchange=e=>{ TAGKEY=e.target.value; TAGVAL=''; run(); };
 document.getElementById('valsel').onchange=e=>{ TAGVAL=e.target.value; run(); };
-mountAgentHeader({id:'sla',icon:'⏱',name:'SLA Adherence',sub:'SLA Tracker · remediation + open-aging vs the SLA clock'});
+mountAgentHeader({id:'sla',icon:'⏱',name:'SLA Tracker',sub:'SLA Tracker · remediation + open-aging vs the SLA clock'});
 /* NO auto-run — the SLA crunch only happens on ▶ Run. Opening the page PEEKS: the cached
    snapshot for your last view renders at once, or a build still running from before is
    re-attached. Peek never computes anything. */

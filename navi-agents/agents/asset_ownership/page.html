@@ -39,7 +39,7 @@
   <!-- At a glance -->
   <section class="card" id="secMetrics" data-nav="At a glance" data-nav-icon="📊" style="display:none">
     <h2 style="margin:0 0 2px;font-size:17px">📊 At a glance</h2>
-    <p class="sub" style="margin:2px 0 0">Every number opens what it counts — a filter on the <b>per-asset table</b> below (assign an owner right there), a section of this page, or the specialist that owns the data (<b>Exposure Routes</b>, <b>Asset Dossier</b>, <b>Exposure Score</b>, <b>SLA Adherence</b>).</p>
+    <p class="sub" style="margin:2px 0 0">Every number opens what it counts — a filter on the <b>per-asset table</b> below (assign an owner right there), a section of this page, or the specialist that owns the data (<b>Exposure Routes</b>, <b>Asset Dossier</b>, <b>Exposure Score</b>, <b>SLA Tracker</b>).</p>
     <div id="glance"></div>
   </section>
 
@@ -210,8 +210,8 @@ function renderPageGlance(k){
             mk(fnum(k.crown_no_owner),'crown jewels with no owner',{s:'crownnone',n:k.crown_no_owner,sev:bad(k.crown_no_owner,'crit'),u:'assign owners ↓'}),
             hv?mk(fnum(k.unowned_crit),'no owner · open critical findings',{s:'ucrit',n:k.unowned_crit,sev:bad(k.unowned_crit,'crit'),u:'assign owners ↓'}):noV('no owner · open critical findings'),
             hv?mk(fnum(k.unowned_kev),'no owner · CISA KEV finding',{s:'ukev',n:k.unowned_kev,sev:bad(k.unowned_kev,'crit'),u:'assign owners ↓',t:fnum(k.kev_finding_assets)+' assets have a known-exploited finding'}):noV('no owner · CISA KEV finding'),
-            hv?mk(fnum(k.unowned_crit_findings),'critical findings nobody owns',{h:'/agents/sla/page.html',n:k.unowned_crit_findings,sev:bad(k.unowned_crit_findings,'high'),u:'⏱ who fixes them? SLA Adherence →'})
-              :mk('—','critical findings nobody owns',{h:'/agents/sla/page.html',n:0,u:'⏱ SLA Adherence →'}),
+            hv?mk(fnum(k.unowned_crit_findings),'critical findings nobody owns',{h:'/agents/sla/page.html',n:k.unowned_crit_findings,sev:bad(k.unowned_crit_findings,'high'),u:'⏱ who fixes them? SLA Tracker →'})
+              :mk('—','critical findings nobody owns',{h:'/agents/sla/page.html',n:0,u:'⏱ SLA Tracker →'}),
             tu?mk(String(tu.hostname||'').trim()||tu.ip||String(tu.uuid).slice(0,12),'highest-ACR asset with no owner'+(TS()?' in this tag':'')+' · ACR '+(tu.acr==null?'—':tu.acr),{h:'/agents/argos/page.html?target='+encodeURIComponent(tu.uuid),sev:'high',u:'🔦 open in Asset Dossier →'})
               :mk('—','highest-ACR asset with no owner'+(TS()?' in this tag':''),{h:'/agents/argos/page.html',n:0,u:(TS()?'every asset in this tag':'every asset')+' has an owner · 🔦 Asset Dossier →'}),
             mk(fnum(k.no_owner),'unowned assets weigh in the Exposure Score',{h:'/agents/fused_score/page.html',n:k.no_owner,sev:'info',u:'🎯 Exposure Score →',t:'Exposure Score ranks unowned exposure higher — owning them lowers it'}),

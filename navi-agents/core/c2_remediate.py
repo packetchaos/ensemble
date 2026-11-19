@@ -1870,7 +1870,7 @@ def validate(plan, src):
                 st["rollback_rejected"] = st["rollback"]
                 st["rollback"] = ""
         if st.get("requires_reboot"):
-            warnings.append(f"step {st['n']} needs a reboot to take effect — the Hounds never reboot a host; "
+            warnings.append(f"step {st['n']} needs a reboot to take effect — navi Ensemble never reboots a host; "
                             "schedule it yourself")
     if not p["steps"]:
         warnings.append("the plan has no steps — nothing to deploy")
