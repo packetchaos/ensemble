@@ -18,6 +18,7 @@ sys.path.insert(0, ROOT)
 TMP = tempfile.mkdtemp(prefix="hounds-release-")
 atexit.register(shutil.rmtree, TMP, ignore_errors=True)
 os.environ["NAVI_CACHE_DIR"] = os.path.join(TMP, "cache")
+os.environ["NAVI_TAGLOG_DB"] = os.path.join(TMP, "tag_jobs.db")    # runs land here, not the real log
 
 from core import pagecache, release, snapcache  # noqa: E402
 
@@ -155,6 +156,18 @@ check(lst and lst.get("id") == s["id"] and lst.get("status") == "done"
       and {i["agent"]: i for i in lst["items"]}["certificate"]["status"] == "error",
       "the final release state is persisted (release_last.json) — a restart still knows who errored")
 check(release.record() and release.record()["id"] == s["id"], "release.record() = the run for this navi.db")
+# build 494: each specialist the release ran shows the run in its "Done so far" panel
+from core import activity  # noqa: E402
+act = activity.summary("identity")
+lr = (act.get("runs") or {}).get("last") or {}
+check(act.get("show") and (act.get("runs") or {}).get("count", 0) >= 1 and lr.get("action") == "ensemble"
+      and lr.get("ok") == 1 and lr.get("rid") == "ensemble-" + s["id"],
+      "Done so far: a release run is recorded for the specialist (action 'ensemble')")
+act = activity.summary("certificate")
+lr = (act.get("runs") or {}).get("last") or {}
+check(lr.get("action") == "ensemble" and lr.get("ok") == 0, "Done so far: a specialist that errored in the release shows a failed run")
+check(not (activity.summary("mitre").get("runs") or {}).get("count"), "Done so far: a skipped specialist gets no run")
+check(os.path.dirname(activity.tagq._DBPATH) == TMP, "test runs go to a temp log, never the real tag_jobs.db")
 check(next(i for i in s["items"] if i["agent"] == "insights")["status"] == "done"
       and [a for a, _, _ in CALLS][-1] == "insights", "On the Scent's digest step runs last")
 

@@ -13,7 +13,7 @@ navi Ensemble grew out of **The Hounds**, the proof-of-concept project. The new 
 has matured: server-side caching, an architecture built for very large estates, and a consistent
 interface across every specialist.
 
-Version `2.43.494`. The scheme is `MAJOR.<specialists>.<build>`, where the middle number is the count of
+Version `2.43.495`. The scheme is `MAJOR.<specialists>.<build>`, where the middle number is the count of
 specialists the server discovers (43 in this release; see `navi-agents/core/version.py`).
 
 ## Quick start

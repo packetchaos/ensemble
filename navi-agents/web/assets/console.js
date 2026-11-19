@@ -2679,7 +2679,7 @@ async function mountActivity(agentId){
   const tagOp=ops.find(x=>x.op==='tag');
   const chip=(v,l,cls,title)=>'<div class="actv-k '+(cls||'')+'"'+(title?' title="'+esc(title)+'"':'')+'><div class="v">'+v+'</div><div class="l">'+l+'</div></div>';
   let kp='';
-  const lst=r.last||{}, stp=(lst.steps&&lst.steps.length>1)?lst.steps.length+' steps':(/^(run|load|search|overview|build)$/.test(lst.action||'')?'':lst.action);
+  const lst=r.last||{}, stp=lst.action==='ensemble'?'via Run the Ensemble':(lst.steps&&lst.steps.length>1)?lst.steps.length+' steps':(/^(run|load|search|overview|build)$/.test(lst.action||'')?'':lst.action);
   kp += r.last_at ? chip(_actAgo(r.last_at),'last run'+(stp?' · '+esc(stp):'')+(lst.ok===0?' (failed)':''), lst.ok===0?'bad':'', new Date(r.last_at*1000).toLocaleString()+((lst.steps||[]).length>1?' — '+lst.steps.join(' → '):''))
                   : chip('never','last run on this install','dim');
   if(r.count) kp += chip(_actN(r.count),'run'+(r.count>1?'s':'')+' recorded','', (r.fresh||0)+' fresh, '+((r.count||0)-(r.fresh||0))+' served from the server cache');

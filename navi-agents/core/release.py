@@ -544,6 +544,16 @@ def _run(rid):
                 if _STATE.get("id") == rid:
                     _STATE["budget_hits"] = total_hits
         _set_item(rid, it["agent"], status=st, sec=sec, note=note)
+        # the specialist's "Done so far" panel: a run made by Run the Ensemble counts as a run
+        # (the page's ▶ Run records through launcher._dispatch_run; the release dispatches
+        # directly, so it records here — one entry per specialist per release)
+        if st in ("done", "error"):
+            try:
+                from core import activity
+                activity.note_run(it["agent"], "ensemble", ok=(st == "done"), ms=sec * 1000,
+                                  cached=(note == "cached"), rid="ensemble-" + rid)
+            except Exception:
+                pass
         # a cached snapshot or a near-instant run says nothing about the real cost — keep
         # the previous measurement (or the first-run rate) for the next estimate
         if st == "done" and note != "cached" and sec >= MIN_HIST_S and rows > 0:
