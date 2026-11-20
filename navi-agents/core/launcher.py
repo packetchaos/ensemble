@@ -59,7 +59,13 @@ _LIVE = {"status", "log", "loop_log", "history", "scheduler", "list", "get", "me
          "scopes", "tag_scopes"}
 # actions with their own server-side snapshot (or a peek of one): the short result cache
 # would only serve a stale "building…" / old summary. Still counted as runs (unlike _LIVE).
-_OWN_CACHE = {"snapshot", "scent"}
+_OWN_CACHE = {"snapshot", "scent",
+              # build 509: the Dashboards app (agents/dashboard → core/boards) — board edits are app
+              # state and widget results have their own per-widget cache; never the short read cache
+              "boards", "board_get", "board_save", "board_new", "board_delete", "board_default",
+              "board_export", "board_import", "library", "widget_cached", "widget_run", "widget_sql",
+              "widget_data", "sql_save", "sql_approve", "sql_delete", "sql_get", "scope_keys",
+              "scope_values", "scope_count", "preset_sql", "ai_sql", "sql_preview"}
 
 
 # ---- results.db awareness (core/payload.ResultStore) -----------------------------------

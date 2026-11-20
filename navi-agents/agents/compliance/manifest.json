@@ -20,5 +20,71 @@
     "ignore": []
   },
   "hero": false,
-  "mission": "Compliance"
+  "mission": "Compliance",
+  "widgets": [
+    {
+      "id": "failed_by_audit",
+      "title": "Failed checks by audit file",
+      "viz": "bar",
+      "w": 6,
+      "h": 4,
+      "label_col": "audit_file",
+      "value_col": "failed",
+      "note": "Where the compliance failures sit.",
+      "sql": "SELECT c.audit_file, COUNT(*) AS failed FROM compliance c WHERE upper(c.status)='FAILED' AND $__scope(c.asset_uuid) GROUP BY c.audit_file ORDER BY failed DESC LIMIT 15",
+      "drill": "SELECT COALESCE(NULLIF(a.hostname,''), a.ip_address) AS host, c.audit_file, c.check_name, c.status, c.actual_value, c.expected_value, c.asset_uuid FROM compliance c LEFT JOIN assets a ON a.uuid=c.asset_uuid WHERE upper(c.status)='FAILED' AND $__scope(c.asset_uuid) ORDER BY c.audit_file, host"
+    },
+    {
+      "id": "pass_rate",
+      "title": "Compliance pass rate",
+      "viz": "gauge",
+      "w": 3,
+      "h": 3,
+      "label_col": "metric",
+      "value_col": "pct",
+      "note": "Passed checks out of passed + failed (warnings excluded).",
+      "sql": "SELECT 'Pass rate %' AS metric, COALESCE(ROUND(100.0*SUM(CASE WHEN upper(c.status)='PASSED' THEN 1 ELSE 0 END)/NULLIF(SUM(CASE WHEN upper(c.status) IN ('PASSED','FAILED') THEN 1 ELSE 0 END),0),1),0) AS pct FROM compliance c WHERE $__scope(c.asset_uuid)"
+    },
+    {
+      "id": "failed_checks",
+      "title": "Failed compliance checks",
+      "viz": "kpi",
+      "w": 3,
+      "h": 2,
+      "note": "Every FAILED result in scope.",
+      "sql": "SELECT COUNT(*) AS \"Failed checks\" FROM compliance c WHERE upper(c.status)='FAILED' AND $__scope(c.asset_uuid)",
+      "drill": "SELECT COALESCE(NULLIF(a.hostname,''), a.ip_address) AS host, c.audit_file, c.check_name, c.actual_value, c.expected_value, c.asset_uuid FROM compliance c LEFT JOIN assets a ON a.uuid=c.asset_uuid WHERE upper(c.status)='FAILED' AND $__scope(c.asset_uuid) ORDER BY host"
+    },
+    {
+      "id": "failing_assets",
+      "title": "Assets failing a check",
+      "viz": "kpi",
+      "w": 3,
+      "h": 2,
+      "note": "Assets with at least one FAILED check.",
+      "sql": "SELECT COUNT(DISTINCT c.asset_uuid) AS \"Failing assets\" FROM compliance c WHERE upper(c.status)='FAILED' AND $__scope(c.asset_uuid)"
+    },
+    {
+      "id": "top_failing_checks",
+      "title": "Top failing checks",
+      "viz": "bar",
+      "w": 6,
+      "h": 4,
+      "label_col": "check_name",
+      "value_col": "assets",
+      "note": "The checks that fail on the most assets — one fix each.",
+      "sql": "SELECT c.check_name, COUNT(DISTINCT c.asset_uuid) AS assets FROM compliance c WHERE upper(c.status)='FAILED' AND $__scope(c.asset_uuid) GROUP BY c.check_name ORDER BY assets DESC LIMIT 15"
+    },
+    {
+      "id": "weakest_assets",
+      "title": "Weakest assets (most failed checks)",
+      "viz": "bar",
+      "w": 12,
+      "h": 4,
+      "label_col": "host",
+      "value_col": "failed",
+      "note": "Where to start hardening.",
+      "sql": "SELECT COALESCE(NULLIF(a.hostname,''), a.ip_address, c.asset_uuid) AS host, COUNT(*) AS failed FROM compliance c LEFT JOIN assets a ON a.uuid=c.asset_uuid WHERE upper(c.status)='FAILED' AND $__scope(c.asset_uuid) GROUP BY c.asset_uuid ORDER BY failed DESC LIMIT 15"
+    }
+  ]
 }

@@ -95,6 +95,8 @@
         <span class="sub">Chart</span><select id="dChartType" title="Chart type" style="padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font-size:12px"><option value="auto">Auto</option><optgroup label="Ranking & composition"><option value="bar">Bar</option><option value="column">Column</option><option value="stacked">Stacked</option><option value="grouped">Grouped</option><option value="treemap">Treemap</option><option value="funnel">Funnel</option><option value="waterfall">Waterfall</option><option value="pie">Pie</option><option value="donut">Donut</option></optgroup><optgroup label="Trend"><option value="line">Line</option><option value="multiline">Multi-line</option><option value="area">Area</option><option value="combo">Combo (bar+line)</option></optgroup><optgroup label="Relationship"><option value="scatter">Scatter</option><option value="bubble">Bubble</option><option value="heatmap">Heatmap</option></optgroup><optgroup label="Comparison & distribution"><option value="radar">Radar</option><option value="gauge">Gauge</option><option value="progress">Progress</option><option value="histogram">Histogram</option></optgroup><option value="kpi">KPI</option><option value="table">Table</option></select>
         <button class="btn ghost sm" id="dashCsv">⤓ CSV</button>
         <button class="btn sm" id="dashAdd">📌 Add to dashboard</button>
+        <select id="boardPick" title="A board in the Dashboards app" aria-label="Board" style="padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font-size:12px;max-width:170px"></select>
+        <button class="btn sm" id="dashBoardAdd" disabled title="Save this as a SQL widget and add it to the chosen board">📊 Add to board</button>
         <button class="btn ghost sm" id="toggleSql">View SQL</button></span></div>
     <div class="callbox" id="sqlWrap" style="display:none;margin-bottom:12px"><div class="sqlbox" id="dSql"></div></div>
     <div id="viz"></div>
@@ -630,56 +632,56 @@ function emailDashboard(){
 
 /* ===== Starter metrics — verified navi.db SQL presets, one click to pin (no model) ===== */
 const PRESETS=[
- {g:'Leadership',title:'KEV-exposed assets',note:'Assets carrying a CISA Known-Exploited finding — with a scan-coverage qualifier (this number only sees credentialed hosts).',viz:'kpi',
+ {g:'Leadership',title:'KEV-exposed assets',ref:'preset.kev_assets',note:'Assets carrying a CISA Known-Exploited finding — with a scan-coverage qualifier (this number only sees credentialed hosts).',viz:'kpi',
   sql:`SELECT COUNT(DISTINCT asset_uuid) AS "KEV-exposed assets", (SELECT COALESCE(ROUND(100.0*COUNT(DISTINCT CASE WHEN lower(output) LIKE '%credentialed checks : yes%' THEN asset_uuid END)/NULLIF(COUNT(DISTINCT asset_uuid),0)),0) FROM vulns WHERE plugin_id='19506') AS "__coverage" FROM vulns WHERE xrefs LIKE '%KNOWN-EXPLOITED%'`},
- {g:'Leadership',title:'Crown-jewel risk',note:'Assets that are BOTH critical and KEV-exploitable — with a scan-coverage qualifier on the number.',viz:'kpi',
+ {g:'Leadership',title:'Crown jewels with KEV',ref:'preset.crown_kev',note:'Crown jewels (ACR ≥ 9) carrying an open CISA KEV finding — the same definition as every board and the CISA KEV page.',viz:'kpi',
   sql:`SELECT COUNT(*) AS "Crown-jewel assets (critical + KEV)", (SELECT COALESCE(ROUND(100.0*COUNT(DISTINCT CASE WHEN lower(output) LIKE '%credentialed checks : yes%' THEN asset_uuid END)/NULLIF(COUNT(DISTINCT asset_uuid),0)),0) FROM vulns WHERE plugin_id='19506') AS "__coverage" FROM (SELECT asset_uuid FROM vulns WHERE lower(severity)='critical' INTERSECT SELECT asset_uuid FROM vulns WHERE xrefs LIKE '%KNOWN-EXPLOITED%')`},
- {g:'Leadership',title:'Unpatchable risk %',note:'Share of the fleet on EOL / unsupported software — risk a patch can never fix. The only remedy is a replacement project; this is the number that unlocks budget.',viz:'kpi',
+ {g:'Leadership',title:'Unpatchable risk %',ref:'preset.unpatchable_pct',note:'Share of the fleet on EOL / unsupported software — risk a patch can never fix. The only remedy is a replacement project; this is the number that unlocks budget.',viz:'kpi',
   sql:`SELECT ROUND(100.0 * (SELECT COUNT(DISTINCT asset_uuid) FROM vulns WHERE lower(plugin_name) LIKE '%unsupported%' OR lower(plugin_name) LIKE '%end of life%' OR lower(plugin_name) LIKE '%end-of-life%' OR lower(plugin_name) LIKE '%seol%') / NULLIF((SELECT COUNT(*) FROM assets),0), 1) AS "Unpatchable fleet % (EOL)"`},
  {g:'Leadership',title:'Data trust score',note:'Confidence in your risk numbers — the mean of credentialed-scan coverage, asset freshness (≤30d) and clean-credential rate. Every competitor silently assumes 100%.',viz:'progress',label_col:'metric',value_col:'pct',
   sql:`SELECT metric, pct FROM (SELECT 'Data Trust Score' AS metric, CAST(ROUND(((SELECT COALESCE(ROUND(100.0*COUNT(DISTINCT CASE WHEN lower(output) LIKE '%credentialed checks : yes%' THEN asset_uuid END)/NULLIF(COUNT(DISTINCT asset_uuid),0)),0) FROM vulns WHERE plugin_id='19506')+(SELECT COALESCE(ROUND(100.0*SUM(CASE WHEN substr(last_found,1,10) >= date('now','-30 day') THEN 1 ELSE 0 END)/NULLIF(COUNT(*),0)),0) FROM assets)+(SELECT COALESCE(ROUND(100.0*(1.0 - CAST((SELECT COUNT(DISTINCT asset_uuid) FROM vulns WHERE plugin_id='104410') AS REAL)/NULLIF((SELECT COUNT(DISTINCT asset_uuid) FROM vulns WHERE plugin_id='19506'),0))),0)))/3.0) AS INTEGER) AS pct, 0 AS o UNION ALL SELECT 'Credentialed coverage', (SELECT COALESCE(ROUND(100.0*COUNT(DISTINCT CASE WHEN lower(output) LIKE '%credentialed checks : yes%' THEN asset_uuid END)/NULLIF(COUNT(DISTINCT asset_uuid),0)),0) FROM vulns WHERE plugin_id='19506'), 1 UNION ALL SELECT 'Assets fresh (≤30d)', (SELECT COALESCE(ROUND(100.0*SUM(CASE WHEN substr(last_found,1,10) >= date('now','-30 day') THEN 1 ELSE 0 END)/NULLIF(COUNT(*),0)),0) FROM assets), 2 UNION ALL SELECT 'Clean credential scans', (SELECT COALESCE(ROUND(100.0*(1.0 - CAST((SELECT COUNT(DISTINCT asset_uuid) FROM vulns WHERE plugin_id='104410') AS REAL)/NULLIF((SELECT COUNT(DISTINCT asset_uuid) FROM vulns WHERE plugin_id='19506'),0))),0)), 3) ORDER BY o`},
- {g:'Leadership',title:'Ownerless assets',note:'Assets with no Owner tag — Ownerless Risk',viz:'kpi',
+ {g:'Leadership',title:'Ownerless assets',ref:'preset.ownerless',note:'Assets with no Owner tag — Ownerless Risk',viz:'kpi',
   sql:`SELECT COUNT(*) AS "Ownerless assets" FROM assets WHERE uuid NOT IN (SELECT asset_uuid FROM tags WHERE tag_key='Owner' AND asset_uuid IS NOT NULL)`},
- {g:'Leadership',title:'Blind hosts (no creds)',note:'Reachable but scanned without credentials (110723 / 104410)',viz:'kpi',
+ {g:'Leadership',title:'Blind hosts (no creds)',ref:'preset.blind_hosts',note:'Scanned, but the scanner never logged in — the one credentialed definition every specialist uses.',viz:'kpi',
   sql:`SELECT COUNT(DISTINCT asset_uuid) AS "Blind hosts (no creds)" FROM vulns WHERE plugin_id IN ('110723','104410')`},
- {g:'Leadership',title:'Findings by severity',note:'Open findings split by severity',viz:'pie',label_col:'severity',value_col:'findings',
+ {g:'Leadership',title:'Findings by severity',ref:'preset.sev_mix',note:'Open findings split by severity',viz:'pie',label_col:'severity',value_col:'findings',
   sql:`SELECT CASE lower(severity) WHEN 'critical' THEN 'Critical' WHEN 'high' THEN 'High' WHEN 'medium' THEN 'Medium' WHEN 'low' THEN 'Low' END AS severity, COUNT(*) AS findings FROM vulns WHERE lower(severity) IN ('critical','high','medium','low') GROUP BY lower(severity) ORDER BY findings DESC`},
- {g:'Leadership',title:'Ownership coverage',note:'Owned vs ownerless assets',viz:'pie',label_col:'coverage',value_col:'assets',
+ {g:'Leadership',title:'Ownership coverage',ref:'preset.ownership_split',note:'Owned vs ownerless assets',viz:'pie',label_col:'coverage',value_col:'assets',
   sql:`SELECT CASE WHEN uuid IN (SELECT asset_uuid FROM tags WHERE tag_key='Owner') THEN 'Owned' ELSE 'Ownerless' END AS coverage, COUNT(*) AS assets FROM assets GROUP BY coverage`},
 
- {g:'Exposure',title:'Findings by VPR band',note:'Priority mix by Vulnerability Priority Rating',viz:'bar',label_col:'vpr_band',value_col:'findings',
+ {g:'Exposure',title:'Findings by VPR band',ref:'preset.vpr_bands',note:'Priority mix by Vulnerability Priority Rating',viz:'bar',label_col:'vpr_band',value_col:'findings',
   sql:`SELECT CASE WHEN score>=9 THEN '9.0-10 Critical' WHEN score>=7 THEN '7.0-8.9 High' WHEN score>=4 THEN '4.0-6.9 Medium' WHEN score>0 THEN '0.1-3.9 Low' ELSE 'Unscored' END AS vpr_band, COUNT(*) AS findings FROM vulns GROUP BY vpr_band ORDER BY findings DESC`},
- {g:'Exposure',title:'Top 15 assets by findings',note:'Where the vulnerabilities concentrate',viz:'bar',label_col:'host',value_col:'findings',
+ {g:'Exposure',title:'Top 15 assets by findings',ref:'preset.top_assets',note:'Where the vulnerabilities concentrate',viz:'bar',label_col:'host',value_col:'findings',
   sql:`SELECT COALESCE(NULLIF(asset_hostname,''), asset_ip) AS host, COUNT(*) AS findings FROM vulns GROUP BY asset_uuid ORDER BY findings DESC LIMIT 15`},
- {g:'Exposure',title:'Top 15 reduction plugins',note:'Critical/High plugins by asset count — fix these first',viz:'bar',label_col:'plugin_name',value_col:'assets',
+ {g:'Exposure',title:'Top 15 reduction plugins',ref:'preset.fix_leverage',note:'Critical/High plugins by asset count — fix these first',viz:'bar',label_col:'plugin_name',value_col:'assets',
   sql:`SELECT plugin_name, COUNT(DISTINCT asset_uuid) AS assets FROM vulns WHERE lower(severity) IN ('critical','high') GROUP BY plugin_id ORDER BY assets DESC LIMIT 15`},
  {g:'Exposure',title:'Fix leverage (Pareto)',note:'Plugins ranked by the critical findings each one kills, with cumulative coverage. Root-cause remediation ranking — the headline names how few actions clear the majority.',viz:'pareto',label_col:'plugin',value_col:'critical findings',
   sql:`SELECT plugin_name AS "plugin", COUNT(*) AS "critical findings", (SELECT COUNT(*) FROM vulns WHERE lower(severity)='critical') AS "total_critical" FROM vulns WHERE lower(severity)='critical' GROUP BY plugin_id ORDER BY "critical findings" DESC LIMIT 20`},
- {g:'Exposure',title:'Exploitable findings',note:'Findings with a public exploit available',viz:'kpi',
+ {g:'Exposure',title:'Exploitable findings',ref:'preset.exploitable',note:'Findings with a public exploit available',viz:'kpi',
   sql:`SELECT COUNT(*) AS "Exploitable findings" FROM vulns WHERE lower(exploit)='true'`},
- {g:'Exposure',title:'Average / peak VPR',note:'How dangerous the open backlog is',viz:'kpi',
+ {g:'Exposure',title:'Average / peak VPR',ref:'preset.vpr_peak',note:'How dangerous the open backlog is',viz:'kpi',
   sql:`SELECT ROUND(AVG(score),1) AS "Avg VPR", MAX(score) AS "Max VPR" FROM vulns WHERE score>0`},
  {g:'Exposure',title:'Findings by plugin family',note:'Which subsystems drive the finding count',viz:'bar',label_col:'plugin_family',value_col:'findings',
   sql:`SELECT plugin_family, COUNT(*) AS findings FROM vulns WHERE plugin_family IS NOT NULL AND plugin_family!='' GROUP BY plugin_family ORDER BY findings DESC LIMIT 12`},
 
- {g:'Ownership & Identity',title:'Assets per owner',note:'Owner workload — spot the bottleneck',viz:'bar',label_col:'owner',value_col:'assets',
+ {g:'Ownership & Identity',title:'Assets per owner',ref:'preset.assets_per_owner',note:'Owner workload — spot the bottleneck',viz:'bar',label_col:'owner',value_col:'assets',
   sql:`SELECT tag_value AS owner, COUNT(DISTINCT asset_uuid) AS assets FROM tags WHERE tag_key='Owner' GROUP BY tag_value ORDER BY assets DESC LIMIT 15`},
  {g:'Ownership & Identity',title:'Credentialed scan coverage',note:'Credentialed vs uncredentialed hosts (plugin 19506)',viz:'pie',label_col:'scan',value_col:'assets',
   sql:`SELECT CASE WHEN lower(output) LIKE '%credentialed checks : yes%' THEN 'Credentialed' ELSE 'Uncredentialed' END AS scan, COUNT(DISTINCT asset_uuid) AS assets FROM vulns WHERE plugin_id='19506' GROUP BY scan`},
 
- {g:'Hygiene & lifecycle',title:'Assets by OS family',note:'Windows / Linux / macOS / Other',viz:'bar',label_col:'os_family',value_col:'assets',
+ {g:'Hygiene & lifecycle',title:'Assets by OS family',ref:'preset.os_family',note:'Windows / Linux / macOS / Other',viz:'bar',label_col:'os_family',value_col:'assets',
   sql:`SELECT CASE WHEN operating_system LIKE '%Windows%' THEN 'Windows' WHEN operating_system LIKE '%Linux%' OR operating_system LIKE '%CentOS%' OR operating_system LIKE '%Ubuntu%' OR operating_system LIKE '%Red Hat%' OR operating_system LIKE '%Debian%' THEN 'Linux' WHEN operating_system LIKE '%Mac%' THEN 'macOS' ELSE 'Other' END AS os_family, COUNT(*) AS assets FROM assets GROUP BY os_family ORDER BY assets DESC`},
- {g:'Hygiene & lifecycle',title:'Unsupported / EOL products',note:'End-of-life software by plugin',viz:'bar',label_col:'plugin_name',value_col:'assets',
+ {g:'Hygiene & lifecycle',title:'Unsupported / EOL products',ref:'preset.eol_products',note:'End-of-life software by plugin',viz:'bar',label_col:'plugin_name',value_col:'assets',
   sql:`SELECT plugin_name, COUNT(DISTINCT asset_uuid) AS assets FROM vulns WHERE lower(plugin_name) LIKE '%unsupported%' OR lower(plugin_name) LIKE '%end of life%' OR lower(plugin_name) LIKE '%seol%' GROUP BY plugin_id ORDER BY assets DESC LIMIT 15`},
  {g:'Hygiene & lifecycle',title:'Top 15 software',note:'Most-installed software strings',viz:'bar',label_col:'software_string',value_col:'installs',
   sql:`SELECT software_string, COUNT(DISTINCT j.value) AS installs FROM software s, json_each(CASE WHEN substr(trim(s.asset_uuid),1,1)='[' THEN replace(s.asset_uuid, char(39), char(34)) ELSE json_array(s.asset_uuid) END) j WHERE software_string IS NOT NULL AND software_string!='' GROUP BY software_string ORDER BY installs DESC LIMIT 15`},
- {g:'Hygiene & lifecycle',title:'Certificate signature algorithms',note:'SHA-1 vs SHA-256 etc. across your certs',viz:'bar',label_col:'algorithm',value_col:'certs',
+ {g:'Hygiene & lifecycle',title:'Certificate signature algorithms',ref:'preset.cert_sig',note:'SHA-1 vs SHA-256 etc. across your certs',viz:'bar',label_col:'algorithm',value_col:'certs',
   sql:`SELECT COALESCE(NULLIF(signature_algorithm,''),'(unknown)') AS algorithm, COUNT(*) AS certs FROM certs GROUP BY algorithm ORDER BY certs DESC`},
- {g:'Hygiene & lifecycle',title:'Weak-key certificates',note:'Certs with an RSA key under 2048 bits',viz:'kpi',
+ {g:'Hygiene & lifecycle',title:'Weak-key certificates',ref:'preset.weak_keys',note:'Certs with an RSA key under 2048 bits',viz:'kpi',
   sql:`SELECT COUNT(*) AS "Weak-key certs (<2048)" FROM certs WHERE key_length IS NOT NULL AND CAST(key_length AS INTEGER) BETWEEN 1 AND 2047`},
  {g:'Hygiene & lifecycle',title:'Cert expiry × signature (heatmap)',note:'Certificates by expiry window and signature algorithm — where renewal pressure and crypto risk overlap.',viz:'heatmap',label_col:'expiry',
   sql:`SELECT CASE WHEN substr(not_valid_after,1,10) < date('now') THEN 'Expired' WHEN substr(not_valid_after,1,10) < date('now','+30 day') THEN '≤ 30 days' WHEN substr(not_valid_after,1,10) < date('now','+90 day') THEN '≤ 90 days' WHEN substr(not_valid_after,1,10) < date('now','+365 day') THEN '≤ 1 year' ELSE '> 1 year' END AS expiry, COALESCE(NULLIF(signature_algorithm,''),'(unknown)') AS algorithm, COUNT(*) AS certs FROM certs WHERE not_valid_after IS NOT NULL AND not_valid_after!='' GROUP BY expiry, algorithm ORDER BY CASE expiry WHEN 'Expired' THEN 1 WHEN '≤ 30 days' THEN 2 WHEN '≤ 90 days' THEN 3 WHEN '≤ 1 year' THEN 4 ELSE 5 END, certs DESC`},
- {g:'Hygiene & lifecycle',title:'Stale assets (>30d)',note:'Not seen in the last 30 days',viz:'kpi',
+ {g:'Hygiene & lifecycle',title:'Stale assets (>30d)',ref:'preset.stale_assets',note:'Not seen in the last 30 days',viz:'kpi',
   sql:`SELECT COUNT(*) AS "Stale assets (>30d)" FROM assets WHERE substr(last_found,1,10) < date('now','-30 day')`},
 
  {g:'Advanced views',title:'Remediation quadrant',note:'Critical/High plugins — VPR (x) × affected assets (y), bubble size = exploitable. Top-right, big = fix first.',viz:'bubble',label_col:'plugin',value_col:'assets',
@@ -704,7 +706,7 @@ const PRESETS=[
   sql:`SELECT t.tag_value AS owner, CASE lower(v.severity) WHEN 'critical' THEN 'Critical' WHEN 'high' THEN 'High' WHEN 'medium' THEN 'Medium' WHEN 'low' THEN 'Low' END AS severity, COUNT(*) AS findings FROM tags t JOIN vulns v ON v.asset_uuid=t.asset_uuid WHERE t.tag_key='Owner' AND t.tag_value IN (SELECT tag_value FROM tags WHERE tag_key='Owner' GROUP BY tag_value ORDER BY COUNT(DISTINCT asset_uuid) DESC LIMIT 12) AND lower(v.severity) IN ('critical','high','medium','low') GROUP BY owner, severity ORDER BY findings DESC`},
 ];
 const BOARDS={
- leadership:['KEV-exposed assets','Crown-jewel risk','Unpatchable risk %','Data trust score','Ownerless assets','Blind hosts (no creds)','Findings by severity','Ownership coverage'],
+ leadership:['KEV-exposed assets','Crown jewels with KEV','Unpatchable risk %','Data trust score','Ownerless assets','Blind hosts (no creds)','Findings by severity','Ownership coverage'],
  se:['Fix leverage (Pareto)','Findings by VPR band','Top 15 assets by findings','Top 15 reduction plugins','Exploitable findings','Findings by plugin family','Credentialed scan coverage','Unsupported / EOL products']
 };
 // viz-type → clean badge label + RGB accent (Iris palette). Drives the card badge.
@@ -742,7 +744,12 @@ async function addPreset(p,btn){
   if(!p)return;
   const pin=btn&&btn.querySelector?btn.querySelector('.ppin'):null; const oldPin=pin?pin.textContent:'';
   if(btn){ btn.style.pointerEvents='none'; btn.style.opacity='.7'; } if(pin)pin.textContent='running…';
-  await testRunStatus(); const sql=tagKeySql(p.sql);   // + test-run tag names (Settings → Test run)
+  await testRunStatus();
+  // build 509: a starter that has a shared definition runs the library's SQL (core/widgets +
+  // core/dashmetrics) — the same KEV / crown-jewel / open-finding rules as every board
+  let base=p.sql;
+  if(p.ref){ try{ const x=await jpost('/api/dashboard/preset_sql',{ref:p.ref}); if(x&&x.ok&&x.sql) base=x.sql; }catch(e){} }
+  const sql=tagKeySql(base);   // + test-run tag names (Settings → Test run)
   let o; try{ o=await runSql(sql); }catch(e){ o={ok:false,message:e.message}; }
   if(btn){ btn.style.pointerEvents=''; btn.style.opacity=''; } if(pin)pin.textContent=oldPin;
   if(!o||!o.ok){ pflash('✗ '+esc(p.title)+': '+esc((o&&(o.message||o.error))||'query failed'),'crit'); return; }
@@ -793,6 +800,7 @@ async function go(){
   renderViz(r);
   _dashCurrent={title:r.title||'Dashboard',note:r.note||'',sql:r.sql||'',r:r};
   const _ab=document.getElementById('dashAdd'); if(_ab)_ab.disabled=false;
+  const _bb=document.getElementById('dashBoardAdd'); if(_bb)_bb.disabled=false;
 }
 document.getElementById('go').onclick=go;
 document.getElementById('prompt').addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='Enter')go();});
@@ -801,5 +809,28 @@ mountAgentHeader({icon:'📊',name:'Dashboard Builder',sub:'read-only navi.db ·
 try{ hMailAuto(); }catch(e){}
 /* deep-link prefill: insights tiles link here with ?q=<prompt> and auto-run */
 (function(){const q=new URLSearchParams(location.search).get('q');if(q){document.getElementById('prompt').value=q;go();}})();
+/* build 509/510: the builder writes SQL widgets for the Dashboards app (server-side boards) */
+(async function boardPicker(){
+  const sel=document.getElementById('boardPick'); if(!sel) return;
+  try{ const o=await jpost('/api/dashboard/boards',{}); sel.innerHTML=((o&&o.boards)||[]).map(b=>'<option value="'+esc(b.id)+'">'+esc(b.name)+'</option>').join(''); }catch(e){}
+  const btn=document.getElementById('dashBoardAdd'); if(!btn) return;
+  btn.onclick=async()=>{
+    if(!_dashCurrent || !sel.value) return;
+    const r=_dashCurrent.r||{}; const ct=(document.getElementById('dChartType')||{}).value;
+    const viz=(ct && ct!=='auto') ? ct : (r.viz && r.viz!=='auto' ? r.viz : 'table');
+    btn.disabled=true;
+    const o=await jpost('/api/dashboard/sql_save',{widget:{title:_dashCurrent.title, note:_dashCurrent.note, sql:_dashCurrent.sql, viz,
+      label_col:r.label_col||'', value_col:r.value_col||'', w:6, h:3}});
+    if(!o||!o.ok){ btn.disabled=false; alert('Not added — '+((o&&o.error)||'error')); return; }
+    const g=await jpost('/api/dashboard/board_get',{id:sel.value});
+    if(!g||!g.ok){ btn.disabled=false; alert('That board is gone — reload the page.'); return; }
+    const b=g.board; b.widgets.push({ref:o.ref, w:Math.min(6,(b.layout&&b.layout.cols)||12), h:3});
+    const sv=await jpost('/api/dashboard/board_save',{board:{id:b.id, rev:b.rev, name:b.name, layout:b.layout, scope:b.scope, widgets:b.widgets}});
+    btn.disabled=false;
+    if(sv&&sv.ok){ btn.textContent='✓ Added'; setTimeout(()=>{ btn.textContent='📊 Add to board'; },1500);
+      if(confirm('Added to “'+b.name+'”. Open the board now? (Tip: add $__scope(asset_uuid) in its SQL so it follows the board\'s tag scope.)')) location.href='/web/dashboards.html?board='+encodeURIComponent(b.id); }
+    else alert('Not added — '+((sv&&sv.error)||'error'));
+  };
+})();
 </script>
 </body></html>

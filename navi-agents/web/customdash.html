@@ -32,8 +32,8 @@
 .dwgrab:hover{opacity:1 !important;color:var(--ink);background:var(--panel-2)}
 .dwgrab:active{cursor:grabbing}
 .dwfoot{display:flex;justify-content:flex-end;margin-top:auto;padding-top:10px}
-.dwmore{background:transparent;border:1px solid transparent;color:var(--ink-3);font-size:16px;line-height:.7;letter-spacing:1px;
-  cursor:pointer;border-radius:7px;padding:3px 10px;opacity:.35;transition:opacity .15s,background .15s,border-color .15s;font-family:var(--body)}
+.dwmore{background:transparent;border:1px solid transparent;color:var(--ink-2);font-size:16px;line-height:.7;letter-spacing:1px;
+  cursor:pointer;border-radius:7px;padding:3px 10px;opacity:.8;transition:opacity .15s,background .15s,border-color .15s;font-family:var(--body)}
 .dwcard:hover .dwmore{opacity:1}
 .dwmore:hover,.dwmore.on{background:var(--panel-2);border-color:var(--line);color:var(--ink)}
 /* the single "options" dropdown — rendered to <body>, fixed-positioned so no card clips it */
@@ -303,7 +303,7 @@ function dashSVG(type, cols, rows, spec){
   if(!rows||!rows.length) return '<p style="color:'+DS_LABEL+'">No rows.</p>';
   var d=dashData(cols,rows,spec);
   switch(String(type||'').toLowerCase()){
-    case 'kpi': { var r0=rows[0]; return '<div style="display:flex;gap:14px;flex-wrap:wrap">'+cols.map(function(c){return '<div style="min-width:110px"><div style="font-size:26px;font-weight:800;color:'+DS_PAL[1]+'">'+_dsEsc(r0[c])+'</div><div style="font-size:11px;color:'+DS_LABEL+'">'+_dsEsc(c)+'</div></div>';}).join('')+'</div>'; }
+    case 'kpi': { var r0=rows[0]; return '<div style="display:flex;gap:14px;flex-wrap:wrap">'+cols.filter(function(c){return String(c).indexOf('__')!==0;}).map(function(c){return '<div style="min-width:110px"><div style="font-size:26px;font-weight:800;color:'+DS_PAL[1]+'">'+_dsEsc(r0[c])+'</div><div style="font-size:11px;color:'+DS_LABEL+'">'+_dsEsc(c)+'</div></div>';}).join('')+'</div>'; }
     case 'bar': return _dsBar(d);
     case 'column': return _dsColumn(d,false,false);
     case 'grouped': case 'grouped_bar': case 'group': return d.series.length>1?_dsColumn(d,false,true):_dsColumn(d,false,false);
@@ -452,7 +452,7 @@ async function refreshAll(){
 }
 document.getElementById('refresh').onclick=refreshAll;
 /* ===== Email the dashboard — components rendered email-safe by the email agent ===== */
-const EMAIL_API=agentApi('email');
+const EMAIL_API={post:(a,b)=>jpost('/api/email/'+a,b)};   // not agentApi(): that renames this page's header to Notify & Report
 function _emailForm(){ return document.getElementById('emailForm'); }
 document.getElementById('emailBtn').onclick=()=>{ const f=_emailForm(); const show=f.style.display==='none'; f.style.display=show?'flex':'none'; if(show)document.getElementById('emailTo').focus(); };
 document.getElementById('emailCancel').onclick=()=>{ _emailForm().style.display='none'; document.getElementById('emailRes').innerHTML=''; };

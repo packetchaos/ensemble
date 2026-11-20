@@ -4,43 +4,736 @@
 <title>Dashboards — navi Ensemble</title>
 <link rel="stylesheet" href="/static/console.css">
 <style>
-  .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:14px}
-  .scard{display:block;text-decoration:none;border:1px solid var(--line);border-radius:12px;padding:14px 15px;background:var(--panel);cursor:pointer;text-align:left;font-family:inherit;transition:border-color .12s,transform .12s,background .12s}
-  .scard:hover{border-color:var(--accent);background:var(--panel-2);transform:translateY(-1px)}
-  .scard .t{font-weight:800;font-size:15px;color:var(--ink)}
-  .scard .n{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin:1px 0 6px}
-  .scard .d{font-size:12.5px;color:var(--ink-2);line-height:1.45}
+/* ===== Dashboards app (build 509) — server-side boards, resizable + reorderable widgets ===== */
+.dbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 10px}
+.dbar select,.dbar .btn{font-size:13px}
+.dbar .grow{flex:1}
+.dsel{font:600 14px var(--body);padding:7px 10px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--ink);max-width:280px}
+.scopebar{position:sticky;top:0;z-index:30;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;margin:0 0 12px;
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.scopebar .lbl{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mut);margin-right:2px}
+.schip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:4px 6px 4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);cursor:pointer;font-family:var(--body)}
+.schip.not{border-color:var(--crit);color:var(--crit)}
+.schip b{font-weight:700}
+.schip .x{border:0;background:transparent;color:inherit;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;border-radius:50%}
+.schip .x:hover{background:var(--line)}
+.scopebar .cnt{font-size:12px;color:var(--ink-2);margin-left:auto}
+.gridwrap{margin:0 auto}
+.dgrid{display:grid;grid-template-columns:repeat(var(--cols,12),minmax(0,1fr));grid-auto-rows:var(--row,90px);gap:var(--gap,12px);position:relative}
+.dgrid.dense{grid-auto-flow:row dense}
+.wd{position:relative;min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.wd:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.wd.dragging{opacity:.4}
+.wd.drop-before{box-shadow:-4px 0 0 0 var(--accent)}
+.wd.drop-after{box-shadow:4px 0 0 0 var(--accent)}
+.wd.resizing{outline:2px dashed var(--accent);outline-offset:-2px;z-index:5}
+.wh{display:flex;align-items:center;gap:6px;padding:8px 10px 4px 8px;min-height:30px}
+.wh h3{margin:0;font-size:13.5px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grab{cursor:grab;color:var(--ink-3);font-size:14px;padding:0 3px;border-radius:5px;user-select:none;line-height:1}
+.grab:hover{color:var(--ink);background:var(--panel-2)}
+.locked .grab,.locked .rsz{display:none}
+.bdg{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap;max-width:46%;overflow:hidden;text-overflow:ellipsis}
+.bdg.sc{background:var(--panel-2);color:var(--ink-2);border:1px solid var(--line)}
+.bdg.fx{background:var(--panel-2);color:var(--accent2);border:1px solid var(--accent2)}
+.bdg.ig{background:var(--warnbg,rgba(201,168,63,.15));color:var(--med)}
+.bdg.st{background:var(--critbg,rgba(229,72,77,.12));color:var(--crit)}
+.bdg.rv{background:var(--warnbg,rgba(201,168,63,.15));color:var(--med)}
+.wb{flex:1;min-height:0;overflow:auto;padding:4px 12px 6px}
+.wb svg{max-width:100%;max-height:calc(100% - 30px)}   /* charts fit the widget's height as well as its width */
+.wd.stale .wb,.wd.db_changed .wb{opacity:.62}
+.wf{display:flex;align-items:center;gap:6px;padding:4px 8px 6px 12px;border-top:1px solid color-mix(in srgb,var(--line) 60%,transparent)}
+.asof{font-size:11px;color:var(--ink-3);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asof.warn{color:var(--med)}
+.wf button,.wmini{font:600 11.5px var(--body);padding:3px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);cursor:pointer;white-space:nowrap}
+.wf button:hover,.wmini:hover{border-color:var(--accent)}
+.wf button.sql{font-family:var(--mono)}
+.wf button.more{font-size:14px;line-height:1;padding:2px 9px;color:var(--ink);font-weight:800}
+.rsz{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;touch-action:none;
+  background:linear-gradient(135deg,transparent 0 50%,var(--ink-3) 50% 58%,transparent 58% 70%,var(--ink-3) 70% 78%,transparent 78%)}
+.rsz:hover{background:linear-gradient(135deg,transparent 0 50%,var(--accent) 50% 58%,transparent 58% 70%,var(--accent) 70% 78%,transparent 78%)}
+.szlbl{position:absolute;right:22px;bottom:4px;font:700 11px var(--mono);background:var(--accent);color:#fff;padding:2px 6px;border-radius:6px;pointer-events:none}
+.wd-h{background:transparent;border:0;border-bottom:2px solid var(--line);border-radius:0;justify-content:flex-end}
+.wd-h .wh{padding:0 4px 6px}
+.wd-h h3{font-size:15px;font-weight:800;letter-spacing:.01em}
+.wd-h .wf{display:none}
+.kpiv{font-size:clamp(26px,3.2vw,44px);font-weight:800;line-height:1.05;color:var(--ink)}
+.kpil{font-size:11.5px;color:var(--ink-2);margin-top:3px}
+.kpis{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;padding-top:4px}
+.trend{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:11.5px;color:var(--ink-2)}
+.trend svg{flex:0 0 auto}
+.bdg.sn{background:var(--panel-2);color:var(--ink-2);border:1px dashed var(--line)}
+.wstate{display:flex;flex-direction:column;gap:8px;align-items:flex-start;justify-content:center;height:100%;font-size:12.5px;color:var(--ink-2)}
+.wstate .err{color:var(--crit);font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;word-break:break-word}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:dsp 1s linear infinite;vertical-align:-2px}
+@keyframes dsp{to{transform:rotate(360deg)}}
+.note{font-size:11.5px;color:var(--ink-3);margin:0 0 4px}
+.wmenu{position:fixed;z-index:200;min-width:230px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.wmenu button{display:flex;gap:9px;align-items:center;width:100%;text-align:left;background:transparent;border:0;color:var(--ink);padding:7px 9px;border-radius:7px;cursor:pointer;font:13px var(--body)}
+.wmenu button:hover{background:var(--panel-2)}
+.wmenu .sep{height:1px;background:var(--line);margin:5px 2px}
+.wmenu .row{display:flex;gap:4px;padding:4px 6px;align-items:center;flex-wrap:wrap}
+.wmenu .row button{width:auto;border:1px solid var(--line);padding:4px 8px;font-size:12px}
+.wmenu .row .l{font-size:11px;color:var(--ink-3);width:54px}
+.wmenu select{font:13px var(--body);padding:5px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink)}
+.pop{position:fixed;z-index:210;width:min(380px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.pop h4{margin:0 0 8px;font-size:13.5px}
+.pop label{display:block;font-size:12px;color:var(--ink-2);margin:8px 0 4px}
+.pop select,.pop input[type=text],.pop input[type=search]{width:100%;box-sizing:border-box;font:13px var(--body);padding:7px 9px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink)}
+.vlist{max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:6px;padding:4px}
+.vlist label{display:flex;gap:8px;align-items:center;margin:0;padding:4px 6px;border-radius:6px;cursor:pointer;color:var(--ink)}
+.vlist label:hover{background:var(--panel-2)}
+.vlist .n{margin-left:auto;font:11px var(--mono);color:var(--ink-3)}
+.pop .acts{display:flex;gap:6px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--panel-2);color:var(--ink-2);padding:6px 10px;font:12px var(--body);cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff;font-weight:700}
+.tray{position:fixed;top:0;right:0;bottom:0;width:min(440px,100vw);z-index:150;background:var(--panel);border-left:1px solid var(--line);box-shadow:-12px 0 30px rgba(0,0,0,.3);display:flex;flex-direction:column;transform:translateX(105%);transition:transform .18s}
+.tray.open{transform:none}
+.tray header{display:flex;align-items:center;gap:8px;padding:14px 14px 8px}
+.tray header h2{margin:0;font-size:16px;flex:1}
+.tray .tabsr{display:flex;gap:4px;padding:0 14px 8px;flex-wrap:wrap}
+.tray .tabsr button{border:1px solid var(--line);background:var(--panel-2);color:var(--ink-2);padding:5px 10px;border-radius:999px;font:12.5px var(--body);cursor:pointer}
+.tray .tabsr button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.tray .search{padding:0 14px 8px}
+.tray .search input{width:100%;box-sizing:border-box;font:13px var(--body);padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink)}
+.tray .list{flex:1;overflow:auto;padding:0 14px 20px}
+.lgrp{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--mut);margin:12px 0 6px}
+.litem{border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:7px;display:flex;gap:8px;align-items:flex-start;background:var(--panel-2)}
+.litem .t{font-weight:700;font-size:13px}
+.litem .d{font-size:12px;color:var(--ink-2);margin-top:2px;line-height:1.4}
+.litem .m{font-size:10.5px;color:var(--ink-3);margin-top:4px;display:flex;gap:6px;flex-wrap:wrap}
+.litem .m span{border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+.litem .add{margin-left:auto;flex:0 0 auto}
+.modal-bg{position:fixed;inset:0;z-index:300;background:rgba(5,7,12,.6);display:flex;align-items:flex-start;justify-content:center;padding:5vh 12px;overflow:auto}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:min(1100px,100%);padding:16px 18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal h3{margin:0 0 4px;font-size:16px}
+.modal .mh{display:flex;gap:10px;align-items:flex-start}
+.modal .mh .grow{flex:1;min-width:0}
+.sqlpre{background:#14162a;color:#e8e9f7;border-radius:10px;padding:12px 14px;font:12px/1.55 var(--mono);white-space:pre-wrap;word-break:break-word;margin:8px 0;max-height:46vh;overflow:auto}
+.defl{font-size:12.5px;color:var(--ink-2);margin:4px 0;line-height:1.45}
+.defl b{color:var(--ink)}
+.dtab{overflow:auto;max-height:58vh;border:1px solid var(--line);border-radius:10px}
+.dtab table{width:100%;border-collapse:collapse;font-size:12.5px}
+.dtab th{position:sticky;top:0;background:var(--panel-2);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.dtab td{padding:5px 8px;border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent);max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.banner{border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin:0 0 10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--panel-2);font-size:13px}
+.banner.warn{border-color:var(--med)}
+.empty{grid-column:1/-1;text-align:center;padding:50px 10px;color:var(--ink-2)}
+.edtx textarea{width:100%;box-sizing:border-box;min-height:200px;font:12.5px/1.5 var(--mono);padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink)}
+.edtx .row2{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
+.edtx label{display:block;font-size:12px;color:var(--ink-2);margin:8px 0 3px}
+.edtx input,.edtx select{width:100%;box-sizing:border-box;font:13px var(--body);padding:7px 9px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink)}
+.aibox{border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:11px;padding:10px 12px;margin:10px 0 4px;background:color-mix(in srgb,var(--accent) 6%,var(--panel))}
+.aibox label{font-weight:700;font-size:13px;display:block;margin-bottom:6px}
+.airow{display:flex;gap:8px;align-items:stretch}
+.airow textarea{flex:1;font:13px var(--body);padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);resize:vertical}
+.aiex{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.pvw{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px;max-height:52vh;overflow:auto}
+.pvc{margin:6px 0}
+.others{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px;font-size:12px;color:var(--ink-3);align-items:center}
+.others a{font-size:12px}
+@media (max-width:760px){
+  .dgrid{grid-template-columns:1fr!important;grid-auto-rows:auto!important}
+  .wd{grid-column:1/-1!important;grid-row:auto!important;min-height:150px}
+  .wd-h{min-height:0}
+  .rsz,.grab{display:none}
+  .scopebar .cnt{margin-left:0;width:100%}
+}
 </style>
-</head><body>
+</head><body data-page-cache="off">
 <div class="wrap">
   <header class="top">
     <div class="logo"><span class="hcrest brand" role="img" aria-label="navi Ensemble"></span></div>
-    <h1>Dashboards <small>BUILD · PIN · MAP</small></h1>
+    <h1>Dashboards <small>BOARDS · WIDGETS · SCOPE</small></h1>
     <div class="meta" id="meta"></div>
   </header>
 
-  <section class="card">
-    <div class="toolbar"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/dashboard.png?v=1" alt="" aria-hidden="true" draggable="false"> Your dashboards</h2>
-      <p class="sub" style="margin:2px 0 0">Jump to any dashboard tool from the bar above — it follows you across each one. Build views in the <b>Dashboard builder</b>, pin them to a <b>Custom Dashboard</b> (keep up to five), or open the <b>Ownership Map</b>. All read navi.db read-only.</p></div></div>
-    <div class="sgrid" id="sgrid"></div>
-  </section>
+  <div id="banners"></div>
 
-  <footer>Dashboards · the bar above is on every dashboard page · up to 5 custom boards per browser</footer>
+  <div class="dbar">
+    <select class="dsel" id="bsel" aria-label="Board"></select>
+    <button class="btn sm" id="bmenu" title="New, duplicate, rename, export, import, delete">Board ▾</button>
+    <button class="btn sm" id="bsize" title="Columns, row height, width and spacing of this board">⚙ Board size</button>
+    <button class="btn sm" id="block" title="Lock the layout so widgets can't be moved or resized by accident">🔓 Layout unlocked</button>
+    <span class="grow"></span>
+    <button class="btn sm" id="askai" title="Describe a widget in plain English — the model writes the SQL on the shared definitions">✨ Ask AI</button>
+    <button class="btn sm" id="addw">＋ Add widget</button>
+    <button class="btn run sm" id="runstale" title="Run every widget that hasn't run for this scope, is over a day old, or ran before the last navi.db sync">▶ Run stale</button>
+    <button class="btn sm" id="runall" title="Re-run every widget on this board now">↻ Run all</button>
+  </div>
+
+  <div class="scopebar" id="scopebar" role="region" aria-label="Board scope"></div>
+
+  <div class="gridwrap" id="gridwrap"><div class="dgrid" id="grid" aria-live="polite"></div></div>
+
+
+  <footer>Dashboards · boards are saved on this server · every widget shows its SQL and opens its rows · nothing runs until you press ▶</footer>
 </div>
+
+<aside class="tray" id="tray" aria-label="Widget library" aria-hidden="true">
+  <header><h2>Widget library</h2><button class="btn sm" id="newsql">＋ New SQL widget</button><button class="btn ghost sm" id="trayx" aria-label="Close">✕</button></header>
+  <div class="tabsr" id="ltabs"></div>
+  <div class="search"><input type="search" id="lq" placeholder="Search widgets…" aria-label="Search widgets"></div>
+  <div class="list" id="llist"></div>
+</aside>
 
 <script src="/static/brand.js"></script>
 <script src="/static/console.js"></script>
+<script src="/static/dashviz.js"></script>
 <script>
-const CARDS=[
-  {t:'📊 Dashboard builder', n:'Dashboard Builder', d:'Ask in plain English or pick a starter metric — the model writes the navi.db SQL, you see it, then it renders. Pin components to a board.', href:'/agents/dashboard/page.html'},
-  {t:'🗂 Custom Dashboard', n:'Up to 5 boards', d:'Your pinned components as a standalone, refreshable board. Keep up to five named dashboards and switch between them with the tab strip.', href:'/web/customdash.html'},
-  {t:'⚖️ Compliance Dashboard', n:'Compliance Overview', d:'Framework-first: pick HIPAA, PCI-DSS, NIST, CIS or ISO and every audit finding mapped to it rolls up — coverage by audit file, weakest assets first, one-click Audit Owner assignment, and pinnable widgets.', href:'/web/compliancedash.html'},
-  {t:'🗺 Ownership Map', n:'Who owns the risk', d:'Route exposure to owners — see which teams carry the most critical, KEV, and high-VPR findings, and act from there.', href:'/web/ownermap.html'},
-  {t:'🔐 Certificate Dashboard', n:'Certania', d:'A 12-month expiry timeline (click a month to see those certs), the same set grouped by asset / certificate / common name, and every certificate plugin with one-click tag-by-plugin.', href:'/web/certdash.html'},
-];
-document.getElementById('sgrid').innerHTML=CARDS.map(c=>
-  '<a class="scard" href="'+c.href+'"><div class="t">'+c.t+'</div><div class="n">'+c.n+'</div><div class="d">'+c.d+'</div></a>').join('');
-// quick glance: how many custom boards exist
-try{ if(typeof dashList==='function'){ const n=dashList().length; const m=document.getElementById('meta'); if(m) m.innerHTML='<span class="chip">'+n+' / '+DASH_MAX+' custom board'+(n===1?'':'s')+'</span>'; } }catch(e){}
+'use strict';
+const API = a => '/api/dashboard/'+a;
+const call = (a, b) => jpost(API(a), b||{});
+let BOARDS=[], TEMPLATES=[], B=null, DEFS={}, RES={}, RUNNING={}, SCOPE_N=null, LIB=null, LTAB='presets';
+let LOCKED=false; try{ LOCKED = localStorage.getItem('houndsDashLocked')==='1'; }catch(e){}
+const GAPS={compact:6, comfortable:12, spacious:18};
+const VIZ=['kpi','bar','column','stacked','grouped','pie','donut','line','area','combo','scatter','bubble','heatmap','treemap','funnel','waterfall','radar','gauge','progress','histogram','table'];
+const fmtN = n => (typeof n==='number' ? n.toLocaleString() : esc(String(n==null?'':n)));
+const qs = (k) => { try{ return new URLSearchParams(location.search).get(k)||''; }catch(e){ return ''; } };
+function ago(t){ if(!t) return ''; const s=Math.max(0,(Date.now()/1000)-t); if(s<60) return 'just now'; if(s<3600) return Math.round(s/60)+' min ago'; if(s<86400) return Math.round(s/3600)+' h ago'; return Math.round(s/86400)+' d ago'; }
+function stamp(t){ try{ return new Date(t*1000).toLocaleString(); }catch(e){ return ''; } }
+
+/* ---------- load ---------- */
+async function loadBoards(pick){
+  const o = await call('boards');
+  if(!o || !o.ok){ document.getElementById('grid').innerHTML='<div class="empty">Could not load boards — '+esc((o&&o.error)||'server error')+'</div>'; return; }
+  BOARDS=o.boards||[]; TEMPLATES=o.templates||[];
+  // ?template=compliance|certificates — open that templated board (made once, on first visit)
+  const tpl = !pick && qs('template');
+  if(tpl && TEMPLATES.some(t=>t.id===tpl) && tpl!=='blank'){
+    const have=BOARDS.find(b=>b.kind==='template:'+tpl);
+    if(have) return openBoard(have.id);
+    const o=await call('board_new',{template:tpl}); if(o&&o.ok){ BOARDS.push({id:o.board.id, name:o.board.name, kind:o.board.kind, widgets:o.board.widgets.length}); return openBoard(o.board.id); }
+  }
+  const want = pick || qs('board') || ((BOARDS.find(b=>b.is_default)||BOARDS[0]||{}).id);
+  await openBoard(want);
+}
+async function openBoard(id){
+  const o = await call('board_get', {id});
+  if(!o || !o.ok){ if(BOARDS[0] && id!==BOARDS[0].id) return openBoard(BOARDS[0].id); return; }
+  B=o.board; DEFS=o.defs||{}; SCOPE_N=o.scope_assets; RES={};
+  try{ const u=new URL(location.href); u.searchParams.set('board', B.id); u.searchParams.delete('template'); history.replaceState(null,'',u); }catch(e){}
+  renderBar(); renderScope(); renderGrid();
+  await loadCached();
+}
+async function loadCached(){
+  if(!B) return;
+  const o = await call('widget_cached', {board:B.id});
+  if(o && o.ok){ RES=o.results||{}; }
+  renderGrid();
+}
+
+/* ---------- save (debounced, optimistic rev) ---------- */
+let _saveT=null, _saving=null;
+function saveSoon(ms){ clearTimeout(_saveT); _saveT=setTimeout(saveNow, ms==null?350:ms); }
+async function saveNow(){
+  clearTimeout(_saveT); if(!B) return;
+  const body={id:B.id, rev:B.rev, name:B.name, layout:B.layout, scope:B.scope, widgets:B.widgets};
+  _saving = call('board_save', {board:body});
+  const o = await _saving; _saving=null;
+  if(o && o.ok){ const keep=B.widgets; B=o.board; DEFS=Object.assign(DEFS, o.defs||{}); SCOPE_N=o.scope_assets;
+    // the server may assign iids to new widgets — map results across by position
+    const old={}; keep.forEach((w,i)=>{ old[i]=w.iid; });
+    B.widgets.forEach((w,i)=>{ if(old[i] && old[i]!==w.iid && RES[old[i]]){ RES[w.iid]=RES[old[i]]; } });
+    const bi=BOARDS.find(x=>x.id===B.id); if(bi){ bi.name=B.name; bi.widgets=B.widgets.length; }
+    renderBar(); renderScopeCount(); return true; }
+  if(o && o.conflict){ banner('This board was changed in another tab or by someone else. <button class="btn sm" id="reloadB">Reload it</button>', 'warn', 'conflict');
+    const r=document.getElementById('reloadB'); if(r) r.onclick=()=>{ clearBanner('conflict'); openBoard(B.id); }; return false; }
+  banner('Could not save the board — '+esc((o&&o.error)||'server error'), 'warn', 'save'); return false;
+}
+
+/* ---------- banners ---------- */
+function banner(html, cls, key){ const el=document.getElementById('banners'); clearBanner(key);
+  const d=document.createElement('div'); d.className='banner '+(cls||''); d.dataset.key=key||''; d.innerHTML=html; el.appendChild(d); return d; }
+function clearBanner(key){ document.querySelectorAll('#banners .banner').forEach(b=>{ if(!key || b.dataset.key===key) b.remove(); }); }
+
+/* ---------- top bar ---------- */
+function renderBar(){
+  const s=document.getElementById('bsel');
+  s.innerHTML = BOARDS.map(b=>'<option value="'+esc(b.id)+'"'+(B&&b.id===B.id?' selected':'')+'>'+(b.is_default?'★ ':'')+esc(b.name)+' ('+b.widgets+')</option>').join('');
+  s.onchange = ()=>openBoard(s.value);
+  const lk=document.getElementById('block'); lk.textContent = LOCKED ? '🔒 Layout locked' : '🔓 Layout unlocked';
+  document.getElementById('grid').classList.toggle('locked', LOCKED);
+  const n = staleIds().length; const rs=document.getElementById('runstale');
+  rs.textContent = '▶ Run stale' + (n ? ' ('+n+')' : ''); rs.disabled = !n;
+  const m=document.getElementById('meta'); if(m) m.innerHTML = B ? '<span class="chip">'+esc(B.widgets.length)+' widget'+(B.widgets.length===1?'':'s')+'</span>' : '';
+}
+
+/* ---------- scope bar ---------- */
+function scopeTerms(){ return (B && B.scope && B.scope.terms) || []; }
+function renderScope(){
+  const el=document.getElementById('scopebar'); const t=scopeTerms();
+  el.innerHTML = '<span class="lbl">Scope</span>'
+    + (t.length ? t.map((x,i)=>'<span class="schip'+(x.op==='not'?' not':'')+'" data-i="'+i+'" role="button" tabindex="0" title="Edit this filter">'
+        +(x.op==='not'?'not ':'')+'<b>'+esc(x.key)+'</b> = '+esc(x.values.join(' or '))
+        +'<button class="x" data-x="'+i+'" aria-label="Remove filter">×</button></span>').join('<span class="note" style="margin:0">and</span>')
+      : '<span class="schip" style="cursor:default">🌐 Whole estate</span>')
+    + '<button class="btn sm" id="addf">＋ Filter</button>'
+    + (t.length ? '<button class="btn ghost sm" id="clrf">Clear</button>' : '')
+    + '<span class="cnt" id="scnt"></span>';
+  el.querySelectorAll('.schip[data-i]').forEach(c=>{ const open=e=>{ if(e.target.closest('.x')) return; scopePopover(c, +c.dataset.i); };
+    c.onclick=open; c.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(e); } }; });
+  el.querySelectorAll('[data-x]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const i=+b.dataset.x; B.scope.terms.splice(i,1); scopeChanged(); });
+  document.getElementById('addf').onclick=e=>scopePopover(e.currentTarget, -1);
+  const c=document.getElementById('clrf'); if(c) c.onclick=()=>{ B.scope={terms:[]}; scopeChanged(); };
+  renderScopeCount();
+}
+function renderScopeCount(){ const c=document.getElementById('scnt'); if(!c) return;
+  c.textContent = (SCOPE_N==null ? '' : SCOPE_N.toLocaleString()+' asset'+(SCOPE_N===1?'':'s')+' in scope') + ' · tags as fresh as the last navi sync'; }
+async function scopeChanged(){
+  renderScope(); const ok = await saveNow(); if(ok){ renderScope(); await loadCached(); }
+}
+let _keys=null;
+async function scopePopover(anchor, idx){
+  closePops();
+  const cur = idx>=0 ? JSON.parse(JSON.stringify(scopeTerms()[idx])) : {key:'', values:[], op:'in'};
+  const p=document.createElement('div'); p.className='pop'; p.id='__pop';
+  p.innerHTML='<h4>'+(idx>=0?'Edit filter':'Add a tag filter')+'</h4>'
+    +'<div class="seg" role="group" aria-label="Include or exclude"><button data-op="in" class="'+(cur.op!=='not'?'on':'')+'">Include</button><button data-op="not" class="'+(cur.op==='not'?'on':'')+'">Exclude (NOT)</button></div>'
+    +'<label for="fk">Tag category</label><select id="fk"><option value="">Loading…</option></select>'
+    +'<label for="fv">Values <span class="note">(any of them — OR)</span></label><input type="search" id="fv" placeholder="Filter values…"><div class="vlist" id="vl"><div class="note">Pick a category first.</div></div>'
+    +'<p class="note" style="margin-top:8px">Different categories are combined with AND. Matching is exact, as in Tenable.</p>'
+    +'<div class="acts"><button class="btn ghost sm" id="fcancel">Cancel</button><button class="btn run sm" id="fapply">Apply</button></div>';
+  document.body.appendChild(p); placePop(p, anchor);
+  p.querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>{ cur.op=b.dataset.op; p.querySelectorAll('[data-op]').forEach(x=>x.classList.toggle('on', x===b)); });
+  const fk=p.querySelector('#fk'), vl=p.querySelector('#vl'), fv=p.querySelector('#fv');
+  let VALS=[]; const sel=new Set(cur.values);
+  const drawVals=()=>{ const q=fv.value.trim().toLowerCase(); const list=VALS.filter(v=>!q||String(v.value).toLowerCase().includes(q)).slice(0,300);
+    vl.innerHTML = list.length ? list.map(v=>'<label><input type="checkbox" value="'+esc(v.value)+'"'+(sel.has(v.value)?' checked':'')+'> '+esc(v.value)+'<span class="n">'+fmtN(v.assets)+'</span></label>').join('')
+      : '<div class="note">'+(fk.value?'No values match.':'Pick a category first.')+'</div>';
+    vl.querySelectorAll('input').forEach(i=>i.onchange=()=>{ i.checked?sel.add(i.value):sel.delete(i.value); }); };
+  const loadVals=async()=>{ VALS=[]; drawVals(); if(!fk.value) return; vl.innerHTML='<div class="note"><span class="spin"></span> Loading values…</div>';
+    const o=await call('scope_values',{key:fk.value}); VALS=(o&&o.values)||[]; drawVals(); };
+  fv.oninput=drawVals;
+  fk.onchange=()=>{ if(fk.value!==cur.key) sel.clear(); cur.key=fk.value; loadVals(); };
+  if(!_keys){ const o=await call('scope_keys'); _keys=(o&&o.keys)||[]; }
+  fk.innerHTML='<option value="">— choose —</option>'+_keys.map(k=>'<option value="'+esc(k.key)+'"'+(k.key===cur.key?' selected':'')+'>'+esc(k.key)+' ('+fmtN(k.assets)+')</option>').join('');
+  if(cur.key && !_keys.some(k=>k.key===cur.key)) fk.insertAdjacentHTML('beforeend','<option value="'+esc(cur.key)+'" selected>'+esc(cur.key)+'</option>');
+  if(cur.key) loadVals();
+  p.querySelector('#fcancel').onclick=closePops;
+  p.querySelector('#fapply').onclick=()=>{ if(!fk.value || !sel.size){ alert('Pick a category and at least one value.'); return; }
+    const term={key:fk.value, values:[...sel], op:cur.op}; B.scope=B.scope||{terms:[]}; B.scope.terms=B.scope.terms||[];
+    if(idx>=0) B.scope.terms[idx]=term; else B.scope.terms.push(term); closePops(); scopeChanged(); };
+}
+function placePop(p, anchor){
+  const r=anchor.getBoundingClientRect(); const w=p.offsetWidth, h=p.offsetHeight;
+  let x=Math.min(r.left, innerWidth-w-12), y=r.bottom+6; if(y+h>innerHeight-8) y=Math.max(8, r.top-h-6);
+  p.style.left=Math.max(12,x)+'px'; p.style.top=y+'px';
+}
+function closePops(){ ['__pop','__wmenu'].forEach(id=>{ const e=document.getElementById(id); if(e) e.remove(); }); }
+document.addEventListener('mousedown', e=>{ const p=document.getElementById('__pop')||document.getElementById('__wmenu');
+  if(p && !p.contains(e.target) && !e.target.closest('#addf,.schip,.more,#bmenu,#bsize')) closePops(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closePops(); closeModal(); closeTray(); } });
+
+/* ---------- grid ---------- */
+function applyLayout(){
+  const L=B.layout||{}; const g=document.getElementById('grid'), wrap=document.getElementById('gridwrap');
+  g.style.setProperty('--cols', L.cols||12); g.style.setProperty('--row', (L.row||90)+'px'); g.style.setProperty('--gap', (GAPS[L.gap]||12)+'px');
+  g.classList.toggle('dense', L.dense!==false); wrap.style.maxWidth = L.maxw ? L.maxw+'px' : 'none';
+}
+function defOf(w){ return DEFS[w.ref] || {title:w.ref, viz:'table'}; }
+function staleIds(){ if(!B) return []; return B.widgets.filter(w=>w.ref!=='text.heading' && !RUNNING[w.iid] && !(DEFS[w.ref]||{}).snapshot).filter(w=>{ const r=RES[w.iid]; return !r || ['not_run','stale','db_changed'].includes(r.state); }).map(w=>w.iid); }
+function renderGrid(){
+  if(!B) return; applyLayout(); const g=document.getElementById('grid');
+  if(!B.widgets.length){ g.innerHTML='<div class="empty"><p style="font-size:15px;margin:0 0 8px"><b>This board is empty.</b></p><p class="sub">Add specialist widgets, starter metrics or your own SQL from the library.</p><button class="btn run" onclick="openTray()">＋ Add widget</button></div>'; renderBar(); return; }
+  g.innerHTML = B.widgets.map(cardHtml).join('');
+  g.querySelectorAll('.wd').forEach(wireCard);
+  renderBar();
+}
+function cardHtml(w){
+  const d=defOf(w); const cols=(B.layout&&B.layout.cols)||12; const ww=Math.min(w.w||3, cols);
+  const st='grid-column:span '+ww+';grid-row:span '+(w.h||2);
+  if(w.ref==='text.heading'){
+    return '<section class="wd wd-h" data-iid="'+esc(w.iid)+'" style="'+st+'"><header class="wh"><span class="grab" draggable="true" title="Drag to move" aria-hidden="true">⠿</span><h3>'+esc(w.text||w.title||'Section')+'</h3><button class="wmini more" data-act="menu" aria-label="Section options">⋯</button></header><span class="rsz" title="Drag to resize"></span></section>';
+  }
+  const r=RES[w.iid]||null; const running=!!RUNNING[w.iid];
+  const state = running ? 'running' : (r ? r.state : 'not_run');
+  const title = w.title || d.title || 'Widget';
+  const b=[];
+  if(d.missing) b.push('<span class="bdg st">missing</span>');
+  if(state==='review' || d.review) b.push('<span class="bdg rv" title="Imported SQL — read it and approve it before it runs">needs review</span>');
+  if(w.scope) b.push('<span class="bdg fx" title="This widget keeps its own scope and ignores the board scope">⚑ '+esc(scopeLbl(w.scope))+'</span>');
+  else if(d.scoped===false && scopeTerms().length) b.push('<span class="bdg ig" title="This widget\'s SQL has no $__scope( ) — it always shows the whole estate">ignores scope</span>');
+  if(d.snapshot) b.push('<span class="bdg sn" title="Read from '+esc((d.source&&d.source.name)||'the specialist')+'\'s own last run on this scope">from '+esc((d.source&&d.source.name)||'specialist')+'</span>');
+  if(state==='stale') b.push('<span class="bdg st">over a day old</span>');
+  if(state==='db_changed') b.push('<span class="bdg st" title="navi.db was synced after this ran — ▶ Run to refresh">navi.db synced since</span>');
+  let asof='';
+  if(r && r.at){ asof = (r.cached?'⚡ ':'✓ ')+'as of '+ago(r.at)+(r.truncated?' · first '+fmtN(r.count)+' rows':'')+(r.ms!=null&&!r.cached?' · '+r.ms+' ms':''); }
+  else if(state==='not_run') asof='not run for this scope';
+  return '<section class="wd '+esc(state)+'" data-iid="'+esc(w.iid)+'" style="'+st+'" aria-label="'+esc(title)+'">'
+    +'<header class="wh"><span class="grab" draggable="true" title="Drag to move (or use ⋯ → Move)" aria-hidden="true">⠿</span><h3 title="'+esc((d.note||title))+'">'+esc(title)+'</h3>'+b.join('')+'</header>'
+    +'<div class="wb">'+bodyHtml(w,d,r,state)+'</div>'
+    +'<footer class="wf"><span class="asof'+(['stale','db_changed'].includes(state)?' warn':'')+'" title="'+esc(r&&r.at?stamp(r.at):'')+'">'+esc(asof)+'</span>'
+    +'<button class="sql" data-act="sql" title="Show the SQL (scope expanded) and the definitions behind this number" aria-label="Show SQL">{ }</button>'
+    +'<button data-act="data" title="Open the rows behind this widget" aria-label="Open the data">↗</button>'
+    +(d.snapshot ? '<button data-act="open" title="Open '+esc((d.source&&d.source.name)||'the specialist')+' on this scope — run it there">▶ ↗</button>'
+       : '<button data-act="run" title="Run this widget now"'+(running?' disabled':'')+'>▶</button>')
+    +'<button class="more" data-act="menu" aria-label="Widget options" title="Size, move, chart type, scope, remove">⋯</button></footer>'
+    +'<span class="rsz" title="Drag to resize" aria-hidden="true"></span></section>';
+}
+function scopeLbl(sc){ const t=(sc&&sc.terms)||[]; return t.length ? t.map(x=>(x.op==='not'?'not ':'')+x.key+'='+x.values.join('|')).join(' & ') : 'Whole estate'; }
+function bodyHtml(w,d,r,state){
+  if(d.missing) return '<div class="wstate">This widget is no longer in the library. Remove it from ⋯.</div>';
+  if(state==='running') return '<div class="wstate"><span><span class="spin"></span> Running…</span></div>';
+  if(state==='review') return '<div class="wstate"><span>This SQL came in with an import. Read it before it runs.</span><button class="btn sm" data-act="sql">Review SQL</button></div>';
+  const sname=esc((d.source&&d.source.name)||'The specialist');
+  if(d.snapshot && state==='scope_unsupported') return '<div class="wstate"><span>'+sname+' runs on one tag at a time — this board\'s scope has several filters, so its last run can\'t be matched. Use a one-tag scope, or open it.</span><button class="btn sm" data-act="open">Open '+sname+' ↗</button></div>';
+  if(d.snapshot && (state==='not_run' || !r || !r.rows)) return '<div class="wstate">'+(d.note?'<span class="note">'+esc(d.note)+'</span>':'')+'<span>'+sname+' hasn\'t run on this scope yet. Its number comes from its own run.</span><button class="btn run sm" data-act="open">Run it in '+sname+' ↗</button></div>';
+  if(state==='error') return '<div class="wstate"><span class="err">'+esc(r.error||'error')+'</span>'+(d.snapshot?'':'<button class="btn sm" data-act="run">▶ Try again</button>')+'</div>';
+  if(state==='not_run' || !r || !r.rows) return '<div class="wstate">'+(d.note?'<span class="note">'+esc(d.note)+'</span>':'')+'<span>Not run for this scope yet.</span><button class="btn run sm" data-act="run">▶ Run</button></div>';
+  const rows=r.rows||[], cols=r.columns||[]; if(!rows.length) return '<div class="wstate">No rows for this scope.</div>';
+  const viz=(w.viz||d.viz||'table');
+  if(viz==='kpi'){ const r0=rows[0]; return '<div class="kpis">'+cols.filter(c=>!/^__/.test(c)).map(c=>'<div><div class="kpiv">'+fmtN(typeof r0[c]==='number'?r0[c]:(isFinite(parseFloat(r0[c]))&&String(r0[c]).trim()!==''?parseFloat(r0[c]):r0[c]))+'</div><div class="kpil">'+esc(c)+'</div></div>').join('')+'</div>'+trendHtml(r.trend); }
+  try{ return dashSVG(viz, cols, rows, {label_col:d.label_col, value_col:d.value_col, viz:viz}); }
+  catch(e){ return dashTableHTML(cols, rows); }
+}
+function trendHtml(t){
+  if(!t || t.length<2) return '';
+  const vs=t.map(p=>+p[1]); const mn=Math.min(...vs), mx=Math.max(...vs), W=90, H=22;
+  const pts=vs.map((v,i)=>(i*(W/(vs.length-1))).toFixed(1)+','+(H-2-(mx===mn?H/2-2:(v-mn)/(mx-mn)*(H-4))).toFixed(1)).join(' ');
+  const last=vs[vs.length-1], prev=vs[vs.length-2], dlt=Math.round((last-prev)*10)/10;
+  const word = dlt===0 ? 'no change' : (dlt>0?'▲ ':'▼ ')+Math.abs(dlt).toLocaleString();
+  return '<div class="trend" title="'+t.length+' daily points · '+esc(t[0][0])+' → '+esc(t[t.length-1][0])+'"><svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" aria-hidden="true"><polyline points="'+pts+'" fill="none" stroke="var(--accent)" stroke-width="1.6"/></svg><span>'+esc(word)+' since '+esc(t[t.length-2][0])+'</span></div>';
+}
+function openSpecialist(iid){ const w=B.widgets.find(x=>x.iid===iid); const d=defOf(w); const r=RES[iid]||{};
+  const url=(r.open && /^\/agents\/[a-z0-9_]+\/page\.html/.test(r.open)) ? r.open : ((d.source&&d.source.page)||'/'); location.href=url; }
+function wireCard(el){
+  const iid=el.dataset.iid;
+  el.querySelectorAll('[data-act]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const a=b.dataset.act;
+    const dd=defOf(B.widgets.find(x=>x.iid===iid)||{});
+    if(a==='open' || (dd.snapshot && a==='data')) openSpecialist(iid);
+    else if(a==='run') runWidgets([iid], true); else if(a==='sql') openSql(iid); else if(a==='data') openData(iid); else if(a==='menu') openMenu(b, iid); });
+  const g=el.querySelector('.grab'); if(g){ g.addEventListener('dragstart', e=>dragStart(e, el)); g.addEventListener('dragend', dragEnd); }
+  el.addEventListener('dragover', e=>dragOver(e, el)); el.addEventListener('dragleave', ()=>el.classList.remove('drop-before','drop-after'));
+  el.addEventListener('drop', e=>dragDrop(e, el));
+  const rz=el.querySelector('.rsz'); if(rz) rz.addEventListener('pointerdown', e=>resizeStart(e, el));
+}
+
+/* ---------- reorder (drag) ---------- */
+let DRAG=null;
+function dragStart(e, el){ if(LOCKED){ e.preventDefault(); return; } DRAG=el.dataset.iid; el.classList.add('dragging');
+  try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', DRAG); e.dataTransfer.setDragImage(el, 20, 16); }catch(_){} }
+function dragEnd(){ DRAG=null; document.querySelectorAll('.wd').forEach(x=>x.classList.remove('dragging','drop-before','drop-after')); }
+function dropSide(e, el){ const r=el.getBoundingClientRect(); const horiz = (e.clientX - r.left) / r.width; return horiz < 0.5 ? 'before' : 'after'; }
+function dragOver(e, el){ if(!DRAG || DRAG===el.dataset.iid) return; e.preventDefault(); try{ e.dataTransfer.dropEffect='move'; }catch(_){}
+  const s=dropSide(e, el); el.classList.toggle('drop-before', s==='before'); el.classList.toggle('drop-after', s==='after'); }
+function dragDrop(e, el){ if(!DRAG) return; e.preventDefault(); const s=dropSide(e, el); const to=el.dataset.iid; const from=DRAG; dragEnd(); moveWidget(from, to, s); }
+function moveWidget(from, to, side){
+  const ws=B.widgets; const i=ws.findIndex(w=>w.iid===from); if(i<0) return; const [w]=ws.splice(i,1);
+  let j=ws.findIndex(x=>x.iid===to); if(j<0){ ws.push(w); } else { ws.splice(side==='after'?j+1:j, 0, w); }
+  renderGrid(); saveSoon();
+}
+function nudge(iid, dir){ const ws=B.widgets; const i=ws.findIndex(w=>w.iid===iid); const j=i+dir; if(i<0||j<0||j>=ws.length) return; [ws[i],ws[j]]=[ws[j],ws[i]]; renderGrid(); saveSoon(); }
+
+/* ---------- resize (pointer, snaps to the grid) ---------- */
+function gridMetrics(){ const g=document.getElementById('grid'); const L=B.layout||{}; const cols=L.cols||12; const gap=GAPS[L.gap]||12;
+  const W=g.clientWidth; return {cols, gap, colW:(W-gap*(cols-1))/cols, rowH:(L.row||90)}; }
+function resizeStart(e, el){
+  if(LOCKED || e.button>0) return; e.preventDefault(); e.stopPropagation();
+  const iid=el.dataset.iid; const w=B.widgets.find(x=>x.iid===iid); if(!w) return;
+  const m=gridMetrics(); const r0=el.getBoundingClientRect(); const x0=e.clientX, y0=e.clientY;
+  const lbl=document.createElement('span'); lbl.className='szlbl'; el.appendChild(lbl); el.classList.add('resizing');
+  const rz=e.currentTarget; try{ rz.setPointerCapture(e.pointerId); }catch(_){}
+  let nw=w.w, nh=w.h;
+  const move=ev=>{ const pw=r0.width+(ev.clientX-x0), ph=r0.height+(ev.clientY-y0);
+    nw=Math.max(1, Math.min(m.cols, Math.round((pw+m.gap)/(m.colW+m.gap))));
+    nh=Math.max(1, Math.min(16, Math.round((ph+m.gap)/(m.rowH+m.gap))));
+    el.style.gridColumn='span '+nw; el.style.gridRow='span '+nh; lbl.textContent=nw+' × '+nh; };
+  const up=()=>{ rz.removeEventListener('pointermove', move); rz.removeEventListener('pointerup', up); rz.removeEventListener('pointercancel', up);
+    el.classList.remove('resizing'); lbl.remove(); if(nw!==w.w || nh!==w.h){ w.w=nw; w.h=nh; renderGrid(); saveSoon(); } };
+  rz.addEventListener('pointermove', move); rz.addEventListener('pointerup', up); rz.addEventListener('pointercancel', up);
+  lbl.textContent=w.w+' × '+w.h;
+}
+function setSize(iid, dw, dh, abs){ const w=B.widgets.find(x=>x.iid===iid); if(!w) return; const cols=(B.layout&&B.layout.cols)||12;
+  if(abs){ w.w=Math.min(cols, abs[0]); w.h=abs[1]; } else { w.w=Math.max(1, Math.min(cols, (w.w||3)+dw)); w.h=Math.max(1, Math.min(16, (w.h||2)+dh)); }
+  renderGrid(); saveSoon(); }
+
+/* ---------- widget menu ---------- */
+function openMenu(btn, iid){
+  closePops(); const w=B.widgets.find(x=>x.iid===iid); if(!w) return; const d=defOf(w); const cols=(B.layout&&B.layout.cols)||12;
+  const m=document.createElement('div'); m.className='wmenu'; m.id='__wmenu'; m.setAttribute('role','menu');
+  const sz=(a,b)=>[Math.max(1,Math.round(cols*a/12)), b];
+  const isH = w.ref==='text.heading';
+  m.innerHTML =
+     '<div class="row"><span class="l">Size</span><button data-sz="s">S</button><button data-sz="m">M</button><button data-sz="l">L</button><button data-sz="full">Full</button><span class="note" style="margin:0 0 0 auto">'+(w.w||3)+'×'+(w.h||2)+'</span></div>'
+    +'<div class="row"><span class="l">Width</span><button data-dw="-1" aria-label="Narrower">−</button><button data-dw="1" aria-label="Wider">＋</button><span class="l" style="margin-left:8px">Height</span><button data-dh="-1" aria-label="Shorter">−</button><button data-dh="1" aria-label="Taller">＋</button></div>'
+    +'<div class="row"><span class="l">Move</span><button data-mv="-1">← Earlier</button><button data-mv="1">Later →</button></div>'
+    +'<div class="sep"></div>'
+    +(isH ? '<button data-a="rename">✎ Rename section</button>' :
+       '<div class="row"><span class="l">Chart</span><select data-viz>'+['(default)'].concat(VIZ).map(v=>'<option'+((w.viz||'')===v||(!w.viz&&v==='(default)')?' selected':'')+'>'+v+'</option>').join('')+'</select></div>'
+      +'<button data-a="rename">✎ Rename</button>'
+      +(w.scope ? '<button data-a="unpin">⚑ Follow the board scope</button>' : '<button data-a="pin" title="Keep this widget on the current scope even if the board scope changes">⚑ Fix to the current scope</button>')
+      +(String(w.ref).startsWith('sql.') ? '<button data-a="editsql">✎ Edit SQL</button>' : '')
+      +(d.source&&d.source.page ? '<button data-a="open">↗ Open '+esc(d.source.name||'specialist')+'</button>' : '')
+      +(d.snapshot?'':'<button data-a="csv">⬇ CSV (up to 5,000 rows)</button>')
+      +'<button data-a="dup">⧉ Duplicate</button>')
+    +'<div class="sep"></div><button data-a="remove" style="color:var(--crit)">🗑 Remove from board</button>';
+  document.body.appendChild(m); placePop(m, btn);
+  m.querySelectorAll('[data-sz]').forEach(b=>b.onclick=()=>{ const k=b.dataset.sz; const v={s:sz(3,2), m:sz(6,3), l:sz(8,4), full:[cols, Math.max(w.h||2, isH?1:4)]}[k]; if(isH) v[1]=1; setSize(iid,0,0,v); closePops(); });
+  m.querySelectorAll('[data-dw]').forEach(b=>b.onclick=()=>{ setSize(iid, +b.dataset.dw, 0); openMenu(document.querySelector('.wd[data-iid="'+CSS.escape(iid)+'"] [data-act="menu"]')||btn, iid); });
+  m.querySelectorAll('[data-dh]').forEach(b=>b.onclick=()=>{ setSize(iid, 0, +b.dataset.dh); openMenu(document.querySelector('.wd[data-iid="'+CSS.escape(iid)+'"] [data-act="menu"]')||btn, iid); });
+  m.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{ nudge(iid, +b.dataset.mv); closePops(); });
+  const vs=m.querySelector('[data-viz]'); if(vs) vs.onchange=()=>{ if(vs.value==='(default)') delete w.viz; else w.viz=vs.value; closePops(); renderGrid(); saveSoon(); };
+  m.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{ const a=b.dataset.a; closePops();
+    if(a==='rename'){ const v=prompt(isH?'Section title':'Widget title', isH?(w.text||''):(w.title||d.title||'')); if(v==null) return;
+      if(isH) w.text=v.trim()||'Section'; else { if(v.trim()) w.title=v.trim(); else delete w.title; } renderGrid(); saveSoon(); }
+    else if(a==='pin'){ w.scope=JSON.parse(JSON.stringify(B.scope||{terms:[]})); await saveNow(); await loadCached(); }
+    else if(a==='unpin'){ delete w.scope; await saveNow(); await loadCached(); }
+    else if(a==='open'){ location.href=d.source.page; }
+    else if(a==='editsql'){ editSql(w.ref); }
+    else if(a==='csv'){ exportCsv(iid); }
+    else if(a==='dup'){ const c=JSON.parse(JSON.stringify(w)); delete c.iid; const i=B.widgets.indexOf(w); B.widgets.splice(i+1,0,c); renderGrid(); await saveNow(); await loadCached(); }
+    else if(a==='remove'){ if(!confirm('Remove “'+(isH?(w.text||'section'):(w.title||d.title))+'” from this board?')) return; B.widgets=B.widgets.filter(x=>x!==w); delete RES[iid]; renderGrid(); saveSoon(0); }
+  });
+}
+
+/* ---------- running (explicit only) ---------- */
+let QUEUE=[], ACTIVE=0; const CONC=2;
+function runWidgets(ids, refresh){
+  ids.forEach(id=>{ if(!RUNNING[id] && !QUEUE.some(q=>q.id===id)) { QUEUE.push({id, refresh:!!refresh}); RUNNING[id]=true; } });
+  renderGrid(); pump();
+}
+async function pump(){
+  while(ACTIVE<CONC && QUEUE.length){ const job=QUEUE.shift(); ACTIVE++;
+    (async()=>{ let o; try{ o=await call('widget_run', {board:B.id, iid:job.id, refresh:job.refresh}); }catch(e){ o={ok:false, error:String(e)}; }
+      delete RUNNING[job.id];
+      if(o && o.ok) RES[job.id]=o.result;
+      else if(o && o.review) RES[job.id]={state:'review'};
+      else RES[job.id]=Object.assign({}, RES[job.id]||{}, {state:'error', error:(o&&(o.message||o.error))||'failed'});
+      ACTIVE--; const el=document.querySelector('.wd[data-iid="'+CSS.escape(job.id)+'"]');
+      const w=B.widgets.find(x=>x.iid===job.id);
+      if(el && w){ el.outerHTML=cardHtml(w); const n=document.querySelector('.wd[data-iid="'+CSS.escape(job.id)+'"]'); if(n) wireCard(n); }
+      renderBar(); pump(); })();
+  }
+}
+document.getElementById('runstale').onclick=()=>runWidgets(staleIds(), false);
+document.getElementById('runall').onclick=()=>{ const ids=B.widgets.filter(w=>w.ref!=='text.heading' && !(DEFS[w.ref]||{}).review && !(DEFS[w.ref]||{}).snapshot).map(w=>w.iid);
+  if(ids.length>12 && !confirm('Run all '+ids.length+' widgets against navi.db now?')) return; runWidgets(ids, true); };
+
+/* ---------- modals ---------- */
+function modal(html){ closeModal(); const bg=document.createElement('div'); bg.className='modal-bg'; bg.id='__modal';
+  bg.innerHTML='<div class="modal" role="dialog" aria-modal="true">'+html+'</div>'; document.body.appendChild(bg);
+  bg.addEventListener('mousedown', e=>{ if(e.target===bg) closeModal(); }); const x=bg.querySelector('[data-close]'); if(x) x.onclick=closeModal; return bg; }
+function closeModal(){ const m=document.getElementById('__modal'); if(m) m.remove(); }
+async function copyText(t, btn){ try{ await navigator.clipboard.writeText(t); if(btn){ const o=btn.textContent; btn.textContent='✓ Copied'; setTimeout(()=>btn.textContent=o, 1400); } }catch(e){ prompt('Copy:', t); } }
+
+async function openSql(iid){
+  const w=B.widgets.find(x=>x.iid===iid); const d=defOf(w);
+  const bg=modal('<div class="mh"><div class="grow"><h3>{ } '+esc(w.title||d.title)+'</h3><p class="sub" style="margin:0">Loading…</p></div><button class="btn ghost sm" data-close>✕</button></div>');
+  const o=await call('widget_sql', {board:B.id, iid});
+  if(!o || !o.ok){ bg.querySelector('.sub').textContent=(o&&o.error)||'Could not load the SQL.'; return; }
+  if(o.snapshot){ bg.querySelector('.modal').innerHTML='<div class="mh"><div class="grow"><h3>{ } '+esc(o.title)+'</h3><p class="sub" style="margin:0">Scope: <b>'+esc(o.scope_label)+'</b> · source: '+esc((o.source&&o.source.name)||'')+'</p></div><button class="btn ghost sm" data-close>✕</button></div>'
+      +'<p class="defl">This number is not recomputed here. It is read from '+esc((o.source&&o.source.name)||'the specialist')+'\'s own last run on this scope, so it always matches that page.</p>'
+      +'<h4 style="margin:14px 0 4px">Lineage</h4>'+(o.lineage||[]).map((l,i)=>'<p class="defl"><b>'+(i+1)+'.</b> '+esc(l.t||'')+' <span class="note">'+esc(l.src||'')+'</span></p>').join('')
+      +'<div style="margin-top:10px"><a class="btn sm" href="'+esc(o.open||'#')+'">Open '+esc((o.source&&o.source.name)||'specialist')+' ↗</a></div>';
+    bg.querySelector('[data-close]').onclick=closeModal; return; }
+  const navi='navi explore query "'+String(o.sql_full).replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\$/g,'\\$').replace(/`/g,'\\`')+'"';
+  bg.querySelector('.modal').innerHTML='<div class="mh"><div class="grow"><h3>{ } '+esc(o.title)+'</h3>'
+    +'<p class="sub" style="margin:0">Scope: <b>'+esc(o.scope_label)+'</b>'+(o.pinned?' (⚑ fixed on this widget)':'')+' · runs read-only on '+esc(o.navi_db)+' · source: '+esc((o.source&&o.source.name)||'')+'</p></div><button class="btn ghost sm" data-close>✕</button></div>'
+    +(o.review?'<div class="banner warn">This SQL arrived in an import. Read it, then approve it to let it run. Approving applies everywhere this widget is used.</div>':'')
+    +'<div class="sqlpre">'+esc(o.sql)+'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="cpsql">Copy SQL</button><button class="btn sm" id="cpnavi" title="The same statement as a navi CLI command, so an auditor can reproduce the number">Copy as navi explore query</button>'
+    +(o.review?'<button class="btn run sm" id="approve">✓ Approve and run</button>':'')+'</div>'
+    +(o.defs&&o.defs.length?'<h4 style="margin:14px 0 4px">Definitions used</h4>'+o.defs.map(x=>'<p class="defl"><b>'+esc(x.label)+'</b> <span class="note">('+esc(x.name)+')</span> — '+esc(x.doc)+'</p>').join(''):'')
+    +(o.notes&&o.notes.length?o.notes.map(n=>'<p class="defl" style="color:var(--med)">⚠ '+esc(n)+'</p>').join(''):'')
+    +(o.lineage&&o.lineage.length?'<h4 style="margin:14px 0 4px">Lineage</h4>'+o.lineage.map((l,i)=>'<p class="defl"><b>'+(i+1)+'.</b> '+esc(l.t||'')+' <span class="note">'+esc(l.src||'')+'</span></p>').join(''):'')
+    +(o.drill?'<details style="margin-top:10px"><summary class="sub" style="cursor:pointer">Rows behind it (↗ Data)</summary><div class="sqlpre">'+esc(o.drill)+'</div></details>':'')
+    +(o.raw?'<details style="margin-top:6px"><summary class="sub" style="cursor:pointer">As written (with $__macros)</summary><div class="sqlpre">'+esc(o.raw)+'</div></details>':'');
+  bg.querySelector('[data-close]').onclick=closeModal;
+  document.getElementById('cpsql').onclick=e=>copyText(o.sql_full, e.currentTarget);
+  document.getElementById('cpnavi').onclick=e=>copyText(navi, e.currentTarget);
+  const ap=document.getElementById('approve'); if(ap) ap.onclick=async()=>{ const r=await call('sql_approve',{ref:o.ref}); if(r&&r.ok){ if(DEFS[o.ref]) DEFS[o.ref].review=false; closeModal(); delete RES[iid]; runWidgets([iid], true); } else alert((r&&r.error)||'Could not approve.'); };
+}
+
+async function openData(iid, page){
+  page=page||0; const w=B.widgets.find(x=>x.iid===iid); const d=defOf(w);
+  const bg=document.getElementById('__modal') && document.getElementById('__modal').dataset.iid===iid ? document.getElementById('__modal')
+    : modal('<div class="mh"><div class="grow"><h3>↗ '+esc(w.title||d.title)+'</h3><p class="sub" style="margin:0"><span class="spin"></span> Loading rows…</p></div><button class="btn ghost sm" data-close>✕</button></div>');
+  bg.dataset.iid=iid;
+  const o=await call('widget_data', {board:B.id, iid, page, size:50});
+  const M=bg.querySelector('.modal');
+  if(!o || !o.ok){ M.innerHTML='<div class="mh"><div class="grow"><h3>↗ '+esc(w.title||d.title)+'</h3><p class="sub">'+esc((o&&(o.message||o.error))||'Could not load rows.')+'</p></div><button class="btn ghost sm" data-close>✕</button></div>'; M.querySelector('[data-close]').onclick=closeModal; return; }
+  const cols=o.columns||[];
+  const cell=(c,v)=>{ const s=String(v==null?'':v);
+    if(c==='asset_uuid' && /^[0-9a-f-]{8,64}$/i.test(s)) return '<a href="/agents/argos/page.html?target='+encodeURIComponent(s)+'" title="Open the Asset Dossier">🔦 '+esc(s.slice(0,8))+'…</a>';
+    return '<span title="'+esc(s)+'">'+esc(s)+'</span>'; };
+  const tot = o.total!=null ? (o.total_capped?'over 100,000':o.total.toLocaleString())+' row'+(o.total===1?'':'s') : '';
+  M.innerHTML='<div class="mh"><div class="grow"><h3>↗ '+esc(w.title||d.title)+'</h3><p class="sub" style="margin:0">Scope: <b>'+esc(o.scope_label)+'</b>'+(tot?' · '+tot:'')+' · page '+(o.page+1)+' · rows are read live from navi.db</p></div><button class="btn ghost sm" data-close>✕</button></div>'
+    +(o.rows.length?'<div class="dtab"><table class="norsz"><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'
+      +o.rows.map(r=>'<tr>'+cols.map(c=>'<td>'+cell(c,r[c])+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>':'<p class="sub">No rows for this scope.</p>')
+    +'<div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap">'
+    +'<button class="btn sm" id="dprev"'+(o.page?'':' disabled')+'>← Previous</button><button class="btn sm" id="dnext"'+(o.more?'':' disabled')+'>Next →</button>'
+    +'<span class="grow" style="flex:1"></span><button class="btn sm" id="dsql">{ } SQL</button><button class="btn sm" id="dcsv">⬇ CSV (up to 5,000 rows)</button></div>';
+  M.querySelector('[data-close]').onclick=closeModal;
+  document.getElementById('dprev').onclick=()=>openData(iid, o.page-1);
+  document.getElementById('dnext').onclick=()=>openData(iid, o.page+1);
+  document.getElementById('dsql').onclick=()=>openSql(iid);
+  document.getElementById('dcsv').onclick=()=>exportCsv(iid);
+}
+async function exportCsv(iid){
+  const w=B.widgets.find(x=>x.iid===iid); const d=defOf(w);
+  const o=await call('widget_data', {board:B.id, iid, page:0, size:5000});
+  if(!o || !o.ok){ alert((o&&(o.message||o.error))||'Could not export.'); return; }
+  downloadCSV((w.title||d.title||'widget'), o.columns||[], o.rows||[]);
+  if(o.more) alert('Exported the first 5,000 rows. Narrow the scope for the rest.');
+}
+
+/* ---------- library tray ---------- */
+const LTABS=[['specialists','Specialists'],['presets','Starter metrics'],['mine','My SQL']];
+async function openTray(){ const t=document.getElementById('tray'); t.classList.add('open'); t.setAttribute('aria-hidden','false');
+  if(!LIB){ document.getElementById('llist').innerHTML='<p class="sub"><span class="spin"></span> Loading the library…</p>'; await loadLib(); } drawLib(); document.getElementById('lq').focus(); }
+function closeTray(){ const t=document.getElementById('tray'); t.classList.remove('open'); t.setAttribute('aria-hidden','true'); }
+async function loadLib(){ const o=await call('library'); LIB=(o&&o.ok)?o:{groups:[]}; }
+function drawLib(){
+  document.getElementById('ltabs').innerHTML=LTABS.map(t=>'<button data-t="'+t[0]+'" class="'+(LTAB===t[0]?'on':'')+'">'+t[1]+'</button>').join('');
+  document.querySelectorAll('#ltabs button').forEach(b=>b.onclick=()=>{ LTAB=b.dataset.t; drawLib(); });
+  const q=document.getElementById('lq').value.trim().toLowerCase();
+  const gs=(LIB.groups||[]).filter(g=>g.tab===LTAB);
+  let html='';
+  gs.forEach(g=>{ const items=g.items.filter(i=>!q || (i.title+' '+(i.note||'')+' '+g.group).toLowerCase().includes(q)); if(!items.length) return;
+    html+='<div class="lgrp">'+esc(g.group)+'</div>'+items.map(i=>'<div class="litem"><div style="min-width:0"><div class="t">'+esc(i.title)+'</div>'+(i.note?'<div class="d">'+esc(i.note)+'</div>':'')
+      +'<div class="m"><span>'+esc(i.viz)+'</span><span>'+(i.w||3)+'×'+(i.h||2)+'</span>'+(i.viz==='text'?'':(i.scoped?'<span>follows the scope</span>':'<span style="color:var(--med)">whole estate only</span>'))+(i.review?'<span style="color:var(--med)">needs review</span>':'')+'</div></div>'
+      +'<div class="add" style="display:flex;flex-direction:column;gap:4px">'+'<button class="btn sm" data-add="'+esc(i.ref)+'">＋ Add</button>'
+      +(LTAB==='mine'?'<button class="btn ghost sm" data-ed="'+esc(i.ref)+'">Edit</button><button class="btn ghost sm" data-del="'+esc(i.ref)+'">Delete</button>':'')+'</div></div>').join(''); });
+  if(!html) html = LTAB==='mine' ? '<p class="sub">No SQL widgets yet. <b>＋ New SQL widget</b> writes one — use $__scope(col) so it follows the board scope.</p>'
+    : (LTAB==='specialists' ? '<p class="sub">No specialist widgets match.</p>' : '<p class="sub">Nothing matches.</p>');
+  document.getElementById('llist').innerHTML=html;
+  document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>addWidget(b.dataset.add, b));
+  document.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>editSql(b.dataset.ed));
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{ if(!confirm('Delete this SQL widget from the library? Boards that use it will show it as missing.')) return;
+    const o=await call('sql_delete',{ref:b.dataset.del}); if(o&&o.ok){ await loadLib(); drawLib(); } else alert((o&&o.error)||'Could not delete.'); });
+}
+document.getElementById('lq').oninput=drawLib;
+async function addWidget(ref, btn){
+  let item=null; (LIB.groups||[]).forEach(g=>g.items.forEach(i=>{ if(i.ref===ref) item=i; }));
+  const cols=(B.layout&&B.layout.cols)||12;
+  const w={ref, w:Math.min(cols, Math.max(1, Math.round(((item&&item.w)||3)*cols/12))), h:(item&&item.h)||2};
+  if(ref==='text.heading'){ const t=prompt('Section title', 'New section'); if(t==null) return; w.text=t.trim()||'Section'; w.w=cols; w.h=1; }
+  B.widgets.push(w);
+  if(btn){ btn.textContent='✓ Added'; setTimeout(()=>{ btn.textContent='＋ Add'; }, 1200); }
+  renderGrid(); await saveNow(); await loadCached();
+  const last=B.widgets[B.widgets.length-1]; const el=last&&document.querySelector('.wd[data-iid="'+CSS.escape(last.iid)+'"]'); if(el) el.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+document.getElementById('addw').onclick=openTray;
+document.getElementById('trayx').onclick=closeTray;
+document.getElementById('newsql').onclick=()=>editSql(null);
+document.getElementById('askai').onclick=()=>editSql(null, {ai:true});
+
+const AI_EXAMPLES=['Unowned routes by device type','Route ownership by Business Tier','Crown jewels on an unowned route, by owner','Open KEV findings by Environment tag','Paths without an owner by OS family','Blind hosts by device type'];
+async function editSql(ref, opts){
+  opts=opts||{};
+  let d={title:'', viz:'bar', sql:'SELECT v.plugin_name, COUNT(DISTINCT v.asset_uuid) AS assets\n  FROM vulns v\n WHERE $__open(v) AND $__scope(v.asset_uuid)\n GROUP BY v.plugin_id\n ORDER BY assets DESC\n LIMIT 15', note:'', label_col:'', value_col:'', w:6, h:3};
+  if(ref){ const o=await call('sql_get',{ref}); if(!o||!o.ok){ alert((o&&o.error)||'Could not load it.'); return; } d=Object.assign(d, o.definition); }
+  if(!LIB) await loadLib();
+  const cat=(LIB&&LIB.catalog)||{macros:[]};
+  const bg=modal('<div class="mh"><div class="grow"><h3>'+(ref?'Edit':'New')+' SQL widget</h3><p class="sub" style="margin:0">A read-only SELECT over navi.db. Ask AI to write it, or write it yourself — <code>$__scope(col)</code> makes it follow the board scope.</p></div><button class="btn ghost sm" data-close>✕</button></div>'
+    +'<div class="aibox"><label for="aiq">✨ Ask AI</label><div class="airow"><textarea id="aiq" rows="2" placeholder="e.g. unowned routes by device type — total, owned and unowned">'+esc(opts.prompt||'')+'</textarea><button class="btn run sm" id="aigo">✨ Write it</button></div>'
+    +'<div class="aiex">'+AI_EXAMPLES.map(x=>'<button class="wmini" data-ex="'+esc(x)+'">'+esc(x)+'</button>').join('')+'</div><div id="aimsg" class="note" style="margin-top:6px"></div></div>'
+    +'<div class="edtx"><div class="row2"><div><label for="st">Title</label><input id="st" value="'+esc(d.title||'')+'" maxlength="120"></div>'
+    +'<div><label for="sv">Chart</label><select id="sv">'+VIZ.map(v=>'<option'+(v===d.viz?' selected':'')+'>'+v+'</option>').join('')+'</select></div>'
+    +'<div><label for="sl">Label column (optional)</label><input id="sl" value="'+esc(d.label_col||'')+'"></div><div><label for="sn">Value column (optional)</label><input id="sn" value="'+esc(d.value_col||'')+'"></div></div>'
+    +'<label for="sq">SQL</label><textarea id="sq" spellcheck="false">'+esc(d.sql||'')+'</textarea>'
+    +'<label for="so">Note (optional)</label><input id="so" value="'+esc(d.note||'')+'" maxlength="400">'
+    +'<details style="margin-top:8px"><summary class="note" style="cursor:pointer">Building blocks (macros and semantic tables)</summary><p class="note">'+(cat.macros||[]).map(m=>'<code>'+esc(m.m)+'</code> '+esc(m.d)).join('<br>')+'</p></details></div>'
+    +'<div id="pvw" class="pvw" hidden></div>'
+    +'<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap"><button class="btn sm" id="spv">▶ Preview on this board\'s scope</button><span style="flex:1"></span><button class="btn ghost sm" data-close>Cancel</button><button class="btn run sm" id="ssave">'+(ref?'Save':'Save and add to this board')+'</button></div>');
+  bg.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeModal);
+  const $=id=>document.getElementById(id);
+  const showPreview=(pv, spec)=>{ const el=$('pvw'); el.hidden=false;
+    const viz=$('sv').value, rows=pv.rows||[], cols=pv.columns||[];
+    let chart=''; try{ chart = rows.length ? (viz==='kpi' ? dashSVG('kpi', cols, rows, {}) : dashSVG(viz, cols, rows, {label_col:$('sl').value.trim()||undefined, value_col:$('sn').value.trim()||undefined, viz})) : '<p class="sub">No rows for this scope.</p>'; }catch(e){ chart=dashTableHTML(cols, rows); }
+    el.innerHTML='<div class="note">Preview · '+rows.length+(pv.truncated?'+':'')+' row'+(rows.length===1?'':'s')+' · '+(pv.ms!=null?pv.ms+' ms · ':'')+(pv.defs&&pv.defs.length?'uses '+esc(pv.defs.join(', ')):'')+'</div>'
+      +(pv.notes||[]).map(n=>'<div class="note" style="color:var(--med)">⚠ '+esc(n)+'</div>').join('')
+      +'<div class="pvc">'+chart+'</div><details><summary class="note" style="cursor:pointer">Rows</summary><div class="dtab" style="max-height:240px">'+dashTableHTML(cols, rows, 50)+'</div></details>'; };
+  const runPreview=async()=>{ const el=$('pvw'); el.hidden=false; el.innerHTML='<span class="note"><span class="spin"></span> Running read-only…</span>';
+    const o=await call('sql_preview',{sql:$('sq').value, board:B.id}); if(!o||!o.ok){ el.innerHTML='<span class="err" style="color:var(--crit);font:12px var(--mono);white-space:pre-wrap">'+esc((o&&(o.message||o.error))||'failed')+'</span>'; return; } showPreview(o); };
+  $('spv').onclick=runPreview;
+  const askAI=async()=>{ const q=$('aiq').value.trim(); if(!q){ $('aiq').focus(); return; }
+    const btn=$('aigo'); btn.disabled=true; $('aimsg').innerHTML='<span class="spin"></span> Writing the query on the shared definitions and test-running it read-only…';
+    let o; try{ o=await call('ai_sql',{prompt:q, board:B.id}); }catch(e){ o={ok:false,error:String(e)}; }
+    btn.disabled=false;
+    if(!o||!o.ok){ $('aimsg').innerHTML='<span style="color:var(--crit)">'+esc((o&&o.error)||'failed')+'</span>'+(o&&o.spec&&o.spec.sql?' — its SQL is in the editor so you can fix it.':'');
+      if(o&&o.spec&&o.spec.sql){ $('sq').value=o.spec.sql; } return; }
+    const sp=o.spec; $('st').value=sp.title||''; $('sq').value=sp.sql||''; $('so').value=sp.note||''; $('sl').value=sp.label_col||''; $('sn').value=sp.value_col||'';
+    if(VIZ.includes(sp.viz)) $('sv').value=sp.viz;
+    $('aimsg').innerHTML='✓ Done'+(o.attempts>1?' (fixed on the second try)':'')+'. Read the SQL, adjust anything, then save.';
+    showPreview(o.preview); };
+  $('aigo').onclick=askAI;
+  $('aiq').onkeydown=e=>{ if(e.key==='Enter' && (e.metaKey||e.ctrlKey)){ e.preventDefault(); askAI(); } };
+  bg.querySelectorAll('[data-ex]').forEach(b=>b.onclick=()=>{ $('aiq').value=b.dataset.ex; askAI(); });
+  $('sv').onchange=()=>{ if(!$('pvw').hidden) runPreview(); };
+  if(opts.ai) setTimeout(()=>$('aiq').focus(), 50);
+  $('ssave').onclick=async()=>{
+    const wdef={id: ref?ref.slice(4):undefined, title:$('st').value, viz:$('sv').value, sql:$('sq').value,
+      label_col:$('sl').value.trim(), value_col:$('sn').value.trim(), note:$('so').value, w:d.w||6, h:d.h||3};
+    if(!ref && ['grouped','stacked','heatmap','bar','column'].includes(wdef.viz)){ wdef.w=8; wdef.h=4; }
+    const o=await call('sql_save',{widget:wdef}); if(!o||!o.ok){ alert('Not saved — '+((o&&o.error)||'error')); return; }
+    closeModal(); LIB=null; await loadLib(); if(document.getElementById('tray').classList.contains('open')) drawLib();
+    if(!ref){ await addWidget(o.ref); } else { await openBoard(B.id); }
+  };
+}
+/* ---------- board menu + size ---------- */
+document.getElementById('bmenu').onclick=e=>{
+  closePops(); const m=document.createElement('div'); m.className='wmenu'; m.id='__wmenu';
+  m.innerHTML='<div class="row"><span class="l">New</span><select id="ntpl">'+TEMPLATES.map(t=>'<option value="'+esc(t.id)+'">'+esc(t.id==='blank'?'Blank board':t.name)+'</option>').join('')+'</select><button id="nmk">Create</button></div>'
+    +'<button data-a="rename">✎ Rename board</button><button data-a="dup">⧉ Duplicate board</button>'
+    +(B.is_default?'':'<button data-a="default">★ Make this my landing board</button>')
+    +'<div class="sep"></div><button data-a="export">⬇ Export (definitions only)</button><button data-a="import">⤒ Import a board…</button>'
+    +'<div class="sep"></div><button data-a="delete" style="color:var(--crit)">🗑 Delete board</button>';
+  document.body.appendChild(m); placePop(m, e.currentTarget);
+  document.getElementById('nmk').onclick=async()=>{ const t=document.getElementById('ntpl').value; const name=prompt('Board name', t==='blank'?'New board':(TEMPLATES.find(x=>x.id===t)||{}).name); if(name==null) return; closePops();
+    const o=await call('board_new',{template:t, name:name.trim()||undefined}); if(o&&o.ok) loadBoards(o.board.id); else alert((o&&o.error)||'Could not create.'); };
+  m.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{ const a=b.dataset.a; closePops();
+    if(a==='rename'){ const v=prompt('Board name', B.name); if(v&&v.trim()){ B.name=v.trim(); await saveNow(); } }
+    else if(a==='dup'){ const o=await call('board_new',{copy_of:B.id}); if(o&&o.ok) loadBoards(o.board.id); }
+    else if(a==='default'){ const o=await call('board_default',{id:B.id}); if(o&&o.ok) loadBoards(B.id); }
+    else if(a==='export'){ const o=await call('board_export',{id:B.id}); if(o&&o.ok) downloadText((B.name||'board').replace(/[^\w\- ]+/g,'_')+'.board.json', JSON.stringify(o.doc,null,2)); }
+    else if(a==='import'){ const f=document.createElement('input'); f.type='file'; f.accept='.json,application/json'; f.onchange=async()=>{ const file=f.files[0]; if(!file) return;
+        let doc; try{ doc=JSON.parse(await file.text()); }catch(e){ alert('That file is not JSON.'); return; }
+        const o=await call('board_import',{doc}); if(o&&o.ok){ await loadBoards(o.board.id); banner('Imported “'+esc(o.board.name)+'”. Any SQL it brought is marked <b>needs review</b> — open { } SQL to read and approve it before it runs.', '', 'imp'); }
+        else alert('Import failed — '+((o&&o.error)||'error')); }; f.click(); }
+    else if(a==='delete'){ if(!confirm('Delete the board “'+B.name+'”? Its widgets stay in the library.')) return; const o=await call('board_delete',{id:B.id}); if(o&&o.ok) loadBoards(); }
+  });
+};
+document.getElementById('bsize').onclick=e=>{
+  closePops(); const L=Object.assign({cols:12,row:90,maxw:0,gap:'comfortable',dense:true}, B.layout||{});
+  const p=document.createElement('div'); p.className='pop'; p.id='__pop';
+  p.innerHTML='<h4>Board size</h4>'
+    +'<label for="lc">Columns</label><select id="lc">'+[4,6,8,12,16,24].map(c=>'<option'+(c===L.cols?' selected':'')+'>'+c+'</option>').join('')+'</select>'
+    +'<label for="lr">Row height — <b id="lrv">'+L.row+' px</b></label><input type="range" id="lr" min="40" max="240" step="10" value="'+L.row+'" style="width:100%">'
+    +'<label for="lw">Board width</label><select id="lw">'+[[0,'Full width'],[1920,'1920 px'],[1600,'1600 px'],[1280,'1280 px'],[1024,'1024 px']].map(o=>'<option value="'+o[0]+'"'+(o[0]===L.maxw?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>'
+    +'<label>Spacing</label><div class="seg" id="lg">'+['compact','comfortable','spacious'].map(g=>'<button data-g="'+g+'" class="'+(g===L.gap?'on':'')+'">'+g+'</button>').join('')+'</div>'
+    +'<label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="ld"'+(L.dense!==false?' checked':'')+'> Fill gaps (pack smaller widgets into empty space)</label>'
+    +'<label style="display:flex;gap:8px;align-items:center;margin-top:6px"><input type="checkbox" id="ldaily"'+(L.daily?' checked':'')+'> 📅 Snapshot this board\'s numbers once a day (builds the trend lines)</label>'
+    +'<p class="note" style="margin-top:8px">Changing the columns rescales every widget\'s width. Saved with the board for everyone who opens it.</p>'
+    +'<div class="acts"><button class="btn run sm" id="ldone">Done</button></div>';
+  document.body.appendChild(p); placePop(p, e.currentTarget);
+  const apply=()=>{ renderGrid(); saveSoon(500); };
+  p.querySelector('#lc').onchange=ev=>{ const nc=+ev.target.value, oc=B.layout.cols||12; B.layout.cols=nc;
+    B.widgets.forEach(w=>{ w.w = w.ref==='text.heading' ? nc : Math.max(1, Math.min(nc, Math.round((w.w||3)*nc/oc))); }); apply(); };
+  p.querySelector('#lr').oninput=ev=>{ B.layout.row=+ev.target.value; p.querySelector('#lrv').textContent=ev.target.value+' px'; applyLayout(); saveSoon(500); };
+  p.querySelector('#lw').onchange=ev=>{ B.layout.maxw=+ev.target.value; apply(); };
+  p.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{ B.layout.gap=b.dataset.g; p.querySelectorAll('[data-g]').forEach(x=>x.classList.toggle('on',x===b)); apply(); });
+  p.querySelector('#ld').onchange=ev=>{ B.layout.dense=ev.target.checked; apply(); };
+  p.querySelector('#ldaily').onchange=ev=>{ B.layout.daily=ev.target.checked; saveSoon(200); };
+  p.querySelector('#ldone').onclick=closePops;
+};
+document.getElementById('block').onclick=()=>{ LOCKED=!LOCKED; try{ localStorage.setItem('houndsDashLocked', LOCKED?'1':'0'); }catch(e){} renderBar(); };
+
+/* ---------- bring browser boards (localStorage) to the server, once, on request ---------- */
+function offerMigration(){
+  let st=null; try{ st=JSON.parse(localStorage.getItem('navi-dashboards')||'null'); }catch(e){}
+  let done=false; try{ done=localStorage.getItem('houndsDashMigrated')==='1'; }catch(e){}
+  const list=((st&&st.list)||[]).filter(b=>(b.items||[]).some(i=>i&&String(i.sql||'').trim()));
+  if(done || !list.length) return;
+  const d=banner('You have <b>'+list.length+'</b> board'+(list.length===1?'':'s')+' saved only in this browser (the old Custom Dashboard). <button class="btn run sm" id="mig">Move them to the server</button> <button class="btn ghost sm" id="migx">Not now</button>', '', 'mig');
+  d.querySelector('#migx').onclick=()=>{ try{ localStorage.setItem('houndsDashMigrated','1'); }catch(e){} clearBanner('mig'); };
+  d.querySelector('#mig').onclick=async()=>{ let n=0, last=null;
+    for(const b of list){ const o=await call('board_import',{doc:{name:b.name, items:b.items}, origin:'browser'}); if(o&&o.ok){ n++; last=o.board.id; } }
+    try{ localStorage.setItem('houndsDashMigrated','1'); }catch(e){} clearBanner('mig');
+    banner('Moved '+n+' board'+(n===1?'':'s')+' to the server. The old Custom Dashboard still has its copy.', '', 'migd'); if(last) loadBoards(last); };
+}
+
+loadBoards().then(offerMigration);
 </script>
 </body></html>

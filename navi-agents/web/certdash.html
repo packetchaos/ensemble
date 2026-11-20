@@ -61,7 +61,8 @@
   <section class="card" style="background:radial-gradient(120% 140% at 90% -20%,var(--amber-glow),transparent 60%),var(--panel)">
     <div class="toolbar"><div><div class="acode">Certania</div><h2 style="margin:0">🔐 Certificate Dashboard</h2>
       <p class="sub" style="margin:2px 0 0">Every certificate the Ensemble can see — a <b>12-month expiry timeline</b> (click a month to see those certs), the same set grouped <b>by asset, by certificate, and by common name</b>, and every <b>certificate plugin</b> with one-click <b>tag-by-plugin</b>. Reads navi.db read-only; tag writes are gated.</p></div>
-      <button class="btn run sm" id="load" style="margin-left:auto">▶ Load certificates</button></div>
+      <a class="btn ghost sm" href="/web/dashboards.html?template=certificates" style="margin-left:auto" title="The same view as a board in the Dashboards app: resizable widgets, the tag scope bar, SQL and rows on every widget">📊 Open as a board</a>
+<button class="btn run sm" id="load" >▶ Load certificates</button></div>
     <div id="flash" class="flash"></div>
     <div class="kpis" id="kpis"></div>
   </section>

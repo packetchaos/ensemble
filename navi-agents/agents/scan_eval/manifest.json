@@ -23,5 +23,28 @@
     "ignore": []
   },
   "hero": false,
-  "mission": "Coverage"
+  "mission": "Coverage",
+  "widgets": [
+    {
+      "id": "cred_status",
+      "title": "Credentialed vs blind assets",
+      "viz": "pie",
+      "w": 4,
+      "h": 3,
+      "label_col": "status",
+      "value_col": "assets",
+      "note": "Scanned assets the scanner logged in to, against those it could not see inside.",
+      "sql": "SELECT CASE WHEN ok=1 THEN 'Credentialed' ELSE 'Blind (no credentials)' END AS status, COUNT(*) AS assets FROM (SELECT v.asset_uuid, MAX(CASE WHEN $__cred(v) THEN 1 ELSE 0 END) AS ok FROM vulns v WHERE v.plugin_id IN ('19506','141118','110095','104410','110385','102094','117885','110723') AND $__scope(v.asset_uuid) GROUP BY v.asset_uuid) GROUP BY status",
+      "lineage": [
+        {
+          "t": "Assets with a scan-information or credential-status plugin = scanned",
+          "src": "vulns (19506, 141118, 110095, 104410, 110385, 102094, 117885, 110723)"
+        },
+        {
+          "t": "Credentialed when any proof row exists",
+          "src": "core/credstate.cred_sql"
+        }
+      ]
+    }
+  ]
 }

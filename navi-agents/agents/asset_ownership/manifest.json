@@ -33,5 +33,43 @@
   },
   "codename": "",
   "hero": false,
-  "mission": "Ownership & SLA"
+  "mission": "Ownership & SLA",
+  "widgets": [
+    {
+      "id": "crown_unowned",
+      "title": "Crown jewels without an owner",
+      "viz": "kpi",
+      "w": 2,
+      "h": 2,
+      "note": "ACR ≥ 9 assets with no Owner tag — the accountability gap that matters most.",
+      "sql": "SELECT COUNT(*) AS \"Unowned crown jewels\" FROM assets a WHERE $__crown(a) AND $__scope(a.uuid) AND a.uuid NOT IN (SELECT asset_uuid FROM tags WHERE tag_key='Owner' AND asset_uuid IS NOT NULL)",
+      "drill": "SELECT COALESCE(NULLIF(a.hostname,''), a.ip_address) AS host, a.ip_address AS ip, a.operating_system, a.acr, a.uuid AS asset_uuid FROM assets a WHERE $__crown(a) AND $__scope(a.uuid) AND a.uuid NOT IN (SELECT asset_uuid FROM tags WHERE tag_key='Owner' AND asset_uuid IS NOT NULL) ORDER BY host"
+    },
+    {
+      "id": "unclaimed_pct",
+      "title": "Unclaimed assets %",
+      "viz": "kpi",
+      "w": 3,
+      "h": 2,
+      "note": "Assets with no finding owned or dispositioned — from the Ownership page's last run (findings-based ownership).",
+      "snapshot": {
+        "call": "overview",
+        "path": "summary.unclaimed_pct",
+        "label": "Unclaimed %"
+      }
+    },
+    {
+      "id": "crown_unclaimed",
+      "title": "Crown jewels unclaimed",
+      "viz": "kpi",
+      "w": 3,
+      "h": 2,
+      "note": "From the Ownership page's last run.",
+      "snapshot": {
+        "call": "overview",
+        "path": "summary.crown_unclaimed",
+        "label": "Crown jewels unclaimed"
+      }
+    }
+  ]
 }

@@ -1880,11 +1880,13 @@ function _navddStyle(){
   document.head.appendChild(st);
 }
 // The Dashboards shelf — horizontal sub-bar on every dashboard page + the hub.
-const DASH_PAGES = [
-  ['📊 Dashboard builder','/agents/dashboard/page.html'],
-  ['🗂 Custom Dashboard', '/web/customdash.html'],
-  ['⚖️ Compliance',       '/web/compliancedash.html'],
-  ['🗺 Ownership Map',     '/web/ownermap.html'],
+const DASH_PAGES = [          // build 509: Boards (the Dashboards app) first; Certificates added
+  ['📊 Boards',             '/web/dashboards.html'],
+  ['✨ Ask in plain English','/agents/dashboard/page.html'],
+  ['⚖️ Compliance',         '/web/compliancedash.html'],
+  ['🔐 Certificates',       '/web/certdash.html'],
+  ['🗺 Ownership Map',       '/web/ownermap.html'],
+  ['🗂 Browser boards (old)','/web/customdash.html'],
 ];
 function mountDashboardsNav(){
   const p = location.pathname;

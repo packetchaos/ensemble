@@ -46,7 +46,7 @@ assets or reach the `/api` backend. Always use `http://localhost:8000`.
 run, uses FastAPI/uvicorn if they're installed, else Flask, and otherwise falls back to a
 zero-dependency stdlib server.
 
-The header shows the version, e.g. **v2.43.508** — `MAJOR.<specialists>.<build>`, where the middle
+The header shows the version, e.g. **v2.43.511** — `MAJOR.<specialists>.<build>`, where the middle
 number is the count of specialists the server discovered (`core/version.py`).
 
 **Point at your real tenant** (live data + tagging):
@@ -158,6 +158,8 @@ real call with an actionable failure reason.
 | `HOUNDS_CONFIG` | `hounds.config.json` | Settings config-store file path, or `off` to disable it. |
 | `NAVI_CACHE_DIR` | `data/cache/` | Snapshot caches, the server-side page cache (`pages/`) and the Run the Ensemble schedule. |
 | `NAVI_JOB_LOG_DIR` | `logs/navi-jobs/` | Audit logs: the full output of every navi job started from the console (Settings, Automation Station), one file per job, plus a summary per Run the Ensemble run. The newest 1,000 are kept. |
+| `NAVI_BOARDS_DB` | `boards.db` beside the Tagging log | The Dashboards app store: boards, saved SQL widgets and each widget's last result. App state only — navi.db stays read-only. |
+| `NAVI_BOARDS_DAILY` | `1` | `0` turns off the Dashboards daily-snapshot thread (it only runs for boards with "Snapshot once a day" on). |
 | `NAVI_AGENT_CACHE_TTL_S` | `300` | Agent-result cache lifetime. |
 | `NAVI_HEALTH_TTL_S` | `30` | Health-chip cache lifetime. |
 | `NAVI_ASSET_COUNT_TTL_S` | `300` | Asset-count cache lifetime. |

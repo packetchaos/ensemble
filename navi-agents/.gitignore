@@ -45,3 +45,7 @@ alerts/state.json
 
 # console job audit logs (core/cli_jobs.py) — navi output from your tenant, never commit
 logs/
+
+# Dashboards app boards + widget cache (build 509 — app state, may hold query results)
+boards.db
+boards.db-*

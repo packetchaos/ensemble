@@ -31,5 +31,98 @@
     ]
   },
   "hero": true,
-  "mission": "Exploited Now"
+  "mission": "Exploited Now",
+  "widgets": [
+    {
+      "id": "kev_open_findings",
+      "title": "Open KEV findings",
+      "viz": "kpi",
+      "w": 2,
+      "h": 2,
+      "note": "Open findings for a CISA Known Exploited Vulnerability (catalog match, like this page).",
+      "sql": "SELECT COUNT(*) AS \"Open KEV findings\" FROM vulns v WHERE $__open(v) AND $__kev(v) AND $__scope(v.asset_uuid)",
+      "drill": "SELECT COALESCE(NULLIF(v.asset_hostname,''), v.asset_ip) AS host, v.asset_ip AS ip, v.plugin_id, v.plugin_name, v.cves, v.severity, v.first_found, v.asset_uuid FROM vulns v WHERE $__open(v) AND $__kev(v) AND $__scope(v.asset_uuid) ORDER BY host"
+    },
+    {
+      "id": "kev_by_owner",
+      "title": "KEV assets by owner",
+      "viz": "bar",
+      "w": 6,
+      "h": 4,
+      "label_col": "owner",
+      "value_col": "assets",
+      "note": "Who has to fix the known-exploited exposure (ownerless shown as “No owner”).",
+      "sql": "SELECT COALESCE((SELECT t.tag_value FROM tags t WHERE t.tag_key='Owner' AND t.asset_uuid=v.asset_uuid LIMIT 1),'No owner') AS owner, COUNT(DISTINCT v.asset_uuid) AS assets FROM vulns v WHERE $__open(v) AND $__kev(v) AND $__scope(v.asset_uuid) GROUP BY owner ORDER BY assets DESC LIMIT 15"
+    },
+    {
+      "id": "kev_overdue",
+      "title": "Assets with overdue KEVs",
+      "viz": "kpi",
+      "w": 3,
+      "h": 2,
+      "note": "Past CISA's remediation due date — from the CISA KEV page's own last run (catalog due dates).",
+      "snapshot": {
+        "call": "run",
+        "path": "result.kev.metrics.overdue_assets",
+        "label": "Assets with overdue KEVs"
+      }
+    },
+    {
+      "id": "kev_due",
+      "title": "KEV due dates",
+      "viz": "bar",
+      "w": 6,
+      "h": 3,
+      "label_col": "label",
+      "value_col": "value",
+      "note": "Assets by CISA due-date bucket — from the CISA KEV page's last run.",
+      "snapshot": {
+        "call": "run",
+        "paths": [
+          [
+            "Overdue",
+            "result.kev.metrics.overdue_assets"
+          ],
+          [
+            "Due ≤ 7 days",
+            "result.kev.metrics.due7_assets"
+          ],
+          [
+            "Due ≤ 30 days",
+            "result.kev.metrics.due30_assets"
+          ],
+          [
+            "Added in the last 30 days",
+            "result.kev.metrics.recent_assets"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "kev_ransomware",
+      "title": "KEV used in ransomware",
+      "viz": "kpi",
+      "w": 3,
+      "h": 2,
+      "note": "Assets carrying a KEV that CISA flags as used in ransomware campaigns.",
+      "snapshot": {
+        "call": "run",
+        "path": "result.kev.metrics.ransomware_assets",
+        "label": "Assets (ransomware KEVs)"
+      }
+    },
+    {
+      "id": "kev_crown_overdue",
+      "title": "Crown jewels with overdue KEVs",
+      "viz": "kpi",
+      "w": 3,
+      "h": 2,
+      "note": "From the CISA KEV page's last run.",
+      "snapshot": {
+        "call": "run",
+        "path": "result.kev.metrics.crown_overdue_assets",
+        "label": "Crown jewels, KEV overdue"
+      }
+    }
+  ]
 }

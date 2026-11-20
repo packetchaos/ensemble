@@ -26,5 +26,58 @@
     "ignore": []
   },
   "hero": true,
-  "mission": "Crypto & Certificates"
+  "mission": "Crypto & Certificates",
+  "widgets": [
+    {
+      "id": "expiring_30",
+      "title": "Certificates expiring ≤ 30 days",
+      "viz": "kpi",
+      "w": 2,
+      "h": 2,
+      "note": "Not yet expired, but due within 30 days.",
+      "sql": "SELECT COUNT(*) AS \"Expiring ≤ 30 d\" FROM certs c WHERE $__certdate(c.not_valid_after) >= date('now') AND $__certdate(c.not_valid_after) < date('now','+30 day') AND $__scope(c.asset_uuid)",
+      "drill": "SELECT COALESCE(NULLIF(a.hostname,''), a.ip_address) AS host, c.common_name, c.issuer_name, $__certdate(c.not_valid_after) AS expires, c.asset_uuid FROM certs c LEFT JOIN assets a ON a.uuid=c.asset_uuid WHERE $__certdate(c.not_valid_after) >= date('now') AND $__certdate(c.not_valid_after) < date('now','+30 day') AND $__scope(c.asset_uuid) ORDER BY expires"
+    },
+    {
+      "id": "expired",
+      "title": "Expired certificates",
+      "viz": "kpi",
+      "w": 2,
+      "h": 2,
+      "note": "Certificates past their not-after date that are still being served.",
+      "sql": "SELECT COUNT(*) AS \"Expired\" FROM certs c WHERE $__certdate(c.not_valid_after) < date('now') AND $__scope(c.asset_uuid)",
+      "drill": "SELECT COALESCE(NULLIF(a.hostname,''), a.ip_address) AS host, c.common_name, c.issuer_name, $__certdate(c.not_valid_after) AS expired_on, c.asset_uuid FROM certs c LEFT JOIN assets a ON a.uuid=c.asset_uuid WHERE $__certdate(c.not_valid_after) < date('now') AND $__scope(c.asset_uuid) ORDER BY expired_on DESC"
+    },
+    {
+      "id": "expiry_by_month",
+      "title": "Certificate expiry — next 12 months",
+      "viz": "column",
+      "w": 6,
+      "h": 3,
+      "label_col": "month",
+      "value_col": "certs",
+      "note": "How many certificates fall due each month.",
+      "sql": "SELECT substr(d,1,7) AS month, COUNT(*) AS certs FROM (SELECT $__certdate(c.not_valid_after) AS d FROM certs c WHERE $__scope(c.asset_uuid)) WHERE d >= date('now','start of month') AND d < date('now','start of month','+12 month') GROUP BY month ORDER BY month"
+    },
+    {
+      "id": "cert_total",
+      "title": "Certificates in scope",
+      "viz": "kpi",
+      "w": 3,
+      "h": 2,
+      "note": "Every certificate navi.db holds for these assets.",
+      "sql": "SELECT COUNT(*) AS \"Certificates\" FROM certs c WHERE $__scope(c.asset_uuid)"
+    },
+    {
+      "id": "top_issuers",
+      "title": "Top certificate issuers",
+      "viz": "bar",
+      "w": 6,
+      "h": 4,
+      "label_col": "issuer",
+      "value_col": "certs",
+      "note": "Who issued the certificates you serve (self-signed shows as its own subject).",
+      "sql": "SELECT COALESCE(NULLIF(c.issuer_name,''),'(unknown)') AS issuer, COUNT(*) AS certs FROM certs c WHERE $__scope(c.asset_uuid) GROUP BY issuer ORDER BY certs DESC LIMIT 12"
+    }
+  ]
 }
