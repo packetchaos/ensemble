@@ -39,7 +39,7 @@ ROSTER = {
     "argos":            ("Asset Dossier", "", "Asset Truth", "🔦", "instrument"),
     "scan_eval":        ("Scan Health", "", "Coverage", "🩺", "specialist"),
     "agentgroup":       ("Agent Group Sync", "", "Coverage", "🛰️", "specialist"),
-    "asset_ownership":  ("Ownership", "", "Ownership & SLA", "📌", "specialist"),
+    "asset_ownership":  ("Asset Ownership", "", "Ownership & SLA", "📌", "specialist"),
     "exproute":         ("Exposure Routes", "", "Ownership & SLA", "🧭", "specialist"),
     "sla":              ("SLA Tracker", "", "Ownership & SLA", "⏱", "specialist"),
     "acr":              ("Criticality Calibration", "", "Ownership & SLA", "⚖️", "specialist"),

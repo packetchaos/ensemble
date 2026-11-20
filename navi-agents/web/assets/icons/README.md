@@ -10,3 +10,8 @@ Specialists without a tile (the Explorer tabs, Tools and Logs, MCP Routing Refer
 
 To add one: drop `<id>.png` here, add the id to `ICON_IMG`, run `python3 tools/brand_js.py` and
 `python3 tools/hound_pages.py`, and replace the emoji in that page's `<h2>`.
+
+Header tiles (build 512): `dashboard.png` (also the Dashboards specialist), `search.png` and `settings.png`
+are the three icons at the right of every page header (Dashboards · Explorer · Settings, built in
+`console.js` → `mountSettingsGear`). `search.png` / `settings.png` were drawn to match the sheet; a
+replacement only needs the same file name and a 96×96 tile.

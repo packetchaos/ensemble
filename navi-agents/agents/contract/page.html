@@ -186,7 +186,7 @@
 <script>
 const API=agentApi('contract'); let C=null, WRITES=false, LASTPLAN=null, LASTARMED=false;
 // [id, label, description, needs_input, prompt_driven] — replaced by the server's list (get → taggers)
-let AGENTS=[['iot_squad','IoT Discovery'],['customapp','Custom App Discovery'],['exproute','Exposure Routes','',true,true],['eol','End of Life'],['software','Software Inventory'],['ai','AI Inventory'],['identity','Identity Inventory'],['mitre','MITRE ATT&CK Map'],['scan_eval','Scan Health'],['certificate','Certificates'],['cisakev','CISA KEV'],['postquantum','Post-Quantum'],['agentgroup','Agent Group Sync'],['classify','Asset Classification'],['attackpath','Attack Paths'],['was','Web App Report'],['fused_score','Exposure Score'],['compliance','Compliance Overview','',true],['asset_ownership','Ownership','',true,true]];
+let AGENTS=[['iot_squad','IoT Discovery'],['customapp','Custom App Discovery'],['exproute','Exposure Routes','',true,true],['eol','End of Life'],['software','Software Inventory'],['ai','AI Inventory'],['identity','Identity Inventory'],['mitre','MITRE ATT&CK Map'],['scan_eval','Scan Health'],['certificate','Certificates'],['cisakev','CISA KEV'],['postquantum','Post-Quantum'],['agentgroup','Agent Group Sync'],['classify','Asset Classification'],['attackpath','Attack Paths'],['was','Web App Report'],['fused_score','Exposure Score'],['compliance','Compliance Overview','',true],['asset_ownership','Asset Ownership','',true,true]];
 let EXCLUDED={};
 const agentLabel=id=>{ const a=AGENTS.find(x=>x[0]===id); return a?a[1]:id; };
 function gather(){ // pull edits from the form back into C

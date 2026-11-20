@@ -740,20 +740,36 @@ function _gearStyle(){ if(document.getElementById('hGearCss')) return; const s=d
     +'.hgear.lvl-amber i{background:#f0a020;box-shadow:0 0 5px rgba(240,160,32,.6)}'
     +'.hgear.lvl-ok i{background:#8b5cf6;box-shadow:0 0 5px rgba(139,92,246,.6)}'
     +'.hgear.here{border-color:var(--accent);color:var(--accent)}'
+    // build 512: the header icons are the Ensemble's purple icon tiles (web/assets/icons/*.png)
+    +'.hgear.tile{border:0;background:transparent;width:30px;height:30px;border-radius:8px;padding:0}'
+    +'.hgear.tile img{width:30px;height:30px;display:block;border-radius:8px;pointer-events:none}'
+    +'.hgear.tile:hover,.hgear.tile:focus-visible{box-shadow:0 0 0 2px var(--accent);outline:none}'
+    +'.hgear.tile.here{box-shadow:0 0 0 2px var(--accent)}'
     // phones: the bar is one fixed row — let "Next agent" and "Email dashboard" shrink, never the gear
     +'@media (max-width:700px){header.top .nextagent,#app-header .nextagent{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}'
     +'header.top>.hmbtn,#app-header>.hmbtn{flex:0 1 auto;min-width:34px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}}';
   document.head.appendChild(s); }
 function _gearLast(){ const g=document.getElementById('hGear'); if(g&&g.parentNode&&g.parentNode.lastElementChild!==g) g.parentNode.appendChild(g);
-  const s=document.getElementById('hSearch'); if(s&&g&&g.parentNode&&s.nextElementSibling!==g) g.parentNode.insertBefore(s,g); }
+  const s=document.getElementById('hSearch'); if(s&&g&&g.parentNode&&s.nextElementSibling!==g) g.parentNode.insertBefore(s,g);
+  const d=document.getElementById('hDash'); if(d&&s&&s.parentNode&&d.nextElementSibling!==s) s.parentNode.insertBefore(d,s); }
+/* 📊 Dashboards icon (build 512) — left of the search icon: one click to the Dashboards app. */
+function _onDashPage(){ const p=location.pathname; try{ return DASH_PAGES.some(x=>p===x[1]||p.endsWith(x[1])); }catch(e){ return /\/web\/dashboards\.html$/.test(p); } }
+function mountDashIcon(hdr){
+  let d=document.getElementById('hDash');
+  if(!d){ d=document.createElement('a'); d.id='hDash'; d.className='hgear tile hdash'; d.href='/web/dashboards.html';
+    d.title='Dashboards — boards of resizable widgets, every one with its SQL and its rows'; d.setAttribute('aria-label','Dashboards');
+    d.innerHTML='<img src="/static/icons/dashboard.png?v=1" alt="" draggable="false">'; }
+  d.classList.toggle('here',_onDashPage());
+  hdr.appendChild(d); }
 /* 🔎 Search icon (build 471) — just left of the gear: one click to the Explorer, to look at data fast. */
 const _SEARCH_SVG='<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>';
 function _onSearchPage(){ const p=location.pathname; if(/\/web\/search\.html$/.test(p)) return true;
   try{ return SEARCH_PAGES.some(x=>p===x[1]||p.endsWith(x[1])); }catch(e){ return false; } }
 function mountSearchIcon(hdr){
   let s=document.getElementById('hSearch');
-  if(!s){ s=document.createElement('a'); s.id='hSearch'; s.className='hgear hsearch'; s.href='/web/search.html';
-    s.title='Explorer — assets, vulns, plugins, tags, routes, paths, apps, fixed, compliance'; s.setAttribute('aria-label','Explorer'); s.innerHTML=_SEARCH_SVG; }
+  if(!s){ s=document.createElement('a'); s.id='hSearch'; s.className='hgear tile hsearch'; s.href='/web/search.html';
+    s.title='Explorer — assets, vulns, plugins, tags, routes, paths, apps, fixed, compliance'; s.setAttribute('aria-label','Explorer');
+    s.innerHTML='<img src="/static/icons/search.png?v=1" alt="" draggable="false">'; }
   s.classList.toggle('here',_onSearchPage());
   hdr.appendChild(s); }
 function _gearPaint(o){ const g=document.getElementById('hGear'); if(!g||!o||!o.ok) return;
@@ -765,10 +781,10 @@ async function mountSettingsGear(){
   const hdr=document.getElementById('app-header')||document.querySelector('header.top'); if(!hdr) return;
   _gearStyle();
   let g=document.getElementById('hGear');
-  if(!g){ g=document.createElement('a'); g.id='hGear'; g.className='hgear'; g.href='/web/settings.html';
-    g.title='Settings'; g.setAttribute('aria-label','Settings'); g.innerHTML=_GEAR_SVG+'<i></i>'; }
+  if(!g){ g=document.createElement('a'); g.id='hGear'; g.className='hgear tile'; g.href='/web/settings.html';
+    g.title='Settings'; g.setAttribute('aria-label','Settings'); g.innerHTML='<img src="/static/icons/settings.png?v=1" alt="" draggable="false"><i></i>'; }
   if(/\/web\/settings\.html$/.test(location.pathname)) g.classList.add('here');
-  mountSearchIcon(hdr); hdr.appendChild(g); _gearLast();
+  mountDashIcon(hdr); mountSearchIcon(hdr); hdr.appendChild(g); _gearLast();
   const onSettings=g.classList.contains('here'); let o=null;
   if(!onSettings){ try{ const c=JSON.parse(sessionStorage.getItem('houndsCfgStatus')||'null'); if(c&&Date.now()-c.t<60000) o=c.o; }catch(e){} }
   if(!o){ try{ o=await jpost('/api/hub/config_status',{}); }catch(e){ o=null; }
@@ -1204,8 +1220,8 @@ const AGENT_INTRO = {
    "<b>Approved downloads<\/b> — the CISA catalog is fetched only after you approve it (or auto-approve in Settings), with a bundled snapshot when offline.",
    "<b>By tag<\/b> — run over one tag's assets: KEV exposure, CISA due-date compliance, crown jewels, vendors and dates added are rebuilt for those assets, with the same per-CVE due dates; tags written from that view land only on them. Switch between the whole estate and your last 5 tags without re-running."]},
  classify:{does:"Linnaeus classifies every asset from the tags the Ensemble has written, and shows exactly what is still unclassified. From operating-system fingerprints and device signals he suggests classes for the untagged assets, groups them into cohorts you can approve, and writes the tags.",caps:[
-   "<b>Classes from tags<\/b> — the Ensemble's own taxonomy — Asset Inventory, IoT, Device Type, OS — rolled up into Windows, Linux, macOS, Server, Workstation, Mobile, IoT, OT, network, hypervisor, cloud and Unclassified.",
-   "<b>Standard device types<\/b> — Server, Desktop, Laptop, Workstation, Phone / Tablet, Camera, Printer, NAS, VoIP, UPS / Power, Badge Reader, Switch, Router, Firewall, Wireless Access Point, Load Balancer, Hypervisor, PLC, HMI, RTU — offered as you tag, and each maps to its class.",
+   "<b>Classes from tags<\/b> — the Ensemble's own taxonomy — Asset Inventory, IoT, Device Type, OS — rolled up into Windows, Linux, macOS, Unix, Server, Workstation, Mobile, IoT, OT, Medical, network, hypervisor, cloud, Web Application, Mainframe and Unclassified — IoT Squad vendor tags (Ubiquiti, pfSense, Hikvision …) included.",
+   "<b>Standard device types<\/b> — PC, PC-VDI, VDI, Server-on-prem, Server-VDI, Printer, Camera, Switch, Router, Firewall, Wireless Access Point, Load Balancer, Network Device — offered as you tag, and each maps to its class.",
    "<b>OS and device signals<\/b> — untagged assets grouped by Nessus's own device type (printer, camera, switch, firewall …) or by detected OS (\"Windows Server 2022 — 40 assets\"), each cohort one approval away from a tag.",
    "<b>OS explorer<\/b> — OS families and versions for the untagged assets, with a confidence rating for each fingerprint.",
    "<b>Tag by OS in plain English<\/b> — \"tag all my assets by OS with a confidence over 70\" becomes a plan you review before anything is written.",
@@ -2108,7 +2124,7 @@ const _SIDE_GROUPS=[
     ['🛰️','Agent Group Sync','/agents/agentgroup/page.html'],
     ['📇','Asset Classification','/agents/classify/page.html'],
     ['🧭','Exposure Routes','/agents/exproute/page.html'],
-    ['📌','Ownership','/agents/asset_ownership/page.html'],
+    ['📌','Asset Ownership','/agents/asset_ownership/page.html'],
     ['⚖️','Criticality Calibration','/agents/acr/page.html'],
   ]],
   ['Operationalize',[

@@ -308,7 +308,7 @@ def scent_board(db_path=None):
              "warn" if ai else "off", "/agents/ai/page.html"),
         tile("iot", "IoT / OT", "Argos", "", c.get("iot_devices", 0), "unmanageable devices",
              "warn" if c.get("iot_devices") else "off", "/agents/iot_squad/page.html"),
-        tile("own", "Ownership coverage", "Ownership", "📌", f"{pct(total - unowned, total)}%",
+        tile("own", "Ownership coverage", "Asset Ownership", "📌", f"{pct(total - unowned, total)}%",
              f"{unowned} unclaimed", "crit" if pct(unowned, total) > 50 else "warn" if unowned else "ok",
              "/agents/asset_ownership/page.html"),
     ]
@@ -1054,7 +1054,7 @@ def scent_digest(db_path=None):
     blind = {"assets": total, "funnel": funnel, "tiles": tiles}
 
     # ---- next moves (ranked: crit first, then by n; n=0 dropped)
-    act = g(fk, "act", "40", default={}) or {}
+    act = g(fk, "act", "80", default={}) or {}    # build 512: act now = Critical (≥ 80) by default
     fix = (ap_r.get("fixes") or [{}])[0] or {}
     eolp = (g(eol_r, "view", "products", default=[]) or [{}])[0] or {}
     mp = expr.get("map") or {}
@@ -1065,7 +1065,7 @@ def scent_digest(db_path=None):
                 "codename": _name(agent), "icon": _icon(agent)}
     nxt = []
     if fk:
-        nxt.append(nx("fused_score", "Act on the act-now set", act.get("n", 0), "assets ≥ 40",
+        nxt.append(nx("fused_score", "Act on the critical set", act.get("n", 0), "assets ≥ 80",
                       "%d crown jewels (ACR ≥ 9) with KEV · %d blind" % (act.get("crown_kev", 0), act.get("blind", 0)),
                       _P("fused_score", "sec-act"), "crit"))
     if have["attackpath"] and fix:
@@ -1142,7 +1142,7 @@ def scent_digest(db_path=None):
 
 # ---- Nemesis's "Recommended play" (Exposure Score): the projected reduction, every play applied
 # Mirrors agents/fused_score/page.html drawRed() with its default selection (all five plays) and
-# its threshold rule (80 when any asset is ≥ 80, else 60, else 40; the worst 10 when none is over).
+# its threshold: Critical ≥ 80 (build 512 — the default everywhere; the worst 10 when none is over).
 PLAYS = [("patch", "Patch KEV / critical", ("expl", "sev", "mit")), ("eol", "Replace EOL software", ("eol",)),
          ("crypto", "Renew certs / PQ-migrate", ("cry",)), ("segment", "Segment / close exposure", ("exp", "ai")),
          ("own", "Assign owners", ("own",))]
@@ -1165,7 +1165,7 @@ def recommended_play(fused):
     if not rows:
         return {"available": False}
     act = kpi.get("act") or {}
-    thr = 80 if (act.get("80") or {}).get("n") else 60 if (act.get("60") or {}).get("n") else 40
+    thr = 80
     st = act.get(str(thr)) or {}
     sel = [a for a in rows if (a.get("score") or 0) >= thr]
     if not sel and not st.get("n"):

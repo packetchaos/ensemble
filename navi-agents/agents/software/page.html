@@ -181,6 +181,11 @@ async function runSoftwareEol(){
   if(!SW||!SW.run)return;
   var btn=document.getElementById('swEol'); if(btn)btn.disabled=true;
   var f=document.getElementById('swFlash');
+  // build 512: ask the server first (it checks endoflife.date itself, cached 7 days) — the same request
+  // Run the Ensemble records, so a restored page shows Lifecycle too. Offline server → this browser asks.
+  if(f){f.className='flash show';f.style.background='var(--runbg)';f.style.color='var(--accent)';f.innerHTML='<span class="spin"></span> checking lifecycle (endoflife.date)…';}
+  var so; try{ so=await API.post('lifecycle',{run:SW.run, server:true}); }catch(e){ so=null; }
+  if(so && so.ok && (so._replayed || ((so.summary||{}).checkedProducts>0))){ if(btn)btn.disabled=false; return _eolDone(so, f); }
   // the plan is paged (150 products per call; each product's versions as one "\n"-joined string)
   var plan=[], start=0, guard=0, pl;
   do{
@@ -201,6 +206,9 @@ async function runSoftwareEol(){
   let o; try{ o=await API.post('lifecycle',{run:SW.run,results}); }catch(e){ o={ok:false,error:e.message}; }
   if(btn)btn.disabled=false;
   if(!o||!o.ok){ if(f){f.className='flash show';f.style.background='var(--critbg)';f.style.color='var(--crit)';f.textContent='✗ '+((o&&(o.error||o.message))||'failed');} return; }
+  _eolDone(o, f);
+}
+function _eolDone(o, f){
   SW.eol=o.summary||{}; const e=SW.eol;
   if(f){f.className='flash show';f.style.background='var(--okbg,rgba(52,211,153,.14))';f.style.color='var(--ok)';f.innerHTML='✓ lifecycle checked: <b>'+esc(fmtN(e.checkedProducts))+'</b> product(s) matched endoflife.date · <b style="color:var(--crit)">'+esc(fmtN(e.eolProducts))+'</b> with EOL versions. Assets on EOL software: <b style="color:var(--crit)">'+esc(fmtN(e.eolAssets))+'</b> — endoflife.date <b>'+esc(fmtN(e.eolAssetsEndoflife))+'</b> + Tenable-flagged <b>'+esc(fmtN(e.tenEolAssets))+'</b> (unioned). Use the <b>EOL / unsupported</b> filter.';}
   var kpi=document.getElementById('swKpi'); if(kpi){ var _eh='<div class="v" style="color:var(--crit)">'+esc(fmtN(e.eolAssets))+'</div><div class="l">assets on EOL software</div>'; var ex=document.getElementById('swEolKpi'); if(ex){ ex.innerHTML=_eh; } else { kpi.insertAdjacentHTML('beforeend','<div class="k" id="swEolKpi" style="border-color:var(--crit)">'+_eh+'</div>'); } }
@@ -241,7 +249,7 @@ async function runCrown(){
     +'</div>';
   out.querySelectorAll('button[data-crt]').forEach(function(b){ b.onclick=function(){ var r=roles[+b.dataset.crt]; tagByKey('Crown Jewel',r.role,{role:r.role},r.assets,null,b); }; });
   out.querySelectorAll('button[data-cra]').forEach(function(b){ b.onclick=function(){ var r=roles[+b.dataset.cra]; acrNote('Crown Jewel',r.role,r.acr); }; });
-  out.scrollIntoView({behavior:'smooth',block:'nearest'});
+  // build 512: no auto-scroll — the ▶ Run all / Run the Ensemble replay used to land at the bottom; use the section nav
 }
 
 /* ===== Software risk leaderboard — products ranked by KEV/critical exposure (server-side) ===== */
@@ -262,7 +270,7 @@ async function runSwRisk(){
        return '<tr><td><b>'+esc(x.name)+'</b></td><td class="mono"'+(x.pf?' style="color:var(--accent);font-weight:700"':'')+'>'+esc(Math.round(x.risk))+'</td><td>'+named+'</td><td'+(x.pf?'':' class="sub"')+'>'+esc(x.pf||'—')+'</td><td>'+swAL(x.name,null,x.nasset)+'</td><td'+(x.kev?' style="color:#ffb4c6;font-weight:700"':' class="sub"')+'>'+esc(x.kev)+'</td><td'+(x.crit?' style="color:#ffd28a"':' class="sub"')+'>'+esc(x.crit)+'</td><td class="mono">'+(x.vpr?esc((+x.vpr).toFixed(1)):'—')+'</td><td>'+(x.eol?'<span class="badge b-appr" style="color:#ffb4c6;border-color:rgba(255,80,120,.5)">⛔ '+esc(x.eol)+'</span>':'<span class="sub">—</span>')+'</td><td><button class="btn sm" data-swr="'+i+'">🏷️ Tag</button></td></tr>'; }).join('')
     +'</tbody></table></div></div>';
   out.querySelectorAll('button[data-swr]').forEach(function(b){ b.onclick=function(){ var x=top[+b.dataset.swr]; tagByKey('Software Risk',x.name,{product:x.name},x.nasset,x.name,b); }; });
-  out.scrollIntoView({behavior:'smooth',block:'nearest'});
+  // build 512: no auto-scroll — the ▶ Run all / Run the Ensemble replay used to land at the bottom; use the section nav
 }
 
 /* ===== NL → SQL ask (run_sql is capped: 200 rows a page, 10,000 in all) ===== */

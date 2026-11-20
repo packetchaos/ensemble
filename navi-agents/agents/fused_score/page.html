@@ -534,7 +534,7 @@ function applySnap(s,cached,stale){
  const res=s.result||{}; if(!res.ok){ flash('flash','✗ '+esc(res.error||'no result'),'crit'); return; }
  DATA=res; SHOWN_W=APPLIED?Object.assign({},APPLIED):null; SHOWN_SCOPE=SCOPE?Object.assign({},SCOPE):null; META=s.meta||{}; CACHED=cached; STALE=stale; ROWS=DATA.assets||[];
  WEIGHTS={}; (DATA.factors||[]).forEach(f=>{ WEIGHTS[f.id]=APPLIED&&APPLIED[f.id]!=null?+APPLIED[f.id]:f.default; });
- if(!THR_USER){ const A=(DATA.kpi||{}).act||{}; THR=(A['80']||{}).n?80:(A['60']||{}).n?60:40; }
+ if(!THR_USER){ THR=80; }   // build 512: Act now opens on Critical (≥ 80) — focus on the most critical first; High / Elevated are one click away
  document.querySelectorAll('#thr button').forEach(x=>x.classList.toggle('on',+x.dataset.t===THR));
  renderAll(); snapLine(); scopeNote();
  document.getElementById('lbTitle').textContent=SHOWN_SCOPE?'🏁 Leaderboard · '+scopeLabel(SHOWN_SCOPE):'🏁 Estate leaderboard';

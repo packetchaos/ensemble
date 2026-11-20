@@ -44,7 +44,7 @@ FACTORS = [
     {"id": "cry",   "label": "Weak / expiring crypto","hound": "Certania + Heimdall",      "max": 4},
     {"id": "sla",   "label": "SLA breach (aging)",    "hound": "SLA Tracker · overdue",          "max": 4},
     {"id": "vol",   "label": "Finding volume",        "hound": "open crit / KEV density",  "max": 4},
-    {"id": "own",   "label": "Ownership gap",         "hound": "Ownership",                 "max": 3},
+    {"id": "own",   "label": "Ownership gap",         "hound": "Asset Ownership",                 "max": 3},
     {"id": "mit",   "label": "ATT&CK technique",      "hound": "MITRE ATT&CK Map",                  "max": 2},
 ]
 _CRED_PLUGINS = ("104410", "21745", "110723", "117885")   # credentialed-scan failures (Chronos)

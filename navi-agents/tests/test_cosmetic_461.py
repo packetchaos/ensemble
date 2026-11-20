@@ -86,11 +86,11 @@ try:
 finally:
     swapi._eol_cycles = orig
 acts = [a for a, _b, _o in out]
-check(acts == ["inventory", "eol_plan", "eol_plan", "eol_plan", "lifecycle", "crown", "risk"],
-      "release_requests: inventory → paged eol_plan → lifecycle → crown → risk (%s)" % acts)
+check(acts == ["inventory", "lifecycle", "crown", "risk"],
+      "release_requests: all four sections — inventory → lifecycle (server-side) → crown → risk (%s)" % acts)
 check(all(b.get("run") == "software-1" for a, b, _o in out if a != "inventory")
-      and [b["start"] for a, b, _o in out if a == "eol_plan"] == [0, 1, 2],
-      "release_requests: every later request carries the inventory's run id, as the page sends it")
+      and [b for a, b, _o in out if a == "lifecycle"] == [{"run": "software-1", "server": True}],
+      "release_requests: every later request carries the inventory's run id, as the page sends it (build 512)")
 rel = page("core/release.py")
 check('r.get("requests_fn")' in rel and "importlib.import_module(mod)" in rel, "Release runs a hound's requests_fn")
 

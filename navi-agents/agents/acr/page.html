@@ -31,7 +31,7 @@
       <p class="sub" style="margin:2px 0 0">Adjust ACR for assets carrying a tag. <b>Set</b> absolute 1–10, or nudge <b>+N / −N</b>. Justification required. Tags from <span class="mono">navi explore info tags</span>. navi never changes the ACR of an asset tagged <span class="tagval">NO : UPDATE</span> — <b>protect</b> an ACR here once it is right; every change is recorded per asset in the <a class="applink" href="/web/acr-log.html">ACR log</a>.</p></div>
       <span style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <a class="btn ghost sm" href="/web/acr-log.html" title="Per-asset registry of every ACR change the Ensemble made">🎯 ACR log →</a>
-        <button id="runAcr" class="btn run sm" data-run title="Load the tag list (navi explore info tags) and the ACR metrics — nothing loads on its own">▶ Load</button></span></div>
+        <button id="runAcr" class="btn run sm" data-run title="Run: read the tag list (navi explore info tags) and the ACR metrics — nothing runs on its own">▶ Run</button></span></div>
     <p class="sub" id="acrTrHint" style="display:none;margin:6px 0 0;color:var(--warn,#fbbf24)"></p>
     <div id="acrFlash" class="flash"></div>
   </section>
@@ -45,24 +45,24 @@
   <section class="card" id="secValues" data-nav="ACR values" data-nav-icon="🎚️">
     <h2 style="margin:0 0 2px;font-size:17px">🎚️ ACR values</h2>
     <p class="sub" style="margin:2px 0 8px">Every ACR value 10 → 1: how many assets sit there, how exposed they are (AES mix, share of all AES), what the Ensemble changed or protected, and the riskiest asset at each value → Asset Dossier.</p>
-    <div id="valuesBody"><p class="sub">Click ▶ Load.</p></div>
+    <div id="valuesBody"><p class="sub">Click ▶ Run.</p></div>
   </section>
 
   <section class="card" id="secExposure" data-nav="Where the exposure sits" data-nav-icon="🎯">
     <h2 style="margin:0 0 2px;font-size:17px">🎯 Where the exposure sits</h2>
     <p class="sub" style="margin:2px 0 8px">ACR band against AES band — are the business-critical assets the exposed ones? Tenable bands: ACR Critical 9–10 · High 7–8 · Medium 4–6 · Low 1–3; AES High 650+ · Medium 350–649 · Low 0–349.</p>
-    <div id="exposureBody"><p class="sub">Click ▶ Load.</p></div>
+    <div id="exposureBody"><p class="sub">Click ▶ Run.</p></div>
   </section>
 
   <section class="card" id="secChanges" data-nav="Ensemble changes &amp; protection" data-nav-icon="🛡️">
     <h2 style="margin:0 0 2px;font-size:17px">🛡️ Ensemble changes &amp; protection</h2>
     <p class="sub" style="margin:2px 0 8px">ACR protection from navi.db (<span class="mono">NO : UPDATE</span>) against what the Ensemble changed (the ACR log). Every card opens the matching list.</p>
-    <div id="changesBody"><p class="sub">Click ▶ Load.</p></div>
+    <div id="changesBody"><p class="sub">Click ▶ Run.</p></div>
   </section>
 
   <section class="card" id="secWho" data-nav="Who changed ACR" data-nav-icon="👤">
     <h2 style="margin:0 0 2px;font-size:17px">👤 Who changed ACR</h2>
-    <div id="whoBody"><p class="sub">Click ▶ Load.</p></div>
+    <div id="whoBody"><p class="sub">Click ▶ Run.</p></div>
   </section>
 
   <section class="card" id="secProtect" data-nav="Protection" data-nav-icon="🛡️">
@@ -208,7 +208,7 @@ function jumpTo(id){ const s=document.getElementById(id); if(s){ s.scrollIntoVie
 
 function renderValues(e){
   const box=document.getElementById('valuesBody'); if(!box) return;
-  if(!e||!e.ok){ box.innerHTML='<p class="sub">'+esc((e&&e.error)||'Click ▶ Load.')+'</p>'; return; }
+  if(!e||!e.ok){ box.innerHTML='<p class="sub">'+esc((e&&e.error)||'Click ▶ Run.')+'</p>'; return; }
   const vals=e.acr_values||[], C=e.changed||{}, rated=e.with_acr||0;
   // build 507: the headline numbers as a full-width tile row (number first, one short line under it)
   const crit=vals.filter(v=>v.acr>=9).reduce((s,v)=>s+v.assets,0);
@@ -242,7 +242,7 @@ function renderValues(e){
 
 function renderExposure(e){
   const box=document.getElementById('exposureBody'); if(!box) return;
-  if(!e||!e.ok){ box.innerHTML='<p class="sub">'+esc((e&&e.error)||'Click ▶ Load.')+'</p>'; return; }
+  if(!e||!e.ok){ box.innerHTML='<p class="sub">'+esc((e&&e.error)||'Click ▶ Run.')+'</p>'; return; }
   const bands=e.acr_bands||[], A=e.aes||{};
   const cols=[['aes_high','High','crit','650–1000'],['aes_medium','Medium','med','350–649'],['aes_low','Low','low','0–349'],['unscored','Unscored','none','no AES']];
   const mx=Math.max(1,...bands.flatMap(b=>cols.map(c=>b[c[0]]||0)));
@@ -268,7 +268,7 @@ function renderExposure(e){
 
 function renderWho(e){
   const box=document.getElementById('whoBody'); if(!box) return;
-  if(!e||!e.ok){ box.innerHTML='<p class="sub">'+esc((e&&e.error)||'Click ▶ Load.')+'</p>'; return; }
+  if(!e||!e.ok){ box.innerHTML='<p class="sub">'+esc((e&&e.error)||'Click ▶ Run.')+'</p>'; return; }
   const C=e.changed||{}, rec=C.recent||[];
   box.innerHTML=`<p class="sub" style="margin:0 0 8px">Every ACR change the Ensemble applied — by Change Reason and by specialist. A change made in the Tenable UI or with plain navi isn't in navi.db's history, so it doesn't show here.</p>`
     +'<div id="glxWho"></div>'
@@ -522,9 +522,9 @@ mountAgentHeader({id:'acr',icon:'🎯',name:'ACR Calibration Agent',sub:'set / +
 try{ hMailAuto(); }catch(e){}
 mountSectionNav();
 /* explicit-run: nothing runs on open (the tag list calls Tenable via navi, the metrics read navi.db).
-   ▶ Load fetches both; the server-side page cache (build 506 — this page no longer opts out) restores the
+   ▶ Run fetches both; the server-side page cache (build 506 — this page no longer opts out) restores the
    last load on open, and Run the Ensemble pre-loads it. */
-flash('acrFlash','Nothing runs on open — your last <b>▶ Load</b> (or Run the Ensemble) is restored from the server; click <b>▶ Load</b> for a live read.','idle');
+flash('acrFlash','Nothing runs on open — your last <b>▶ Run</b> (or Run the Ensemble) is restored from the server; click <b>▶ Run</b> for a live read.','idle');
 // Settings → Test run: ACR targets the tag exactly as listed; say what specialist-created tags are called now
 testRunStatus().then(t=>{ const el=document.getElementById('acrTrHint'); if(!el||!t||!t.enabled) return; el.style.display='';
   el.innerHTML='🧪 Test run is on — tags the Ensemble creates now read <span class="mono">'+esc(t.prefix)+'&lt;category&gt;</span>. ACR applies to the category exactly as listed; pick the <span class="mono">'+esc(t.prefix)+'…</span> one to target a test-run tag. The protection tag is always exactly <span class="mono">NO : UPDATE</span>.'; });

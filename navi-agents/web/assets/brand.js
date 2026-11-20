@@ -132,7 +132,7 @@ window.BRAND = {
    "img": "/static/icons/agentgroup.png"
   },
   "asset_ownership": {
-   "name": "Ownership",
+   "name": "Asset Ownership",
    "codename": "",
    "mission": "Ownership & SLA",
    "icon": "📌",

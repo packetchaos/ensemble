@@ -214,7 +214,12 @@ def lifecycle(p):
     if not run:
         return _GONE
     scope = _scope(p)
-    res = p.get("results") if isinstance(p.get("results"), list) else []
+    if p.get("server"):
+        # build 512: the server asks endoflife.date itself (7-day disk cache) — what Run the Ensemble
+        # records, so the restored page shows the same Lifecycle section without a browser round-trip
+        res = lifecycle_results(_server_plan(run))
+    else:
+        res = p.get("results") if isinstance(p.get("results"), list) else []
     eol = software.lifecycle(run, res[:5000], scope=scope) if scope else software.lifecycle(run, res[:5000])
     b, _c = payload.drill(_hound(scope), {"run": run, "section": "products", "sort": "eol", "filter": ["eol"],
                                           "limit": 50}, SECTIONS)
@@ -514,6 +519,18 @@ def _is_dead(c):
     return None
 
 
+def _server_plan(run):
+    plan = []
+    for x in software.eol_plan(run)[:3000]:
+        x = dict(x)
+        v = x.get("versions")
+        if not isinstance(v, list):
+            v = str(x.get("vers")).split("\n") if x.get("vers") else []
+        x["versions"] = v
+        plan.append(x)
+    return plan
+
+
 def lifecycle_results(plan):
     out, by_slug = [], {}
     for x in plan:
@@ -540,21 +557,9 @@ def release_requests(dispatch):
     run = ((body or {}).get("drill") or {}).get("run") if isinstance(body, dict) else None
     if not run or st >= 400 or (isinstance(body, dict) and body.get("ok") is False):
         return out
-    plan, start, guard = [], 0, 0
-    while start is not None and guard < 40:
-        b = {"run": run, "start": start}
-        r, s = dispatch("software", "eol_plan", b)
-        out.append(("eol_plan", b, (r, s)))
-        if s >= 400 or not isinstance(r, dict) or not r.get("ok"):
-            break
-        for x in r.get("plan") or []:
-            x = dict(x)
-            x["versions"] = str(x.get("vers")).split("\n") if x.get("vers") else (x.get("versions") or [])
-            plan.append(x)
-        start, guard = r.get("next_start"), guard + 1
-    else:
-        b = {"run": run, "results": lifecycle_results(plan)}
-        out.append(("lifecycle", b, dispatch("software", "lifecycle", b)))
+    # all four sections (build 512): inventory → lifecycle (server-side endoflife.date) → crown → risk
+    b = {"run": run, "server": True}
+    out.append(("lifecycle", b, dispatch("software", "lifecycle", b)))
     for act in ("crown", "risk"):
         b = {"run": run}
         out.append((act, b, dispatch("software", act, b)))

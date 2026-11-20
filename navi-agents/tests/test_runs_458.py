@@ -266,7 +266,7 @@ def tail_script(h):
 
 acr = page("agents/acr/page.html")
 check(not re.search(r"^runAcr\(\); loadMetrics\(\);", acr, re.M) and 'id="runAcr" class="btn run sm" data-run' in acr,
-      "ACR: nothing loads on open; ▶ Load")
+      "ACR: nothing loads on open; ▶ Run")
 ag = page("agents/agentgroup/page.html")
 check(not re.search(r"^load\(\);", ag, re.M) and 'id="load" style="margin-left:auto" class="btn run sm" data-run' in ag,
       "Agent Groups: no live Tenable call on open; ▶ Load")

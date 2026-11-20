@@ -215,7 +215,7 @@ function render(){
   const grid=document.getElementById('grid');
   const ms=(window.BRAND&&BRAND.missions)||[]; let html='';
   ms.concat(['Platform']).filter((m,i,a)=>a.indexOf(m)===i).forEach(m=>{ const L=AGENTS.filter(a=>missionOf(a)===m); if(!L.length) return;
-    html+=`<h3 class="mhead" data-mission="${esc(m)}">${esc(m)}</h3>`+L.map(card).join(''); });
+    html+=L.map(card).join(''); });   // build 512: one even grid — no mission headings; the chips above filter by mission
   grid.innerHTML=html+'<div id="gridEmpty" class="sub" style="display:none;grid-column:1/-1;text-align:center;padding:24px 0">No agents match — clear the filter.</div>';
   grid.querySelectorAll('[data-exec]').forEach(b=>b.onclick=()=>execAgent(b.dataset.exec,b));
   renderCats(); applyFilter();
