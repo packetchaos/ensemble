@@ -284,6 +284,15 @@ window.BRAND = {
    "hero": false,
    "img": "/static/icons/c2.png"
   },
+  "scan_confirm": {
+   "name": "Scan Confirmation",
+   "codename": "",
+   "mission": "Platform",
+   "icon": "📡",
+   "kind": "instrument",
+   "hero": false,
+   "img": "/static/icons/scan_confirm.png"
+  },
   "tagremoval": {
    "name": "Tag Removal",
    "codename": "",

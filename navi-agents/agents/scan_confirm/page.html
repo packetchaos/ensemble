@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Scan Confirmation · Navi Agents</title>
+<link rel="stylesheet" href="/static/console.css"/>
+<style>
+  .cli{font-family:var(--mono);font-size:12px;line-height:1.5;color:#c9d4e5;background:#0c0e13;border:1px solid var(--line);
+       border-radius:10px;padding:12px 14px;white-space:pre-wrap;word-break:break-word;max-height:min(60vh,620px);overflow:auto;min-height:140px}
+  .sc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:10px}
+  .sc-grid label.lbl{display:block;font-weight:600;font-size:12.5px;margin:0 0 4px}
+  .sc-grid textarea{width:100%;min-height:74px;box-sizing:border-box}
+  .sc-grid select,.sc-grid input[type=text],.sc-grid input[type=number]{width:100%;box-sizing:border-box}
+  .pchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .pchip{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+  .pchip.local{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 18%,transparent)}
+  .pchip.unk{border-style:dashed}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:6px}
+  .seg button{border:0;background:transparent;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--ink)}
+  .seg button.on{background:color-mix(in srgb,var(--accent) 22%,transparent);font-weight:600}
+  .pf{list-style:none;padding:0;margin:8px 0 0}
+  .pf li{padding:3px 0;font-size:12.5px}
+  .pf .ok{color:var(--ok)} .pf .warn{color:var(--cx-e7c66b,#e7c66b)} .pf .fail{color:var(--crit)}
+  .gate{font-size:12px;margin-top:6px}
+  #callouts .warn{color:var(--cx-e7c66b,#e7c66b)}
+  .ev{font-family:var(--mono);font-size:11px;white-space:pre-wrap;color:var(--mut)}
+  td.mono,.mono{font-family:var(--mono)}
+  .vchips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  .vchips button{font-size:12px}
+  .vchips button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+</style>
+</head><body data-page-cache="off">
+<div class="wrap">
+  <header class="top" id="app-header"></header>
+
+  <section class="card">
+    <div class="toolbar"><div><h2 style="margin:0">📡 Scan Confirmation</h2>
+      <p class="sub" style="margin:2px 0 0">Prove a fix with Tenable's own scan: give <b>plugin IDs</b> and <b>assets</b>, press <b>▶ Plan</b>, review, then <b>⚡ Launch</b>. One verdict per asset × plugin — from a scan of exactly those plugins on exactly those assets, synced back into navi.db. No model anywhere; nothing runs on page open.</p></div>
+      <button class="btn run sm" id="plan" style="margin-left:auto">▶ Plan</button></div>
+    <div id="flash" class="flash"></div>
+    <div id="glance" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card" id="secIn">
+    <div class="toolbar"><div class="seg" id="modeSeg" style="margin:0"><button data-m="confirm" class="on">✅ Confirm a fix</button><button data-m="oneoff">⚡ One-off scan</button></div>
+      <span class="sub" id="modeHint" style="margin-left:6px">Plugins on assets → scan → sync → a verdict per asset × plugin.</span></div>
+    <div id="oneoffBox" style="display:none;margin-top:10px">
+      <div class="seg" id="ooSeg"><button data-o="new" class="on">New scan</button><button data-o="via">Send new hosts through a scan</button><button data-o="rerun">Re-run a scan as-is</button></div>
+      <div id="rerunBox" style="display:none">
+        <div style="display:flex;gap:6px"><input type="text" id="scanFilter" class="fld" placeholder="filter by name, scan ID (e.g. 13) or policy ID" autocomplete="off" style="flex:1"/>
+          <button class="btn ghost sm" id="scanById" style="display:none"></button></div>
+        <select id="rerunScan" class="fld" size="8" style="width:100%;margin-top:6px"></select>
+        <p class="sub" id="rerunNote" style="margin:4px 0 0"></p>
+        <p class="sub" id="ooWhy" style="margin:2px 0 0"></p>
+      </div>
+    </div>
+    <div class="sc-grid" id="newBox">
+      <div><label class="lbl" for="plugins">Plugin IDs <span class="sub" id="plugOpt" style="display:none">(optional — or pick a policy)</span></label>
+        <input type="text" id="plugins" class="fld" placeholder="e.g. 156032, 10863" autocomplete="off"/>
+        <div class="pchips" id="pchips"></div>
+        <p class="sub" style="margin:4px 0 0">Up to 25. Purple = a local check (needs a credential).</p></div>
+      <div><label class="lbl">Assets</label>
+        <div class="seg" id="selSeg"><button data-s="ips" class="on">IPs / CIDRs / hosts</button><button data-s="uuids">Asset UUIDs</button><button data-s="tag">Tag</button></div>
+        <textarea id="ips" class="fld" placeholder="10.0.5.12&#10;10.0.6.0/28&#10;web01.corp.local"></textarea>
+        <textarea id="uuids" class="fld" style="display:none" placeholder="one asset UUID per line"></textarea>
+        <div id="tagBox" style="display:none"><select id="tagKey" class="fld" aria-label="tag category"><option value="">tag category…</option></select>
+          <select id="tagVal" class="fld" aria-label="tag value" style="margin-top:6px" disabled><option value="">value…</option></select></div></div>
+      <div><label class="lbl" for="scanner">Scanner</label>
+        <select id="scanner" class="fld"><option value="">— load scanners —</option></select>
+        <label class="lbl" for="cred" style="margin-top:8px">Credential</label>
+        <select id="cred" class="fld"><option value="">(none — network checks only)</option></select>
+        <button class="btn ghost sm" id="lkRefresh" style="margin-top:6px">↻ Reload from Tenable</button>
+        <div class="sub" id="lkNote" style="margin-top:4px"></div></div>
+      <div><div id="policyBox" style="display:none"><label class="lbl" for="policySel">Scan with</label>
+        <select id="policySel" class="fld"><option value="tpl:basic">Basic Network Scan (navi default — no policy)</option></select>
+        <p class="sub" style="margin:4px 0 0">No policy needed: navi's Basic Network Scan or Host Discovery. Or the policy of one of your latest enabled scans, or a saved policy. Plugin IDs, if you give any, replace this.</p></div>
+        <details style="margin-top:8px"><summary class="sub">Advanced</summary>
+          <label class="lbl" for="chunk" style="margin-top:6px">Targets per scan</label><input type="number" id="chunk" class="fld" value="256" min="1" max="1024"/>
+          <label class="lbl" for="maxScans" style="margin-top:6px">Max scans</label><input type="number" id="maxScans" class="fld" value="20" min="1" max="100"/>
+          <label class="lbl" for="tmo" style="margin-top:6px">Run timeout (minutes)</label><input type="number" id="tmo" class="fld" value="360" min="10" max="1440"/>
+          <label style="display:block;margin-top:6px;font-size:12.5px"><input type="checkbox" id="reuse" checked/> Reuse an identical earlier confirmation scan</label>
+        </details></div>
+    </div>
+  </section>
+
+  <section class="card" id="secPlan" style="display:none">
+    <h3 style="margin:0">Plan &amp; preflight</h3>
+    <ul class="pf" id="pf"></ul>
+    <div id="callouts" class="sub" style="margin-top:6px"></div>
+    <div style="overflow:auto;margin-top:8px"><table id="planTbl" class="norsz"><thead><tr><th>#</th><th>Plugin(s)</th><th>Targets</th><th>Reuse</th><th>navi command</th></tr></thead><tbody></tbody></table></div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+      <button class="btn danger" id="launch" disabled>⚡ Launch confirmation scan</button>
+      <span class="gate sub" id="gate"></span></div>
+  </section>
+
+  <section class="card" id="secRun" style="display:none">
+    <div class="toolbar"><h3 style="margin:0">Run <span class="mono sub" id="runId"></span> · <span id="runState"></span></h3>
+      <span style="margin-left:auto;display:flex;gap:8px"><button class="btn ghost sm" id="stop">■ Stop</button>
+      <button class="btn ghost sm" id="resumeWatch" style="display:none">↻ Resume watching</button></span></div>
+    <div style="display:flex;align-items:center;gap:8px;margin:8px 0 6px"><b style="font-size:12.5px">navi CLI</b><span class="chip" id="cliStatus" style="display:none"></span></div>
+    <pre class="cli" id="cli" tabindex="0"><span class="sub">The live window attaches when the run starts.</span></pre>
+    <div style="overflow:auto;margin-top:10px"><table id="scanTbl" class="norsz"><thead><tr><th>#</th><th>Scan ID</th><th>Plugin(s)</th><th>Targets</th><th>Status</th><th>Elapsed</th><th>Note</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card" id="secVerdicts" style="display:none">
+    <div class="toolbar"><h3 style="margin:0">Verdicts</h3>
+      <span style="margin-left:auto;display:flex;gap:8px"><button class="btn ghost sm" id="csv">⬇ CSV</button>
+      <button class="btn ghost sm" id="reverify">↻ Re-verify</button></span></div>
+    <div id="vglance"></div>
+    <div class="vchips" id="vchips"></div>
+    <div style="overflow:auto"><table id="vTbl" class="norsz"><thead><tr><th>Asset</th><th>Plugin</th><th>Verdict</th><th>Why</th></tr></thead><tbody></tbody></table></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn ghost sm" id="vPrev">‹ Prev</button><span class="sub" id="vPage"></span><button class="btn ghost sm" id="vNext">Next ›</button></div>
+  </section>
+
+  <section class="card" id="secRuns">
+    <div class="toolbar"><h3 style="margin:0">Recent runs</h3>
+      <span style="margin-left:auto;display:flex;gap:8px"><button class="btn ghost sm" id="runsLoad">↻ Load</button>
+      <button class="btn ghost sm" id="delOld">🗑 Delete old confirmation scans</button></span></div>
+    <div id="runsBox" class="sub" style="margin-top:6px">Press ↻ Load to list the runs (they live in tag_jobs.db).</div>
+  </section>
+  <footer>Scan Confirmation · launching is gated (NAVI_ALLOW_WRITES + NAVI_SCAN_LAUNCH + confirm) · deterministic</footer>
+</div>
+<script src="/static/brand.js"></script>
+<script src="/static/console.js"></script>
+<script>
+const API=agentApi('scan_confirm');
+const $=id=>document.getElementById(id);
+const N=n=>glanceNum(n);
+const ST={sel:'ips', run:null, plan:null, vf:null, voff:0, vlim:50, lk:null, gate:null, timer:null};
+const VLAB={CONFIRMED_FIXED:['Confirmed fixed','ok'],STILL_VULNERABLE:['Still vulnerable','crit'],NOT_VULNERABLE:['Not vulnerable','ok'],
+  NEWLY_FOUND:['Newly found','high'],INCONCLUSIVE_AUTH:['Inconclusive — no login','med'],NOT_ASSESSED:['Not assessed','none'],
+  PENDING_INGESTION:['Pending (not in navi.db yet)','info'],UNCHANGED_UNKNOWN:['Unchanged / unknown','none']};
+const RULE={R1:'excluded, its scan did not complete, or the host was not in the scan',R2:'local check, and this scan shows it did not log in (see Scan Health)',
+  R3:'the scan result is not in navi.db yet',R4:'open/reopened and seen at or after this scan started',R5:'was open; now fixed after this scan started',
+  R6:'was absent; now open and seen by this scan',R7:'was absent; the host was scanned (a local check: with a proven login) and nothing was found',R8:'none of the rules matched — check the evidence'};
+
+/* ---- inputs ---- */
+document.querySelectorAll('#selSeg button').forEach(b=>b.onclick=()=>{ ST.sel=b.dataset.s;
+  document.querySelectorAll('#selSeg button').forEach(x=>x.classList.toggle('on',x===b));
+  $('ips').style.display=ST.sel==='ips'?'':'none'; $('uuids').style.display=ST.sel==='uuids'?'':'none';
+  $('tagBox').style.display=ST.sel==='tag'?'':'none'; if(ST.sel==='tag') loadTagKeys(); });
+ST.mode='confirm'; ST.oo='new';
+function setMode(m){ ST.mode=m;
+  document.querySelectorAll('#modeSeg button').forEach(x=>x.classList.toggle('on',x.dataset.m===m));
+  const oo=m==='oneoff';
+  $('oneoffBox').style.display=oo?'':'none'; $('policyBox').style.display=oo?'':'none'; $('plugOpt').style.display=oo?'':'none';
+  $('modeHint').textContent=oo?'Launch and watch a scan — no navi.db sync, no verdicts.':'Plugins on assets → scan → sync → a verdict per asset × plugin.';
+  $('launch').textContent=oo?'⚡ Launch scan':'⚡ Launch confirmation scan';
+  setOo(ST.oo); if(oo && !ST.lk) loadLookups(false); }
+function setOo(o){ ST.oo=o;
+  document.querySelectorAll('#ooSeg button').forEach(x=>x.classList.toggle('on',x.dataset.o===o));
+  const oo=ST.mode==='oneoff', rr=oo&&o==='rerun', via=oo&&o==='via';
+  $('rerunBox').style.display=(rr||via)?'':'none'; $('newBox').style.display=rr?'none':'';
+  $('policyBox').style.display=(oo&&o==='new')?'':'none';
+  $('plugins').closest('div').style.display=via?'none':''; if(via){ $('plugins').value=''; $('pchips').innerHTML=''; }
+  $('ooWhy').innerHTML=rr?'A re-run starts that scan on <b>its own</b> targets, scanner and policy (<span class="mono">navi scan start &lt;id&gt;</span>).'
+    :via?'Your targets below go through a <b>new</b> scan built from the picked scan\'s policy and scanner (<span class="mono">navi scan create … --policy &lt;its policy&gt;</span>) — navi\'s <span class="mono">scan start --targets</span> can\'t carry new targets. The scanner below overrides the scan\'s own.':'';
+  if(rr||via) renderScans(); }
+document.querySelectorAll('#modeSeg button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+document.querySelectorAll('#ooSeg button').forEach(b=>b.onclick=()=>setOo(b.dataset.o));
+function polName(id){ const p=((ST.lk||{}).policies||[]).find(x=>x.id===id); return p?p.name:''; }
+function renderScans(){
+  const L=(ST.lk||{}).scans, f=($('scanFilter').value||'').trim().toLowerCase(), cur=$('rerunScan').value;
+  if(L==null){ $('rerunScan').innerHTML='<option value="" disabled>scan list unreadable — ↻ Reload from Tenable</option>'; return; }
+  const all=(ST.extraScans||[]).filter(x=>!L.some(y=>y.id===x.id)).concat(L);
+  let rows=all.filter(x=>!f||String(x.name||'').toLowerCase().includes(f)||x.id===f||String(x.policy_id||'')===f);
+  rows=rows.filter(x=>x.id===f).concat(rows.filter(x=>x.id!==f));            // an exact scan ID first
+  const shown=rows.slice(0,1500);
+  $('rerunScan').innerHTML=shown.map(x=>'<option value="'+esc(x.id)+'">#'+esc(x.id)+' · '+esc(x.name||'(unnamed)')+' · '+esc(x.status||'?')+(x.enabled===false?' · disabled':'')
+    +(x.policy_id?' · policy '+esc(x.policy_id)+(polName(x.policy_id)?' ('+esc(polName(x.policy_id))+')':''):'')+'</option>').join('')
+    ||'<option value="" disabled>no scan matches</option>';
+  $('rerunScan').value=cur;
+  const byId=/^\d{1,12}$/.test(f) && !all.some(x=>x.id===f);
+  $('scanById').style.display=byId?'':'none'; $('scanById').textContent='Look up scan #'+f;
+  $('rerunNote').innerHTML=N(rows.length)+' match'+(rows.length===1?'':'es')+(rows.length>shown.length?' (first '+N(shown.length)+' shown — filter to narrow)':'')+' · '+N(L.length)
+    +((ST.lk.scans_total||0)>L.length?' of '+N(ST.lk.scans_total):'')+' scan(s), enabled first, most recently changed first · type a scan ID to jump to it';
+}
+$('scanById').onclick=async()=>{ const id=($('scanFilter').value||'').trim();
+  let o; try{ o=await API.post('scan_lookup',{scan_id:id}); }catch(e){ o={ok:false,error:e.message}; }
+  if(!o||!o.ok){ $('rerunNote').textContent='✗ '+((o&&o.error)||'not found'); return; }
+  ST.extraScans=(ST.extraScans||[]).filter(x=>x.id!==o.scan.id).concat([o.scan]); renderScans(); $('rerunScan').value=o.scan.id; };
+$('scanFilter').addEventListener('input',renderScans);
+function renderPolicies(){
+  const P=(ST.lk||{}).policies, S=(ST.lk||{}).scans, cur=$('policySel').value||'tpl:basic';
+  const recent=(S||[]).filter(x=>x.enabled&&x.policy_id).slice(0,60)       // already enabled-first, newest-changed first
+    .map(x=>'<option value="pol:'+esc(x.policy_id)+'">#'+esc(x.id)+' '+esc(x.name||'(unnamed)')+' → policy '+esc(x.policy_id)+(polName(x.policy_id)?' ('+esc(polName(x.policy_id))+')':'')+'</option>').join('');
+  const saved=(P||[]).map(x=>'<option value="pol:'+esc(x.id)+'">'+esc(x.name||'(unnamed)')+' · #'+esc(x.id)+'</option>').join('');
+  $('policySel').innerHTML='<optgroup label="No policy"><option value="tpl:basic">Basic Network Scan (navi default)</option><option value="tpl:discovery">Host Discovery</option></optgroup>'
+    +(recent?'<optgroup label="Policy of one of your latest enabled scans">'+recent+'</optgroup>':'')
+    +(saved?'<optgroup label="Saved policies">'+saved+'</optgroup>':'')
+    +(P==null&&S==null?'<option value="" disabled>policies unreadable — ↻ Reload from Tenable</option>':'');
+  $('policySel').value=cur; if(!$('policySel').value) $('policySel').value='tpl:basic';
+}
+$('policySel').addEventListener('change',()=>{ if($('policySel').value!=='tpl:basic'){ $('plugins').value=''; $('pchips').innerHTML=''; } });
+function pluginIds(){ return ($('plugins').value||'').split(/[\s,;]+/).map(x=>x.trim()).filter(x=>/^\d{1,7}$/.test(x)); }
+let PI_T=null;
+$('plugins').addEventListener('input',()=>{ const ids=pluginIds(); if(ids.length) $('policySel').value='tpl:basic';
+  clearTimeout(PI_T); PI_T=setTimeout(async()=>{ if(!ids.length){ $('pchips').innerHTML=''; return; }
+    let o; try{ o=await API.post('plugin_info',{plugins:ids}); }catch(e){ return; }
+    $('pchips').innerHTML=((o&&o.plugins)||[]).map(p=>'<span class="pchip'+(p.local?' local':'')+(p.family?'':' unk')+'" title="'+esc((p.family||'family unknown — not in navi.db')+(p.local?' · local check: needs a credential':''))+'"><b>'+esc(p.id)+'</b> '+esc(p.name||'')+(p.local?' · <i>local</i>':'')+'</span>').join(''); }, 350); });
+async function loadTagKeys(){ if($('tagKey').options.length>1) return;
+  let o; try{ o=await jpost('/api/hub/tag_scopes',{agent:'scan_confirm'}); }catch(e){ return; }
+  $('tagKey').innerHTML='<option value="">tag category…</option>'+(((o||{}).result||{}).keys||[]).map(k=>'<option value="'+esc(k.key)+'">'+esc(k.key)+' ('+N(k.assets)+')</option>').join(''); }
+$('tagKey').onchange=async e=>{ const k=e.target.value, vs=$('tagVal'); vs.disabled=true; vs.innerHTML='<option value="">value…</option>'; if(!k) return;
+  let o; try{ o=await jpost('/api/hub/tag_scopes',{agent:'scan_confirm',key:k}); }catch(err){ return; }
+  if($('tagKey').value!==k) return;
+  vs.innerHTML='<option value="">value…</option>'+(((o||{}).result||{}).values||[]).map(v=>'<option value="'+esc(v.value)+'">'+esc(v.value)+' ('+N(v.assets)+')</option>').join(''); vs.disabled=false; };
+async function loadLookups(refresh){
+  $('lkNote').textContent='reading Tenable…';
+  let o; try{ o=await API.post('lookups',refresh?{refresh:true}:{}); }catch(e){ o={ok:false,error:e.message}; }
+  if(!o||!o.ok){ $('lkNote').textContent='✗ '+((o&&o.error)||'could not read Tenable'); return; }
+  ST.lk=o; const sc=o.scanners, cr=o.credentials, curS=$('scanner').value, curC=$('cred').value;
+  $('scanner').innerHTML='<option value="">— pick a scanner —</option>'+(sc||[]).map(s=>'<option value="'+esc(s.id)+'">'+esc(s.name||s.id)+' · '+esc(s.status||'?')+'</option>').join('');
+  $('cred').innerHTML='<option value="">(none — network checks only)</option>'+(cr||[]).map(c=>'<option value="'+esc(c.uuid)+'">'+esc(c.name||c.uuid)+(c.type?' · '+esc(c.type):'')+'</option>').join('');
+  $('scanner').value=curS; $('cred').value=curC;
+  if((sc||[]).length===1 && !curS) $('scanner').value=sc[0].id;           // one scanner → pick it
+  $('lkNote').textContent=(sc==null?'⚠ scanner list unreadable · ':N((sc||[]).length)+' scanner(s) · ')+(cr==null?'⚠ credential list unreadable':N((cr||[]).length)+' managed credential(s)')
+    +(o.policies==null?' · ⚠ policies unreadable':' · '+N(o.policies.length)+' polic'+(o.policies.length===1?'y':'ies'))+(o.scans==null?' · ⚠ scans unreadable':' · '+N(o.scans_total||0)+' scan(s)');
+  renderPolicies(); renderScans();
+}
+$('lkRefresh').onclick=()=>loadLookups(true);
+$('scanner').addEventListener('focus',()=>{ if(!ST.lk) loadLookups(false); },{once:true});
+$('cred').addEventListener('focus',()=>{ if(!ST.lk) loadLookups(false); },{once:true});
+
+function what(sv, o){ const rq=(o&&o.request)||{};
+  if(rq.rerun_scan_id) return 're-run #'+rq.rerun_scan_id;
+  return (sv.plugins||[]).join(', ')||(rq.policy_id?'policy #'+rq.policy_id:(rq.template==='discovery'?'Host Discovery':'Basic Network Scan')); }
+const verifies=o=>!!(o&&o.request&&(o.request.plugins||[]).length&&o.request.verify!==false);
+function request(){
+  if(ST.mode==='oneoff' && ST.oo==='rerun') return {mode:'oneoff', rerun_scan_id:$('rerunScan').value||'', timeout_min:+$('tmo').value||360};
+  const via=ST.mode==='oneoff' && ST.oo==='via';
+  const a={};
+  if(ST.sel==='ips') a.ips=$('ips').value; else if(ST.sel==='uuids') a.uuids=$('uuids').value;
+  else a.tag={category:$('tagKey').value, value:$('tagVal').value};
+  const r={plugins:pluginIds(), assets:a, scanner_id:$('scanner').value, credential_uuid:$('cred').value||null,
+    chunk_size:+$('chunk').value||256, max_scans:+$('maxScans').value||20, timeout_min:+$('tmo').value||360, reuse:$('reuse').checked};
+  if(ST.mode==='oneoff'){ r.mode='oneoff';
+    if(via){ r.plugins=[]; r.via_scan_id=$('rerunScan').value||''; if(!r.via_scan_id) r.via_scan_id='-'; }
+    else if(!r.plugins.length){ const v=$('policySel').value||'tpl:basic';
+      if(v.indexOf('pol:')===0) r.policy_id=v.slice(4); else r.template=v.slice(4); } }
+  return r;
+}
+
+/* ---- plan ---- */
+$('plan').onclick=async()=>{
+  flash('flash','<span class="spin"></span> planning — resolving assets, reading the baseline and Tenable\'s scanners…','run');
+  let o; try{ o=await API.post('plan',request()); }catch(e){ o={ok:false,error:e.message}; }
+  if(!o||!o.ok){ flash('flash','✗ '+esc((o&&o.error)||'plan failed'),'crit'); return; }
+  flashClear('flash'); ST.plan=o; renderPlan(o); renderRunCard(o); };
+function renderPlan(o){
+  const g=o.glance||{};
+  renderGlance('glance',[
+    {title:o.request.verify===false?'This one-off scan':'This plan', hero:{v:N(g.scans), l:'scan(s) to launch', u:o.request.rerun_scan_id?('re-run of #'+o.request.rerun_scan_id+(o.rerun_name?' · '+o.rerun_name:'')+' — its own targets'):(N(g.targets)+' target(s) · '+(g.plugins?N(g.plugins)+' plugin(s)':o.via?('through scan #'+o.via.scan.id+' '+(o.via.scan.name||'')+' — its policy #'+o.request.policy_id):o.request.policy_id?('policy #'+o.request.policy_id+(o.policy_name?' · '+o.policy_name:'')):(o.request.template==='discovery'?'Host Discovery':'Basic Network Scan'))), sev:'none', zero:false, href:'#secPlan'},
+     chips:o.request.rerun_scan_id?[]:[{v:N(g.excluded), l:'excluded (no address / not in navi.db)', sev:g.excluded?'med':'none'}]
+       .concat(o.request.verify===false?[]:[{v:N(g.open_now), l:'open now (the baseline)', u:'asset × plugin pairs open in navi.db before the scan', sev:g.open_now?'high':'none'},
+            {v:N(g.local_plugins), l:'local-check plugin(s)', u:'need a credential to mean anything', sev:g.local_plugins&&!g.cred?'crit':'none'}])
+       .concat([{v:g.cred?'yes':'no', l:'credential', sev:g.cred?'ok':'none', zero:false}])}]);
+  $('secPlan').style.display='';
+  $('pf').innerHTML=(o.preflight||[]).map(c=>'<li class="'+esc(c.level)+'">'+(c.level==='ok'?'✓':c.level==='warn'?'⚠':'✗')+' <b>'+esc(c.id)+'</b> '+esc(c.msg)
+    +(c.id==='P4'&&c.level!=='ok'?' · <a href="/agents/scan_eval/page.html">Scan Health</a>':'')+'</li>').join('');
+  $('callouts').innerHTML=((o.public_targets||[]).length?'<div class="warn">⚠ <b>Public addresses</b> in the targets: '+esc(o.public_targets.slice(0,10).join(', '))+(o.public_targets.length>10?' …':'')+'</div>':'')
+    +((o.crown||[]).length?'<div class="warn">⚠ <b>Crown jewels</b> (ACR ≥ 9): '+esc(o.crown.slice(0,10).join(', '))+(o.crown.length>10?' …':'')+'</div>':'');
+  $('planTbl').querySelector('tbody').innerHTML=(o.scans||[]).map(s=>'<tr><td>'+esc(s.plan_index+1)+'</td><td class="mono">'+esc(what(s,o))+'</td><td title="'+esc((s.targets_sample||[]).join(', '))+'">'+N(s.targets)+'</td><td>'+(s.reuse?'↺ yes':'new')+'</td><td class="mono" style="font-size:11px">navi '+esc((s.argv||[]).join(' ').slice(0,180))+'</td></tr>').join('')
+    ||'<tr><td colspan="5" class="sub">No scan planned.</td></tr>';
+  setGate(o);
+}
+function setGate(o){
+  const ok=o.ready&&o.scan_launch_enabled&&o.state==='PLANNED';
+  $('launch').disabled=!ok;
+  $('gate').innerHTML=!o.scan_launch_enabled?'🔒 '+esc(o.gate_reason||'scan launch is gated'):(!o.ready?'✗ fix the preflight failures above':(o.state!=='PLANNED'?'this run is '+esc(o.state):'Opens a confirm with everything that will run.'));
+}
+
+/* ---- launch ---- */
+$('launch').onclick=async()=>{
+  const o=ST.plan; if(!o) return;
+  const pn=o.plugin_names||{};
+  const pl=o.request.plugins||[];
+  if(o.request.rerun_scan_id){
+    if(!confirm('Re-run Tenable scan #'+o.request.rerun_scan_id+(o.rerun_name?' ('+o.rerun_name+')':'')+' on its own targets, scanner and policy?\n\nnavi '+(o.scans[0].argv||[]).join(' ')+'\n\nThis is a one-off scan: no navi.db sync and no verdicts.')) return;
+    return doLaunch(o); }
+  const lines=['Launch '+o.scans.length+' Tenable scan(s)?'+(o.request.verify===false?' (one-off — no sync, no verdicts)':''),'',
+    'Plugins: '+(pl.length?pl.map(p=>p+(pn[p]?' ('+pn[p]+')':'')).join(', '):(o.request.policy_id?'none — policy #'+o.request.policy_id+(o.policy_name?' ('+o.policy_name+')':'')+(o.via?' — from scan #'+o.via.scan.id+' '+(o.via.scan.name||''):''):'none — '+(o.request.template==='discovery'?'Host Discovery':'Basic Network Scan'))),
+    'Targets: '+o.targets+' ('+o.scans.map(s=>s.targets).join(' + ')+' per scan)',
+    'Scanner: '+(o.scanner_name||o.request.scanner_id),
+    'Credential: '+(o.request.credential_uuid?(o.credential_name||'(set)'):'none')];
+  if(o.public_targets&&o.public_targets.length) lines.push('⚠ PUBLIC addresses: '+o.public_targets.slice(0,8).join(', ')+(o.public_targets.length>8?' …':''));
+  if(o.crown&&o.crown.length) lines.push('⚠ CROWN JEWELS (ACR ≥ 9): '+o.crown.slice(0,8).join(', ')+(o.crown.length>8?' …':''));
+  lines.push('','Exact commands:');
+  o.scans.slice(0,6).forEach(s=>lines.push('navi '+s.argv.join(' ').slice(0,160)));
+  if(o.scans.length>6) lines.push('… +'+(o.scans.length-6)+' more');
+  const msg=lines.join('\n');
+  if(!confirm(msg)) return;
+  return doLaunch(o); };
+async function doLaunch(o){
+  $('launch').disabled=true;
+  let r; try{ r=await API.post('scan_launch',{run_id:o.run_id, plan_sha256:o.plan_sha256, confirm:true}); }catch(e){ r={ok:false,error:e.message}; }
+  if(!r||!r.ok){ flash('flash',(r&&r.blocked?'🔒 ':'✗ ')+esc((r&&(r.reason||r.error))||'launch failed'),'crit'); $('launch').disabled=false; return; }
+  flash('flash','✓ launched — the run continues on the server; you can leave this page','ok');
+  await openRun(o.run_id);
+}
+
+/* ---- run status + the live window ---- */
+const CLIW=mountCliWindow($('cli'),{status:$('cliStatus'), poll:(id,since)=>API.post('job_poll',{job_id:id,since:since}),
+  onDone:()=>{ if(ST.run) refreshRun(); }, onTick:()=>{ if(ST.run && Date.now()-(ST.lastRef||0)>15000){ ST.lastRef=Date.now(); refreshRun(); } }});
+async function openRun(rid){
+  let o; try{ o=await API.post('run_get',{run_id:rid}); }catch(e){ return; }
+  if(!o||!o.ok){ flash('flash','✗ '+esc((o&&o.error)||'no such run'),'crit'); return; }
+  renderRunCard(o);
+  if(o.job_id && o.job_id!==CLIW.job()) CLIW.attach(o.job_id);
+  $('secVerdicts').style.display='none';
+  if(o.state!=='PLANNED' && verifies(o) && o.summary) loadVerdicts(true);
+}
+async function refreshRun(){ if(!ST.run) return; let o; try{ o=await API.post('run_get',{run_id:ST.run.run_id}); }catch(e){ return; }
+  if(o&&o.ok){ renderRunCard(o); if(o.summary&&verifies(o)) loadVerdicts(false); } }
+function renderRunCard(o){
+  ST.run=o; $('secRun').style.display=o.state==='PLANNED'?'none':''; $('runId').textContent=o.run_id; $('runState').textContent=o.state;
+  if(o.state==='PLANNED') return;
+  const now=Date.now()/1000;
+  $('scanTbl').querySelector('tbody').innerHTML=(o.scans||[]).map(s=>'<tr><td>'+esc(s.plan_index+1)+'</td><td class="mono">'+esc(s.scan_id||'—')+'</td><td class="mono">'+esc(what(s,o))+'</td><td>'+N(s.targets)+'</td><td>'+esc(s.status||'planned')+'</td><td>'+(s.launched?hFmtDur((s.ended||now)-s.launched):'—')+'</td><td class="sub">'+esc(s.note||'')+'</td></tr>').join('');
+  $('stop').style.display=o.terminal?'none':''; $('resumeWatch').style.display=(!o.terminal&&!o.active)?'':'none';
+  $('reverify').disabled=!o.terminal;
+}
+$('stop').onclick=async()=>{ if(!ST.run||!confirm('Stop every running scan of run '+ST.run.run_id+'? The run is recorded as ABORTED; verdicts cover the scans that completed.')) return;
+  let r; try{ r=await API.post('scan_stop',{run_id:ST.run.run_id, confirm:true}); }catch(e){ r={ok:false,error:e.message}; }
+  flash('flash',r&&r.ok?'■ '+esc(r.message||'stop sent'):(r&&r.blocked?'🔒 ':'✗ ')+esc((r&&(r.reason||r.error))||'failed'),r&&r.ok?'ok':'crit'); refreshRun(); };
+$('resumeWatch').onclick=async()=>{ if(!ST.run||!confirm('Resume watching run '+ST.run.run_id+'? Its recorded scans are polled to the end and synced; nothing is relaunched.')) return;
+  let r; try{ r=await API.post('scan_resume_watch',{run_id:ST.run.run_id, confirm:true}); }catch(e){ r={ok:false,error:e.message}; }
+  if(!r||!r.ok){ flash('flash',(r&&r.blocked?'🔒 ':'✗ ')+esc((r&&(r.reason||r.error))||'failed'),'crit'); return; }
+  openRun(ST.run.run_id); };
+
+/* ---- verdicts ---- */
+async function loadVerdicts(reset){
+  if(!ST.run) return; if(reset){ ST.voff=0; }
+  let o; try{ o=await API.post('verdicts',{run_id:ST.run.run_id, verdict:ST.vf, offset:ST.voff, limit:ST.vlim}); }catch(e){ return; }
+  if(!o||!o.ok) return;
+  $('secVerdicts').style.display='';
+  const c=o.counts||{}, tot=Object.values(c).reduce((a,b)=>a+b,0);
+  renderGlance('vglance',[{title:'Verdicts', hero:{v:N(c.CONFIRMED_FIXED||0), l:'confirmed fixed', u:N(tot)+' asset × plugin pair(s)', sev:'ok', zero:false, filter:'CONFIRMED_FIXED'},
+    bar:Object.keys(VLAB).filter(k=>c[k]).map(k=>({label:VLAB[k][0], value:c[k], color:VLAB[k][1]==='none'?'s8':VLAB[k][1]})),
+    chips:['STILL_VULNERABLE','NOT_VULNERABLE','NEWLY_FOUND','INCONCLUSIVE_AUTH','NOT_ASSESSED','PENDING_INGESTION'].map(k=>({v:N(c[k]||0), l:VLAB[k][0], sev:VLAB[k][1], filter:k}))}],
+    {active:ST.vf, onFilter:(f,el,on)=>{ ST.vf=on?f:null; loadVerdicts(true); }});
+  $('vchips').innerHTML='<button class="btn ghost sm'+(ST.vf?'':' on')+'" data-v="">All '+N(tot)+'</button>'+Object.keys(VLAB).filter(k=>c[k]).map(k=>'<button class="btn ghost sm'+(ST.vf===k?' on':'')+'" data-v="'+k+'">'+esc(VLAB[k][0])+' '+N(c[k])+'</button>').join('');
+  $('vchips').querySelectorAll('button').forEach(b=>b.onclick=()=>{ ST.vf=b.dataset.v||null; loadVerdicts(true); });
+  $('vTbl').querySelector('tbody').innerHTML=(o.rows||[]).map(r=>{ const e=r.evidence||{}, row=(e.row&&typeof e.row==='object')?e.row:null, b=(e.baseline&&typeof e.baseline==='object')?e.baseline:null;
+    const ev='scan '+(e.scan_id||'—')+' · run '+(e.history_id||'—')+' · started '+(e.time_start?new Date(e.time_start*1000).toLocaleString():'—')
+      +'\nbefore: '+(b?b.state+' (last seen '+(b.last_found||'—')+')':'absent')+'\nnow:    '+(row?row.state+' (last seen '+(row.last_found||'—')+')':'absent')
+      +(e.auth_evidence&&e.auth_evidence!=='n/a'?'\nlogin evidence: '+e.auth_evidence:'')+(e.excluded?'\nexcluded: '+e.excluded:'')+(e.hint?'\n'+e.hint:'');
+    return '<tr><td><span class="mono">'+esc(e.host||e.ip||r.target||'')+'</span><div class="sub mono" style="font-size:10.5px">'+esc(r.asset_uuid)+'</div></td><td><b class="mono">'+esc(r.plugin_id)+'</b> <span class="sub">'+esc(r.plugin_name||'')+'</span></td><td><b>'+esc((VLAB[r.verdict]||[r.verdict])[0])+'</b></td><td><details><summary class="sub">'+esc(r.rule)+' · '+esc(RULE[r.rule]||'')+'</summary><div class="ev">'+esc(ev)+'</div>'+(r.verdict==='INCONCLUSIVE_AUTH'?'<a href="/agents/scan_eval/page.html">Scan Health ›</a>':'')+'</details></td></tr>'; }).join('')
+    ||'<tr><td colspan="4" class="sub">No verdicts yet.</td></tr>';
+  $('vPage').textContent=o.total?(o.offset+1)+'–'+Math.min(o.total,o.offset+o.limit)+' of '+N(o.total):'';
+  $('vPrev').disabled=o.offset<=0; $('vNext').disabled=o.offset+o.limit>=o.total;
+}
+$('vPrev').onclick=()=>{ ST.voff=Math.max(0,ST.voff-ST.vlim); loadVerdicts(false); };
+$('vNext').onclick=()=>{ ST.voff+=ST.vlim; loadVerdicts(false); };
+$('csv').onclick=async()=>{ if(!ST.run) return; let o; try{ o=await API.post('export',{run_id:ST.run.run_id}); }catch(e){ return; }
+  if(o&&o.ok) downloadText(o.filename, o.csv); };
+$('reverify').onclick=async()=>{ if(!ST.run||!confirm('Re-verify run '+ST.run.run_id+'? This re-runs the scoped navi.db sync for its plugins and recomputes the verdicts — no scan is launched.')) return;
+  let r; try{ r=await API.post('scan_reverify',{run_id:ST.run.run_id, confirm:true}); }catch(e){ r={ok:false,error:e.message}; }
+  if(!r||!r.ok){ flash('flash',(r&&r.blocked?'🔒 ':'✗ ')+esc((r&&(r.reason||r.error))||'failed'),'crit'); return; }
+  openRun(ST.run.run_id); };
+
+/* ---- recent runs + retention ---- */
+async function loadRuns(){
+  let o; try{ o=await API.post('runs'); }catch(e){ return; }
+  const rs=(o&&o.runs)||[];
+  $('runsBox').innerHTML=rs.length?'<table class="norsz"><thead><tr><th>Run</th><th>When</th><th>State</th><th>Plugins</th><th>Verdicts</th></tr></thead><tbody>'+rs.map(r=>{ const c=((r.summary||{}).counts)||{};
+    return '<tr class="rrow" data-r="'+esc(r.run_id)+'" style="cursor:pointer"><td class="mono">'+esc(r.run_id)+'</td><td>'+esc(new Date(r.created*1000).toLocaleString())+'</td><td>'+esc(r.state)+'</td><td class="mono">'+esc((r.plugins||[]).join(', ')||'one-off')+'</td><td class="sub">'+(c.CONFIRMED_FIXED!=null?N(c.CONFIRMED_FIXED)+' fixed · '+N(c.STILL_VULNERABLE||0)+' still vulnerable':'—')+'</td></tr>'; }).join('')+'</tbody></table>'
+    :'No runs yet.';
+  $('runsBox').querySelectorAll('.rrow').forEach(tr=>tr.onclick=()=>openRun(tr.dataset.r));
+}
+$('runsLoad').onclick=loadRuns;
+$('delOld').onclick=async()=>{
+  let d; try{ d=await API.post('deletable'); }catch(e){ return; }
+  const ids=(d&&d.scans)||[];
+  if(!ids.length){ flash('flash','No confirmation scans older than '+esc(d&&d.days)+' days to delete.','ok'); return; }
+  if(!confirm('Delete '+ids.length+' Tenable scan(s) this agent created more than '+d.days+' days ago?\n\n'+ids.slice(0,20).join(', ')+(ids.length>20?' …':'')+'\n\nOnly scans Scan Confirmation launched are listed. Deleting a scan cannot be undone.')) return;
+  let r; try{ r=await API.post('scan_delete_old',{scan_ids:ids, confirm:true}); }catch(e){ r={ok:false,error:e.message}; }
+  flash('flash',r&&r.ok?'🗑 deleted '+N((r.deleted||[]).length)+(r.failed&&r.failed.length?' · ✗ still readable: '+esc(r.failed.join(', ')):''):(r&&r.blocked?'🔒 ':'✗ ')+esc((r&&(r.reason||r.error))||'failed'),r&&r.ok?'ok':'crit'); };
+
+mountAgentHeader({id:'scan_confirm',icon:'📡',name:'Scan Confirmation',sub:'prove a fix with a targeted Tenable scan'});
+/* reattach: a run left going (this page was closed, or the server restarted) — read-only status call */
+(async()=>{ let s; try{ s=await API.post('status'); }catch(e){ return; }
+  if(s&&s.resumable&&s.resumable.length){ flash('flash','↻ run '+esc(s.resumable[0])+' was left running when the server stopped — open it below and press ↻ Resume watching.','run'); }
+  let o; try{ o=await API.post('runs'); }catch(e){ return; }
+  const live=((o&&o.runs)||[]).find(r=>['LAUNCHING','RUNNING','SCANS_DONE','SYNCING'].indexOf(r.state)>=0);
+  if(live) openRun(live.run_id); })();
+</script>
+</body></html>

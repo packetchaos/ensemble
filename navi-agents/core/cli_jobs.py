@@ -483,6 +483,153 @@ def sample_block_reason():
             "Environment, or export NAVI_DB_PATH=/path/to/navi.db) and restart the server.")
 
 
+def _spawn(argv, cwd, env, answer=None, devnull_stdin=False):
+    """Start argv with its output on a PTY (so navi line-buffers) → (proc, read fd).
+    answer: bytes typed into the tty for a click.confirm. devnull_stdin: stdin is /dev/null
+    instead of the tty — a stray input() prompt gets EOF and fails fast instead of hanging
+    (Scan Confirmation: `navi scan create` without --scanner calls input())."""
+    if _HAS_PTY:
+        master, slave = _pty.openpty()
+        try:
+            fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 50, 200, 0, 0))
+        except Exception:
+            pass
+        try:
+            proc = subprocess.Popen(
+                argv, stdin=(subprocess.DEVNULL if devnull_stdin else slave), stdout=slave, stderr=slave,
+                cwd=cwd, env=env, close_fds=True)
+        finally:
+            os.close(slave)             # parent keeps only the master end
+        if answer:
+            try:
+                os.write(master, answer)    # the tty buffers it until click.confirm reads
+            except OSError:
+                pass
+        return proc, master
+    # Windows fallback: plain pipe
+    proc = subprocess.Popen(
+        argv, stdin=(subprocess.PIPE if answer else subprocess.DEVNULL), stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT, bufsize=0, cwd=cwd, env=env)
+    if answer:
+        try:
+            proc.stdin.write(answer)
+            proc.stdin.close()
+        except Exception:
+            pass
+    return proc, proc.stdout.fileno()
+
+
+def run_navi_streamed(sub_argv, emit, live=None, cancel_ev=None, timeout_s=120, mask=None):
+    """Run one navi command INSIDE an in-process task (start_task) and stream its output into
+    that task's window: committed lines via emit(), the '\r'-redrawn line via live(). stdin is
+    /dev/null; the child is killed on cancel or after timeout_s. mask(line) → the line as shown
+    and logged (hides a credential / navi's printed payload). → {rc, lines, timed_out, cancelled}."""
+    import select
+    mask = mask or (lambda x: x)
+    navi = navi_cli._resolve_navi()
+    if not navi:
+        emit("[navi not found]")
+        return {"rc": 127, "lines": [], "timed_out": False, "cancelled": False}
+    argv = [navi] + list(sub_argv)
+    env = dict(os.environ, PYTHONUNBUFFERED="1")
+    try:
+        proc, fd = _spawn(argv, _run_cwd() or None, env, devnull_stdin=True)
+    except Exception as e:
+        emit("[spawn error] %s" % e)
+        return {"rc": -1, "lines": [], "timed_out": False, "cancelled": False}
+    lines, cur, carry = [], "", b""
+    cr = False                                   # saw a '\r' that may be the start of '\r\n'
+    deadline = time.time() + float(timeout_s)
+    timed_out = cancelled = False
+
+    def feed(text):
+        nonlocal cur, cr
+        text = _ANSI.sub("", text)
+        for ch in text:
+            if ch == "\r":
+                cr = True                        # decide on the next char (the pty sends '\r\n')
+            elif ch == "\n":
+                cr = False
+                ln = mask(cur)
+                lines.append(ln)
+                emit(ln)
+                cur = ""
+            else:
+                if cr:                           # a lone '\r' → a redrawn progress line
+                    if live and cur.strip():
+                        live(mask(cur))
+                    cur = ""
+                    cr = False
+                cur += ch
+    try:
+        while True:
+            if cancel_ev is not None and cancel_ev.is_set():
+                cancelled = True
+                break
+            if time.time() > deadline:
+                timed_out = True
+                break
+            try:
+                r, _w, _x = select.select([fd], [], [], 0.25)
+            except (OSError, ValueError):
+                r = []
+            if r:
+                try:
+                    chunk = os.read(fd, 65536)
+                except OSError:
+                    chunk = b""
+                if not chunk:
+                    if proc.poll() is not None:
+                        break
+                    continue
+                carry += chunk
+                try:
+                    text = carry.decode("utf-8")
+                    carry = b""
+                except UnicodeDecodeError as e:
+                    text = carry[:e.start].decode("utf-8", "replace")
+                    carry = carry[e.start:]
+                feed(text)
+            elif proc.poll() is not None:
+                # drain anything left without blocking
+                try:
+                    while True:
+                        r2, _w, _x = select.select([fd], [], [], 0)
+                        if not r2:
+                            break
+                        chunk = os.read(fd, 65536)
+                        if not chunk:
+                            break
+                        feed(chunk.decode("utf-8", "replace"))
+                except OSError:
+                    pass
+                break
+        if timed_out or cancelled:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+            emit("[%s — navi stopped]" % ("timed out after %ds" % int(timeout_s) if timed_out else "cancelled"))
+        try:
+            proc.wait(timeout=10)
+        except Exception:
+            pass
+    finally:
+        try:
+            if _HAS_PTY:
+                os.close(fd)
+        except OSError:
+            pass
+        if live:
+            live("")
+    if cur.strip():
+        ln = mask(cur)
+        lines.append(ln)
+        emit(ln)
+    return {"rc": proc.returncode if proc.returncode is not None else -9, "lines": lines,
+            "timed_out": timed_out, "cancelled": cancelled}
+
+
 def _start(sub_argv, label, answer=None, kind=None):
     """answer: bytes typed into navi's stdin right after it starts — only used to answer
     the y/N confirm of `-rebuild` (click.confirm), which the user already confirmed in
@@ -513,35 +660,7 @@ def _start(sub_argv, label, answer=None, kind=None):
     # mid-run. A normal process + a pty behaves just like your shell.
     env = dict(os.environ, PYTHONUNBUFFERED="1")
     try:
-        if _HAS_PTY:
-            master, slave = _pty.openpty()
-            try:
-                fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 50, 200, 0, 0))
-            except Exception:
-                pass
-            try:
-                proc = subprocess.Popen(
-                    argv, stdin=slave, stdout=slave, stderr=slave,
-                    cwd=cwd, env=env, close_fds=True)
-            finally:
-                os.close(slave)             # parent keeps only the master end
-            fd = master
-            if answer:
-                try:
-                    os.write(master, answer)    # the tty buffers it until click.confirm reads
-                except OSError:
-                    pass
-        else:                               # Windows fallback: plain pipe
-            proc = subprocess.Popen(
-                argv, stdin=(subprocess.PIPE if answer else subprocess.DEVNULL), stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT, bufsize=0, cwd=cwd, env=env)
-            if answer:
-                try:
-                    proc.stdin.write(answer)
-                    proc.stdin.close()
-                except Exception:
-                    pass
-            fd = proc.stdout.fileno()
+        proc, fd = _spawn(argv, cwd, env, answer=answer)
     except Exception as e:
         with _LOCK:
             job["status"] = "error"

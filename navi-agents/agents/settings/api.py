@@ -55,6 +55,10 @@ _ENV_FIELDS = [
      "help": "1 = Remote Remediation can run `navi action push` — remote code execution over SSH to a Linux host. "
              "The Ensemble's HIGHEST-risk capability, a SEPARATE opt-in stacked ON TOP of writes; keep 0 "
              "unless actively remediating. SSH creds come from `navi config ssh` (see the SSH chip above)."},
+    {"key": "NAVI_SCAN_LAUNCH", "label": "Allow scan launch (Scan Confirmation)", "bool": True, "guarded": True,
+     "help": "1 = Scan Confirmation can launch Tenable scans (`navi scan create`) to prove fixes — a SEPARATE "
+             "opt-in stacked ON TOP of writes. Scans spend scanner capacity on real networks; each launch is "
+             "still confirmed in the page."},
     {"key": "NAVI_ALERT_EMAIL", "label": "Default alert email",
      "help": "Where Alerts sends alert digests when something fires. Per-alert overrides win over this default."},
     {"key": "NAVI_BIN", "label": "navi binary path", "env_only": True,
@@ -168,6 +172,8 @@ def status(p):
             "email_gate_reason": navi_cli.email_gate_reason(),
             "rce_enabled": navi_cli.rce_enabled(),
             "rce_gate_reason": navi_cli.rce_gate_reason(),
+            "scan_launch_enabled": navi_cli.scan_launch_enabled(),
+            "scan_launch_gate_reason": navi_cli.scan_launch_gate_reason(),
             "ssh": db.ssh_status(),
             "navi_available": navi_cli.navi_available(),
             "navi_path": (navi_cli._resolve_navi() or ""),

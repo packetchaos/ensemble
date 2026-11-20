@@ -1531,3 +1531,40 @@ def cancel_series(series) -> dict:
     """Stop the rest of a tag series (pages still waiting → cancelled)."""
     from core import tagq
     return {"ok": True, "series": series, "cancelled": tagq.cancel_series(series)}
+
+
+# ── Scan Confirmation launch gate (build 514) ────────────────────────────────────────────
+# Launching scans spends scanner capacity on real networks, so it is its own opt-in on top
+# of writes (like email and remote execution): NAVI_SCAN_LAUNCH=1 or an ALLOW_SCAN_LAUNCH
+# file in the repo root. Writes alone do NOT let the console launch scans.
+_SCAN_ENABLE_FILES = ("ALLOW_SCAN_LAUNCH", ".allow_scan_launch", "allow_scan_launch")
+
+
+def _scan_enable_file() -> str:
+    for fn in _SCAN_ENABLE_FILES:
+        p = os.path.join(_REPO_ROOT, fn)
+        if os.path.exists(p):
+            return p
+    return ""
+
+
+def _scan_opted_in() -> bool:
+    return _truthy(os.environ.get("NAVI_SCAN_LAUNCH")) or bool(_scan_enable_file())
+
+
+def scan_launch_enabled() -> bool:
+    return allow_writes() and _scan_opted_in()
+
+
+def scan_launch_gate_reason() -> str:
+    """Precise reason a confirmation scan can't launch — '' means it can."""
+    if not allow_writes():
+        return ("writes disabled on server — launching scans needs writes first: set NAVI_ALLOW_WRITES=1 "
+                "(or `touch ALLOW_WRITES`) and restart")
+    if not _scan_opted_in():
+        return ("launching scans is a separate opt-in on top of writes — turn on NAVI_SCAN_LAUNCH in "
+                "Settings ▸ Environment (or create an empty file named ALLOW_SCAN_LAUNCH in the repo root) "
+                "and restart")
+    if not navi_available():
+        return "scan launch is enabled, but the navi CLI was not found — set NAVI_BIN to its full path"
+    return ""

@@ -34,7 +34,7 @@
    with background:true — the job budget applies — then re-runs the page's last ▶ to show the
    result the job left in the server cache) and, when the payload says optimize, a link to
    Settings → ⚡ Optimize. budget_partial answers are never stored in the page cache (HC). */
-const H_WRITE_RE = /^(apply|bulk_apply|assign|tag|tag_.+|.+_tag|tags_.+|send|send_.+|delete|remove|rotate|encrypt|decrypt|refresh|save|set|set_.+|.+_set|toggle|add_.+|arm|disarm|run_now|command|upload|push_file|campaign|abort|verify|run_checks|cred_test|path_check|deploy|rollback|promote|ignore_.+|detections_.+|evaluate|test|trust|run_all|reset_usage|navi_.+|build_from_.+)$/;
+const H_WRITE_RE = /^(apply|bulk_apply|assign|tag|tag_.+|.+_tag|tags_.+|send|send_.+|delete|remove|rotate|encrypt|decrypt|refresh|save|set|set_.+|.+_set|toggle|add_.+|arm|disarm|run_now|command|upload|push_file|campaign|abort|verify|run_checks|cred_test|path_check|deploy|rollback|promote|ignore_.+|detections_.+|evaluate|test|trust|run_all|reset_usage|navi_.+|scan_.+|build_from_.+)$/;
 /* build 489: the one ▶ Run click mountTagScope makes for "▶ Run for this tag" counts as the
    operator's own (recorded as a run step) — only for that button, only while it is dispatched */
 function hTsClick(ev){ const t=window.__TS_CLICK; return !!(t && ev && ev.target && (ev.target===t || (t.contains && t.contains(ev.target)))); }
@@ -1414,6 +1414,13 @@ const AGENT_INTRO = {
    "<b>Migration roadmap<\/b> — assets ranked by crypto risk weighted by ACR and KEV, crown jewels first; export to CSV.",
    "<b>Tags that route the migration<\/b> — Post-Quantum : Cipher Analysis on the quantum-vulnerable set, plus PQC Risk, Transport, Priority, Harvest-Now and Agility tags from the roadmap.",
    "<b>By tag<\/b> — run over one tag's assets: every metric, the migration roadmap and the CNSA 2.0 counts are rebuilt for that tag, each asset keeps its estate priority, and tags written from that view stay inside the tag. Switch between the whole estate and your last 5 tags without re-running."]},
+ scan_confirm:{does:"Scan Confirmation takes plugin IDs and assets (IPs, asset UUIDs or a tag), plans the smallest set of <span class='mono'>navi scan create<\/span> scans, checks everything that could go wrong before anything runs, and — after one confirm — launches them, streams every navi command into a live CLI window, waits for the scans, runs a scoped navi.db sync and gives one verdict per asset × plugin: confirmed fixed, still vulnerable, not vulnerable, newly found, inconclusive (no login), not assessed or pending.",caps:[
+   "<b>A plan you can read<\/b> — one row per scan with its exact (masked) navi command — one plugin per scan, targets chunked, reuse of an identical earlier scan when there is one.",
+   "<b>Preflight before anything runs<\/b> — eleven numbered checks: gates, scanner online, credential exists, local checks need a credential, known plugin IDs, scan cap, no identical run going, navi.db not locked, no plugin + policy mix, agent-only assets.",
+   "<b>Proven, not assumed<\/b> — navi exits 0 even when a start fails, so every launch is proven by a new run in Tenable's scan history and every stop by a status read; times come from Tenable, not the server clock.",
+   "<b>One live window<\/b> — the whole run — create, wait, sync, verify — is one job in the same CLI window Settings uses, with the credential and navi's printed payload masked.",
+   "<b>Verdicts with evidence<\/b> — first-match rules over the baseline and navi.db after a scoped sync (<span class='mono'>--since<\/span> for state changes and <span class='mono'>--days 1<\/span> for still-open findings); each verdict keeps the scan, run, before and after state and the login evidence. CSV export.",
+   "<b>One-off scans<\/b> — ⚡ One-off scan: a new scan with no policy (navi's Basic Network Scan or Host Discovery), a saved policy, the policy of one of your latest enabled scans, or plugin IDs; send new hosts through an existing scan (its policy and scanner); or re-run a scan as-is. Same plan, confirm and live window; no sync, no verdicts."]},
  scan_eval:{does:"Scan Health reads Tenable's scan-information and credential-status plugins to show which assets were scanned with a working login, which were blind and why, how fresh each scan is, which crown jewels sit in a blind spot, and how scanners, policies and scans perform. Every set can be tagged so the fix gets routed.",caps:[
    "<b>One credentialed rule<\/b> — credentialed = the scan-information plugin reports credentialed checks, or a valid-credentials plugin is present; blind = scanned without credentials. Every specialist in the Ensemble uses this rule.",
    "<b>Why a host is blind<\/b> — credential failed, insufficient privilege, intermittent, or no credentials at all — and credentialed hosts that still have a credential issue.",
@@ -1919,7 +1926,7 @@ function hWidget(section, opts){
 // build 508: pages a user acts IN rather than reports FROM get no email buttons at all (no "📧 Email
 // dashboard", no per-table 📧) — tools, editors and executors. Keyed by the page URL (/agents/<id>/),
 // not window.__AGENT_ID, which a page's second agentApi('explore') can overwrite.
-const _HM_NO_EMAIL = new Set(['tagremoval', 'alert', 'custom_audit', 'c2', 'mcpcmp', 'contract']);
+const _HM_NO_EMAIL = new Set(['tagremoval', 'alert', 'custom_audit', 'c2', 'scan_confirm', 'mcpcmp', 'contract']);
 function _hmPageAgent(){ const m=/^\/agents\/([a-z0-9_]+)\//.exec(location.pathname||''); return m?m[1]:(window.__AGENT_ID||''); }
 function hMailAuto(opts){
   opts=opts||{};
@@ -2240,6 +2247,7 @@ const _SIDE_GROUPS=[
     ['🐦‍⬛','Alerts','/agents/alert/page.html'],
     ['🗑️','Tag Removal','/agents/tagremoval/page.html'],
     ['🐺','Remote Remediation','/agents/c2/page.html'],
+    ['📡','Scan Confirmation','/agents/scan_confirm/page.html'],
     ['📜','Automation Station','/agents/contract/page.html'],
   ]],
   ['Views',[
@@ -2387,7 +2395,7 @@ const AGENT_FLOW=['mitre','cisakev','eol','certificate',
                   'iot_squad','postquantum',
                   'ai','identity','software','customapp','attackpath','scan_eval',
                   'agentgroup','classify','exproute','asset_ownership','acr',
-                  'email','alert','tagremoval','c2','contract'];
+                  'email','alert','tagremoval','c2','scan_confirm','contract'];
 /* build 490: the guided flow's labels come from brand.js (the roster's plain names) */
 const AGENT_FLOW_LABEL=new Proxy({}, {get:(_,id)=>((window.BRAND&&BRAND.roster&&BRAND.roster[id])||{}).name||String(id)});
 function _flowCurrentId(){
@@ -3155,3 +3163,56 @@ function hDrill(o){
   return api;
 }
 /* ===== end hDrill ===== */
+
+/* ===== mountCliWindow (build 514) — the live navi CLI window, shared by Settings and Scan
+   Confirmation (one implementation, so both get every fix). el = the <pre class="cli"> box.
+   opts: poll(jobId, since) → Promise<{ok, job}> (Settings: navi_poll; Scan Confirmation: its
+   job_poll), status = an optional status chip element, onDone(job), silenceNote = text shown
+   once when a job has been quiet for 12 s. Returns {attach(id), hint(html), status(txt,kind),
+   clear(), job()}. Lines go in with textContent — never HTML. ===== */
+function hFmtDur(s){ s=Math.max(0,s|0); if(s<60)return s+'s'; const m=Math.floor(s/60); if(m<60)return m+'m '+(s%60)+'s'; const h=Math.floor(m/60); return h+'h '+(m%60)+'m'; }
+function mountCliWindow(el, opts){
+  opts=opts||{};
+  const S={job:null, cur:0, tok:0, ms:300, hint:false};
+  const part=c=>el.querySelector('.'+c);
+  function status(txt,kind){ const c=opts.status; if(!c) return; c.style.display=''; c.textContent=txt;
+    c.style.borderColor=kind==='ok'?'var(--ok)':kind==='err'?'var(--crit)':'var(--accent)'; c.style.color=c.style.borderColor; }
+  function attach(jobId){
+    S.job=jobId; S.cur=0; S.ms=300; S.hint=false; const tok=++S.tok;
+    el.innerHTML='<span class="cliHead" style="color:var(--accent)"></span><span class="cliOut"></span><span class="cliHint" style="color:var(--mut)"></span><span class="cliLive"></span>';
+    poll(tok);
+  }
+  async function poll(tok){
+    if(tok!==S.tok) return;                                   // a newer attach supersedes this poller
+    let o; try{ o=await opts.poll(S.job, S.cur); }catch(e){ o=null; }
+    if(tok!==S.tok) return;
+    let changed=false;
+    if(o&&o.ok&&o.job){ const j=o.job;
+      const head=part('cliHead'); if(head && !head.dataset.set){ head.textContent='$ '+j.cmd+'\n'; head.dataset.set='1'; }
+      if(j.lines&&j.lines.length){ const out=part('cliOut'); if(out) out.textContent += j.lines.join('\n')+'\n'; changed=true; }
+      S.cur=j.n_lines;
+      const live=part('cliLive');
+      if(j.status!=='running'){
+        const okZero=j.returncode===0;
+        if(live){ live.textContent=(j.cur?j.cur+'\n':'')+(okZero?'✓ done':(j.status==='cancelled'?'■ cancelled':'✗ exit '+j.returncode)); live.style.color=okZero?'var(--ok)':'var(--crit)'; }
+        status((okZero?'done':(j.status==='cancelled'?'cancelled':'exit '+j.returncode))+' · '+hFmtDur(j.elapsed||0), okZero?'ok':'err');
+        el.scrollTop=1e9; if(opts.onDone) opts.onDone(j);
+        return;
+      }
+      const nc=j.cur||''; if(live && live.textContent!==nc){ live.textContent=nc; changed=true; }   // live overwriting line
+      status('running','run');
+      if(!S.hint && opts.silenceNote && j.n_lines<=2 && (j.elapsed||0)>=12){       // silent so far → reassure once
+        S.hint=true; const h=part('cliHint'); if(h) h.textContent=opts.silenceNote+'\n\n';
+      }
+      if(opts.onTick) opts.onTick(j);
+      el.scrollTop=1e9;
+    }
+    // snappy while output is flowing, back off to 2s when idle — responsive without hammering over hours
+    S.ms = changed ? 300 : Math.min(2000, Math.round(S.ms*1.4));
+    setTimeout(()=>poll(tok), S.ms);
+  }
+  function hint(html){ S.hint=true; const h=part('cliHint'); if(h) h.innerHTML=html; }   // callers pass their own fixed markup
+  function clear(){ S.tok++; S.job=null; el.innerHTML='<span class="sub">Cleared.</span>'; if(opts.status) opts.status.style.display='none'; }
+  return {attach:attach, hint:hint, status:status, clear:clear, job:()=>S.job};
+}
+/* ===== end mountCliWindow ===== */

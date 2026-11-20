@@ -220,6 +220,7 @@ function renderStat(){
     chip('Tag writes', w, w?'enabled':'gated')
     + chip('Email', em, em?'enabled':'gated')
     + chip('Remote exec', s.rce_enabled, s.rce_enabled?'enabled':'gated')
+    + chip('Scan launch', s.scan_launch_enabled, s.scan_launch_enabled?'enabled':'gated')
     + '<span class="chip" title="'+esc(ssh.message||'')+'" style="border-color:'+(sshGood===true?'var(--ok)':sshGood===false?'var(--crit)':'var(--cx-e7c66b)')+';color:'+(sshGood===true?'var(--ok)':sshGood===false?'var(--crit)':'var(--cx-e7c66b)')+'">SSH creds: '+esc(sshTxt)+'</span>'
     + chip('navi CLI', s.navi_available, s.navi_available?(s.navi_path||'found'):'not found')
     + chip('AI', ai, ai?(esc(s.llm.provider||'?')+' · '+esc(s.llm.model||'')):esc((s.llm&&s.llm.why)||'no model'))
@@ -405,18 +406,17 @@ async function loadDb(){
   markRunning();
 }
 
-// ---- live CLI window (background jobs; reattachable) ----
-let CLI_JOB=null, CLI_CUR=0, CLI_TOKEN=0, POLL_MS=300, CLI_ELB=0, CLI_ELAT=0, CLI_RUN=false, CLI_HINT=false;
-function setCliStatus(txt,kind){ const c=document.getElementById('cliStatus'); c.style.display=''; c.textContent=txt;
-  c.style.borderColor=kind==='ok'?'var(--ok)':kind==='err'?'var(--crit)':'var(--accent)'; c.style.color=c.style.borderColor; }
-function fmtDur(s){ s=Math.max(0,s|0); if(s<60)return s+'s'; const m=Math.floor(s/60); if(m<60)return m+'m '+(s%60)+'s'; const h=Math.floor(m/60); return h+'h '+(m%60)+'m'; }
-
+// ---- live CLI window (background jobs; reattachable) — mountCliWindow in console.js (shared with Scan Confirmation) ----
+let CLI_JOB=null;
+const CLIW=mountCliWindow(document.getElementById('cli'), {
+  status:document.getElementById('cliStatus'),
+  poll:(id,since)=>API.post('navi_poll',{job_id:id, since:since}),
+  onDone:()=>{ loadDb(); loadJobs(); if(typeof loadSla==='function')loadSla(); if(typeof loadHx==='function')loadHx(); },
+  silenceNote:'(navi is preparing the export on Tenable — big tables like vulns can be silent for a bit before output. This keeps running in the background.)'});
+function setCliStatus(txt,kind){ CLIW.status(txt,kind); }
+function fmtDur(s){ return hFmtDur(s); }
 // Attach the window to a job id (running OR finished) and stream it from the start.
-function attachJob(jobId){
-  CLI_JOB=jobId; CLI_CUR=0; POLL_MS=300; CLI_RUN=false; CLI_HINT=false; CLI_ELB=0; CLI_ELAT=Date.now(); const tok=++CLI_TOKEN;
-  document.getElementById('cli').innerHTML='<span id="cliHead" style="color:var(--accent)"></span><span id="cliOut"></span><span id="cliHint" style="color:var(--mut)"></span><span id="cliLive"></span>';
-  pollNavi(tok);
-}
+function attachJob(jobId){ CLI_JOB=jobId; CLIW.attach(jobId); }
 /* ---- job buttons: pressed → running → back to normal when the job ends ---- */
 let RUNNING={};                                   // kind → running job id
 function focusCli(){
@@ -450,40 +450,8 @@ async function startNavi(payload, btn, note){
   RUNNING[kind]=o.job.id; markRunning();
   attachJob(o.job.id);
   // upfront expectation-setter — the job runs in the background and can be quiet for a while
-  const h=document.getElementById('cliHint');
-  if(h){ h.innerHTML=(note||'<span style="color:var(--ok)">✓ Started in the background.</span> Safe to leave this page — it keeps running on the server. navi can go <b>quiet for many minutes</b> while Tenable prepares a large export (vulns especially); this window updates as navi reports and shows the total time when it finishes.')+'\n\n'; }
-  CLI_HINT=true;   // don't also fire the delayed silence note
+  CLIW.hint((note||'<span style="color:var(--ok)">✓ Started in the background.</span> Safe to leave this page — it keeps running on the server. navi can go <b>quiet for many minutes</b> while Tenable prepares a large export (vulns especially); this window updates as navi reports and shows the total time when it finishes.')+'\n\n');   // also stops the delayed silence note
   loadJobs();
-}
-async function pollNavi(tok){
-  if(tok!==CLI_TOKEN)return;                    // a newer attach supersedes this poller
-  let o; try{ o=await API.post('navi_poll',{job_id:CLI_JOB, since:CLI_CUR}); }catch(e){ o=null; }
-  if(tok!==CLI_TOKEN)return;
-  let changed=false;
-  if(o&&o.ok){ const j=o.job;
-    const head=document.getElementById('cliHead'); if(head && !head.dataset.set){ head.textContent='$ '+j.cmd+'\n'; head.dataset.set='1'; }
-    if(j.lines&&j.lines.length){ const out=document.getElementById('cliOut'); if(out) out.textContent += j.lines.join('\n')+'\n'; changed=true; }
-    CLI_CUR=j.n_lines;
-    const live=document.getElementById('cliLive');
-    if(j.status!=='running'){
-      CLI_RUN=false;
-      const okZero=j.returncode===0;
-      if(live){ live.textContent=(j.cur?j.cur+'\n':'')+(okZero?'✓ done':'✗ exit '+j.returncode); live.style.color=okZero?'var(--ok)':'var(--crit)'; }
-      setCliStatus((okZero?'done':('exit '+j.returncode))+' · '+fmtDur(j.elapsed||0), okZero?'ok':'err');
-      document.getElementById('cli').scrollTop=1e9; loadDb(); loadJobs(); if(typeof loadSla==='function')loadSla(); if(typeof loadHx==='function')loadHx();
-      return;
-    }
-    const nc=j.cur||''; if(live && live.textContent!==nc){ live.textContent=nc; changed=true; }   // live overwriting line
-    setCliStatus('running','run');
-    if(!CLI_HINT && j.n_lines<=2 && (j.elapsed||0)>=12){       // silent so far → reassure once
-      CLI_HINT=true; const h=document.getElementById('cliHint');
-      if(h) h.textContent='(navi is preparing the export on Tenable — big tables like vulns can be silent for a bit before output. This keeps running in the background.)\n\n';
-    }
-    document.getElementById('cli').scrollTop=1e9;
-  }
-  // snappy while output is flowing, back off to 2s when idle — responsive without hammering over hours
-  POLL_MS = changed ? 300 : Math.min(2000, Math.round(POLL_MS*1.4));
-  setTimeout(()=>pollNavi(tok), POLL_MS);
 }
 // Recent runs — reattach any job (and auto-reattach a still-running one after a reload).
 async function loadJobs(){
@@ -610,7 +578,7 @@ document.getElementById('hxCancel').onclick=async ()=>{
   flash('hxFlash',o&&o.ok?esc(o.message||'cancelling…'):'✗ '+esc((o&&o.error)||'could not cancel'),o&&o.ok?'warn':'crit'); loadHx();
 };
 loadHx();
-document.getElementById('cliClear').onclick=()=>{ CLI_TOKEN++; CLI_JOB=null; document.getElementById('cli').innerHTML='<span class="sub">Cleared.</span>'; document.getElementById('cliStatus').style.display='none'; };
+document.getElementById('cliClear').onclick=()=>{ CLI_JOB=null; CLIW.clear(); };
 document.getElementById('dbRefresh').onclick=loadDb;
 setInterval(loadJobs, 5000);   // refresh Recent-runs list + durations every 5s (no jittery per-second tick)
 

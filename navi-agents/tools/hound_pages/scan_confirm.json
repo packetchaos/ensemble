@@ -1,0 +1,52 @@
+{
+ "codename": "",
+ "discipline": "Scan Confirmation",
+ "category": "Operationalize",
+ "tagline": "Prove the fix — with Tenable's own scan of exactly what you changed.",
+ "lore": "",
+ "problem": "After a patch, the finding stays open until the next scheduled scan reaches that host — days, sometimes weeks. Building a one-off verification scan by hand means picking plugins, targets, a scanner and a credential in the UI, waiting, syncing navi.db and then comparing before and after yourself.",
+ "does": "Scan Confirmation takes plugin IDs and assets (IPs, asset UUIDs or a tag), plans the smallest set of `navi scan create` scans, checks everything that could go wrong before anything runs, and — after one confirm — launches them, streams every navi command into a live CLI window, waits for the scans, runs a scoped navi.db sync and gives one verdict per asset × plugin: confirmed fixed, still vulnerable, not vulnerable, newly found, inconclusive (no login), not assessed or pending.",
+ "glance": {
+  "caption": "Scan Confirmation's At a glance: scans to launch, targets and plugins, assets excluded, open findings in the baseline, local-check plugins and whether a credential is set — then the verdicts once the scans finish."
+ },
+ "capabilities": [
+  [
+   "A plan you can read",
+   "one row per scan with its exact (masked) navi command — one plugin per scan, targets chunked, reuse of an identical earlier scan when there is one."
+  ],
+  [
+   "Preflight before anything runs",
+   "eleven numbered checks: gates, scanner online, credential exists, local checks need a credential, known plugin IDs, scan cap, no identical run going, navi.db not locked, no plugin + policy mix, agent-only assets."
+  ],
+  [
+   "Proven, not assumed",
+   "navi exits 0 even when a start fails, so every launch is proven by a new run in Tenable's scan history and every stop by a status read; times come from Tenable, not the server clock."
+  ],
+  [
+   "One live window",
+   "the whole run — create, wait, sync, verify — is one job in the same CLI window Settings uses, with the credential and navi's printed payload masked."
+  ],
+  [
+   "Verdicts with evidence",
+   "first-match rules over the baseline and navi.db after a scoped sync (`--since` for state changes and `--days 1` for still-open findings); each verdict keeps the scan, run, before and after state and the login evidence. CSV export."
+  ],
+  [
+   "One-off scans",
+   "⚡ One-off scan: a new scan with no policy (navi's Basic Network Scan or Host Discovery), a saved policy, the policy of one of your latest enabled scans, or plugin IDs; send new hosts through an existing scan (its policy and scanner); or re-run a scan as-is. Same plan, confirm and live window; no sync, no verdicts."
+  ]
+ ],
+ "how": "Scan Confirmation drives `navi scan create` (which creates AND launches), `navi explore api` reads of the scan history and status, and `navi config update vulns` scoped to the plugins. Launching needs writes enabled, scan launch separately enabled (NAVI_SCAN_LAUNCH) and a confirm; stop, pause, resume, re-verify and deleting old confirmation scans are gated the same way. Runs, scans, verdicts and a hash-chained event log live in tag_jobs.db.",
+ "who": "Remediation owners who need proof a patch landed, VM leads closing tickets, and scan engineers who want a verification scan without building it in the UI.",
+ "better": "Remote Remediation deploys the fix; Scan Confirmation proves it. Inconclusive verdicts point to Scan Health for the credential problem, and the synced findings flow into SLA Tracker and Exposure Score.",
+ "different": [
+  [
+   "No model",
+   "every verdict is a rule over Tenable's data — the same input always gives the same answer."
+  ],
+  [
+   "Honest about gaps",
+   "a host the scan never reached, a local check without a login, or a result navi hasn't synced yet says so instead of guessing."
+  ]
+ ],
+ "cta": "Send Scan Confirmation after the fix — the scan is the proof."
+}

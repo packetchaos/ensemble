@@ -31,6 +31,7 @@
       "alert": "Alert Raven — its own scheduler",
       "tagremoval": "Tag Removal — a live list of tags to remove",
       "c2": "Command & Control — runs commands",
+    "scan_confirm": "Scan Confirmation — launches scans (hands-on, gated)",
       "contract": "AI Contract — its own scheduled loop",
       "dashboard": "Dashboards — built from the other hounds",
       "argos": "Argos — a search hound (one asset at a time)",

@@ -990,6 +990,45 @@
       ]
     },
     {
+      "id": "scan_confirm",
+      "name": "Scan Confirmation",
+      "icon": "📡",
+      "summary": "Scan Confirmation — prove a fix (or a finding) with Tenable's own scan. Give plugin IDs and assets (IPs, asset UUIDs or a tag); it plans the smallest set of `navi scan create` scans (one plugin each, chunked targets, scanner + credential), runs every preflight check, then — only after you confirm — launches them, streams every navi command into the live CLI window, polls each scan to the end, runs a scoped sync (`--since` for state changes plus `--days 1` for still-open findings) and gives one verdict per asset × plugin: confirmed fixed, still vulnerable, not vulnerable, newly found, inconclusive (no login), not assessed or pending. Deterministic — no model anywhere. Launching is triple-gated (writes + NAVI_SCAN_LAUNCH + confirm); runs, scans, verdicts and a hash-chained event log live in tag_jobs.db. ⚡ One-off scan: a new scan with a saved policy (or the policy an existing scan uses) or plugin IDs, or a re-run of an existing scan — launch and watch, no verdicts.",
+      "category": "Operationalize",
+      "mission": "Platform",
+      "hero": false,
+      "codename": "",
+      "grid": true,
+      "deployed": true,
+      "error": null,
+      "needs_backend": true,
+      "page": "/agents/scan_confirm/page.html",
+      "readme": null,
+      "hound": "/web/hounds/scan_confirm.html",
+      "actions": [
+        "deletable",
+        "events",
+        "export",
+        "job_poll",
+        "lookups",
+        "plan",
+        "plugin_info",
+        "run",
+        "run_get",
+        "runs",
+        "scan_delete_old",
+        "scan_launch",
+        "scan_lookup",
+        "scan_pause",
+        "scan_resume",
+        "scan_resume_watch",
+        "scan_reverify",
+        "scan_stop",
+        "status",
+        "verdicts"
+      ]
+    },
+    {
       "id": "ex_apps",
       "name": "Explorer › Web Apps",
       "icon": "🌐",
@@ -1077,6 +1116,6 @@
       ]
     }
   ],
-  "count": 43,
-  "deployed": 43
+  "count": 44,
+  "deployed": 44
 }

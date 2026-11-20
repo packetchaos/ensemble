@@ -41,7 +41,10 @@ _MUTATING = {"hx_cancel", "tag_cancel", "release_cancel",   # stop work: never c
              "set_env", "config_mode", "sla_set", "reset_usage",
              # Command & Control — remote execution (gated + confirm) and run control
              "command", "upload", "push_file", "campaign", "abort", "run_checks", "cred_test",
-             "path_check", "deploy", "rollback"}
+             "path_check", "deploy", "rollback",
+             # Scan Confirmation — scan launch / control / sync / delete (gated: writes + NAVI_SCAN_LAUNCH + confirm)
+             "scan_launch", "scan_stop", "scan_pause", "scan_resume", "scan_resume_watch", "scan_reverify",
+             "scan_delete_old"}
 
 
 # Live state — job progress, status, logs — must never be served from the result cache
@@ -53,7 +56,9 @@ _NOCACHE_AGENTS = {"settings", "hub", "argos", "explore", "ex_apps", "ex_assets"
                    "ex_software",
                    "ex_plugins", "ex_routes", "ex_tags", "ex_vulns",
                    # Command & Control: live gate / runs / command log — never a remembered answer
-                   "c2"}
+                   "c2",
+                   # Scan Confirmation: runs, scan status and verdicts are live state
+                   "scan_confirm"}
 _LIVE = {"status", "log", "loop_log", "history", "scheduler", "list", "get", "metrics", "release_get",
          "tag_jobs", "navi_poll", "navi_jobs", "db_checks", "sla_get", "activity", "bg_status",
          "scopes", "tag_scopes"}

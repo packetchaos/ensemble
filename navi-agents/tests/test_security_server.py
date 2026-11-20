@@ -381,7 +381,7 @@ for p in sorted(glob.glob(os.path.join(ROOT, "agents", "*", "api.py"))):
         if getattr(fn, "__name__", "") in gated:
             writers.append((aid, action))
 check(len(writers) >= 40, f"auto-enumerated {len(writers)} confirm-gated actions")
-for k in ("NAVI_ALLOW_WRITES", "NAVI_EMAIL", "NAVI_REMOTE_CODE_EXECUTION"):
+for k in ("NAVI_ALLOW_WRITES", "NAVI_EMAIL", "NAVI_REMOTE_CODE_EXECUTION", "NAVI_SCAN_LAUNCH"):
     os.environ[k] = "1"
 os.environ["NAVI_ALERT_EMAIL"] = "soc@example.com"
 before = navi_calls()
@@ -401,7 +401,7 @@ for aid, action in writers:
 time.sleep(1.0)
 check(not bad_ok, "no confirm-gated action succeeds with a non-true confirm" + (": " + ", ".join(bad_ok[:8]) if bad_ok else ""))
 check(navi_calls() == before, "…and navi was never invoked (no write/send/push)")
-for k in ("NAVI_ALLOW_WRITES", "NAVI_EMAIL", "NAVI_REMOTE_CODE_EXECUTION"):
+for k in ("NAVI_ALLOW_WRITES", "NAVI_EMAIL", "NAVI_REMOTE_CODE_EXECUTION", "NAVI_SCAN_LAUNCH"):
     os.environ.pop(k, None)
 check(gates.confirmed({"confirm": True}) and not gates.confirmed({"confirm": "true"}) and not gates.confirmed({"confirm": 1})
       and not gates.confirmed(None), "gates.confirmed is JSON-true only")

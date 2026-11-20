@@ -56,6 +56,7 @@ ROSTER = {
     "contract":         ("Automation Station", "", "Platform", "📜", "instrument"),
     "insights":         ("Ensemble Report", "", "Platform", "📰", "instrument"),
     "c2":               ("Remote Remediation", "", "Platform", "🐺", "instrument"),
+    "scan_confirm":     ("Scan Confirmation", "", "Platform", "📡", "instrument"),
     "tagremoval":       ("Tag Removal", "", "Platform", "🗑️", "instrument"),
     "alert":            ("Alerts", "", "Platform", "🐦‍⬛", "instrument"),
     "dashboard":        ("Dashboard Builder", "", "Platform", "📊", "instrument"),
@@ -84,7 +85,9 @@ ICON_IMG = {i: "/static/icons/%s.png" % i for i in (
     "software", "customapp", "was", "compliance", "attackpath", "scan_eval",
     # sheet 2 (Organize / Operationalize / Views)
     "agentgroup", "classify", "exproute", "asset_ownership", "acr", "custom_audit", "sla", "email", "alert",
-    "tagremoval", "c2", "contract", "fused_score", "dashboard", "argos", "was_asset", "compliance_asset")}
+    "tagremoval", "c2", "contract", "fused_score", "dashboard", "argos", "was_asset", "compliance_asset",
+    # build 514
+    "scan_confirm")}
 KIND_ORDER = {"hero": 0, "specialist": 1, "instrument": 2, "explorer": 3}
 
 
