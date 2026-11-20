@@ -2502,6 +2502,43 @@ document.addEventListener('click', e=>{ const b=e.target&&e.target.closest&&e.ta
   let v=_EFB[b.dataset.efb]; if(v===undefined) return;
   if(typeof v==='string'){ const m=/^\s*([A-Za-z_$][\w$]*)\s*(\(\s*\))?\s*$/.exec(v); const f=m&&window[m[1]]; v=(typeof f==='function')?f():null; }
   emailFindings(v); });
+/* ===== hSnapBanner — the standard "last run" banner for pages with a server snapshot (build 503) =====
+   Exposure Routes and SLA Tracker keep their results as a server-side snapshot instead of the page
+   cache, so the page cache's "↺ Restored your last run" banner never shows there. This draws the SAME
+   banner (same look, same place — under the codename strip and Done so far, right above the page's
+   own cards) for a snapshot:
+     hSnapBanner({at, cached, detail, warn, actions:[{label, title, onClick}]})   · hSnapBanner(null) hides it
+   at: when the snapshot was built (ISO string or ms) · cached: served from the snapshot (vs just built)
+   detail: extra plain-text facts (build time, scope…) · warn: a stale-data note (amber edge). */
+function hSnapBanner(o){
+  const old=document.getElementById('hcBanner'); if(old) old.remove();
+  if(!o) return;
+  if(!document.getElementById('hcStyle')){ const st=document.createElement('style'); st.id='hcStyle';
+    st.textContent='.hc-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:8px 12px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:var(--radius-sm,8px);background:var(--panel-2);font-size:13px;color:var(--ink-2,var(--ink))}.hc-banner b{color:var(--ink)}.hc-banner .sp{flex:1}';
+    document.head.appendChild(st); }
+  const t=typeof o.at==='number'?o.at:Date.parse(String(o.at||'').replace(' ','T'));
+  const ok=isFinite(t)&&t>0, s=ok?Math.max(0,(Date.now()-t)/1000):0;
+  const ago=!ok?'':s<60?'just now':s<3600?Math.round(s/60)+' min ago':s<86400?Math.round(s/3600)+' h ago':Math.round(s/86400)+' d ago';
+  const w=ok?new Date(t):null, stamp=w?w.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+w.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}):'';
+  const aged=(ok&&s>86400)||!!o.warn;
+  const d=document.createElement('div'); d.id='hcBanner'; d.className='hc-banner'; d.setAttribute('role','status');
+  if(aged) d.style.borderLeftColor='var(--warn,#d9a400)';
+  if(w) d.title='Snapshot built '+w.toLocaleString();
+  d.innerHTML='<span>'+(o.cached?'↺ Restored your last run':'✓ Ran')+(ago?' · <b>'+esc(ago)+'</b> <span class="mono" style="font-size:12px">('+esc(stamp)+')</span>':'')
+    +' <span class="sub">— snapshot saved on the server'+(o.detail?' · '+esc(o.detail):'')
+    +(o.warn?' · <b style="color:var(--warn,#d9a400)">'+esc(o.warn)+'</b>':(ok&&s>86400?' · <b style="color:var(--warn,#d9a400)">over a day old</b>':''))+'</span></span><span class="sp"></span>';
+  (o.actions||[]).forEach(a=>{ const b=document.createElement('button'); b.type='button'; b.className='btn sm'; b.textContent=a.label; if(a.title) b.title=a.title;
+    b.onclick=()=>{ try{ a.onClick(); }catch(e){} }; d.appendChild(b); });
+  const wrap=document.querySelector('.wrap')||document.body;
+  const place=()=>{ const first=[...wrap.children].find(e=>e!==d && e.id!=='actv' && e.id!=='hbBanner' && e.classList && e.classList.contains('card'));
+    if(first) wrap.insertBefore(d, first); else wrap.prepend(d); };
+  place();
+  // the Done so far panel (#actv) can mount after us — keep the banner UNDER it, as the page cache's is
+  if(!document.getElementById('actv') && window.MutationObserver){
+    const mo=new MutationObserver(()=>{ const a=document.getElementById('actv');
+      if(a){ mo.disconnect(); if(d.isConnected && (a.compareDocumentPosition(d) & Node.DOCUMENT_POSITION_PRECEDING)) place(); } });
+    mo.observe(wrap,{childList:true}); setTimeout(()=>mo.disconnect(), 15000); }
+}
 /* ===== Hand-off to Remote Remediation — "validate this path" / "remediate this vuln" =====
    c2Handoff({intent:'validate_path'|'diagnose'|'remediate', targets:[{ip,uuid,hostname}], path,
    plugin_id, cve, source}) stores the request in sessionStorage (same origin, this tab — NEVER the

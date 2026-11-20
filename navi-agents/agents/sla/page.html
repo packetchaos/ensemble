@@ -57,7 +57,6 @@ details.defs ul{margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--ink-
         <select class="fld" id="valsel" style="min-width:130px" title="Scope every number to one value, or All for the whole estate"></select>
         <button class="btn run sm" id="refresh" data-run>▶ Run</button><span id="dashMail" style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap"></span></span></div>
     <div id="flash" class="flash"></div>
-    <div id="snapMeta" class="sub" style="font-size:11.5px;margin-top:4px"></div>
     <div id="scope"></div>
     <div id="defs"></div>
   </section>
@@ -135,12 +134,11 @@ function applySnap(s,cached,stale){
   TAGKEY=DASH.tag_key||TAGKEY; TAGVAL=DASH.tag_value||''; saveView();
   render(); snapLine();
 }
-function snapLine(){ const m=META||{}, el=document.getElementById('snapMeta'); if(!el) return;
-  const t=v=>v?esc(String(v).replace('T',' ').slice(0,16)):'—';
-  el.innerHTML=`${CACHED?'⚡ from cache · ':''}snapshot built <b>${t(m.built_at)}</b>${m.build_sec!=null?` in ${m.build_sec}s`:''}`
-    +(STALE?` · <span style="color:var(--high)">built on an earlier day — open ages have moved since; ▶ Run recomputes</span>`:' · navi.db and SLA policy unchanged since')
-    +` · <a href="#" id="snapRebuild">↻ rebuild</a>`;
-  document.getElementById('snapRebuild').onclick=e=>{ e.preventDefault(); run({force:true}); };
+/* build 503: the last-run banner is its own widget (console.js hSnapBanner), like every other specialist's */
+function snapLine(){ const m=META||{};
+  hSnapBanner({at:m.built_at, cached:!!CACHED, detail:(m.build_sec!=null?'built in '+m.build_sec+'s · ':'')+'navi.db and SLA policy unchanged since',
+    warn:STALE?'built on an earlier day — open ages have moved since':'',
+    actions:[{label:'↻ Re-run', title:'Recompute the SLA snapshot now', onClick:()=>run({force:true})}]});
 }
 
 function tagOptions(){

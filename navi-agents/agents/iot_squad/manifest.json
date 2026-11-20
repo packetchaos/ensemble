@@ -9,6 +9,9 @@
   "page": "page.html",
   "actions": [
     "run",
+    "drill",
+    "inventory_export",
+    "inventory_tag",
     "tags_apply",
     "tag_candidate",
     "detections_decide",

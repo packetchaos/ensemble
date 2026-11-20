@@ -15,7 +15,6 @@
       <span style="margin-left:auto;display:flex;gap:6px">
         <button id="load" class="btn run sm" data-run title="Load owners, routes and paths, ownership coverage, the Sankey and the Ownership Map">▶ Run</button></span></div>
     <div id="flash" class="flash"></div>
-    <div id="snapMeta" class="sub" style="font-size:11.5px;margin-top:4px"></div>
   </section>
 
   <section class="card" id="secGlance" data-nav="At a glance" data-nav-icon="📊">
@@ -223,12 +222,15 @@ function zipRender(){
   setNavCount('zipCard', pc(f.owned,f.total)+'% owned');
 }
 const s_n=m=>(m&&m.scope&&m.scope.assets!=null)?m.scope.assets:null;
-function snapLine(cached){ const m=SNAP_META||{}, el=document.getElementById('snapMeta'); if(!el) return;
-  const t=v=>v?esc(String(v).replace('T',' ').slice(0,16)):'—';
-  el.innerHTML=`${tagScope()?'🏷 <b>'+esc(tagScopeLabel())+'</b>'+(s_n(m)!=null?' · '+N0(s_n(m))+' tagged asset(s)':'')+' · ':''}${cached?'⚡ from cache · ':''}snapshot built <b>${t(m.built_at)}</b>${m.build_sec!=null?` in ${m.build_sec}s`:''} · navi.db unchanged since · owners from Tenable <b>${t(m.owners_at)}</b> · `
-    +`<a href="#" id="snapRebuild">↻ rebuild</a> · <a href="#" id="snapOwners">↻ refresh owners</a>`;
-  document.getElementById('snapRebuild').onclick=e=>{ e.preventDefault(); load({force:true}); };
-  document.getElementById('snapOwners').onclick=e=>{ e.preventDefault(); load({refresh_owners:true}); };
+/* build 503: the last-run banner is its own widget, like every other specialist's (console.js
+   hSnapBanner — same look and place as the page cache's "↺ Restored your last run") */
+function snapLine(cached){ const m=SNAP_META||{};
+  const t=v=>v?String(v).replace('T',' ').slice(0,16):'—';
+  const bits=[]; if(tagScope()) bits.push('tag '+tagScopeLabel()+(s_n(m)!=null?' · '+N0(s_n(m))+' tagged asset(s)':''));
+  if(m.build_sec!=null) bits.push('built in '+m.build_sec+'s'); bits.push('owners from Tenable '+t(m.owners_at));
+  hSnapBanner({at:m.built_at, cached:!!cached, detail:bits.join(' · '),
+    actions:[{label:'↻ Re-run', title:'Rebuild the ownership snapshot from navi.db now', onClick:()=>load({force:true})},
+             {label:'↻ Refresh owners', title:'Re-pull users & groups from Tenable, then rebuild', onClick:()=>load({refresh_owners:true})}]});
 }
 /* ===== Embedded Ownership Map (web/ownermap.html?embed=1) — fed the same `map` result ===== */
 function omFeed(){

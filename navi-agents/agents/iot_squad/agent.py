@@ -263,6 +263,7 @@ class CrossTermAgent(Agent):
                               "source": "pack"})
 
         proposals, ledger = {}, []
+        full = {}           # key -> EVERY asset uuid (the payload keeps 200; the inventory needs all)
         tested = 0
         for pid, c in carriers.items():
             via_dev = {d.lower() for d in c.get("via_devices", [])}
@@ -304,8 +305,10 @@ class CrossTermAgent(Agent):
                 cur = proposals.get(key)
                 if not cur or cnt > cur["asset_count"]:
                     proposals[key] = cand
+                    full[key] = res["asset_uuids"]
 
         plist = sorted(proposals.values(), key=lambda x: (-x["asset_count"], x["iot_name"]))
+        self.full_uuids = full     # not in the result (payload size) — core.iot_inventory reads it
         return {"proposals": plist, "ledger": ledger, "floor": floor, "total": total,
                 "vocab_size": len(vocab), "pack_terms": pack_terms,
                 "pack_deduped": pack_deduped, "tested": tested,
@@ -368,6 +371,12 @@ class IoTSquadOrchestrator(Agent):
             from core import signals
             devs = (signals._iot(db_path) or {}).get("devices", [])
             seen = {a["asset_uuid"] for a in d["detected"] if a.get("asset_uuid")}
+            # Tenable Device Type (54615) for registry-confirmed assets too — the inventory groups by it
+            dtype = {dv.get("asset_uuid"): dv.get("type") for dv in devs
+                     if dv.get("type") not in (None, "", "unknown", "general-purpose")}
+            for a in d["detected"]:
+                if a.get("asset_uuid") in dtype:
+                    a["dev_type"] = dtype[a["asset_uuid"]]
             for dev in devs:
                 u = dev.get("asset_uuid")
                 if not u or u in seen:
@@ -387,7 +396,8 @@ class IoTSquadOrchestrator(Agent):
                 seen.add(u)
                 d["detected"].append({"iot_name": name, "vendor": vendor or "", "asset_uuid": u,
                                       "hostname": dev.get("host", ""), "ip": dev.get("ip", ""), "fused": True,
-                                      "signals": dev.get("signals") or []})
+                                      "signals": dev.get("signals") or [], "klass": klass or "",
+                                      "type": typ or "", "conf": dev.get("conf") or ""})
             d["tag_actions"] = [_iot_tag_action(nm, h) for nm, h in d["handoff"].items()]
         except Exception:
             pass

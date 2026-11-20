@@ -1,5 +1,14 @@
-"""IoT Discovery Squad — self-contained HTTP actions."""
-from core import navi_cli, iot_registry, iot_common
+"""IoT Discovery Squad — self-contained HTTP actions.
+
+Device inventory (build 503, core/iot_inventory.py): ▶ Run publishes one row per device asset
+(confirmed / identified / predicted) to the result store. `drill` pages / searches it,
+`inventory_export` streams it as CSV and `inventory_tag` (gated) tags it — all by the run +
+filter KEY, so the browser never holds asset UUIDs and any size works (tag_set pages ≤ 1,999)."""
+import csv
+import io
+import re
+
+from core import navi_cli, iot_registry, iot_common, iot_inventory, payload
 from .agent import IoTSquadOrchestrator
 from core.gates import confirmed
 
@@ -13,6 +22,11 @@ def run(p):
         res = AGENT.run(use_pack=use_pack)
     except FileNotFoundError as e:          # no navi.db at all — say so, don't 500
         return {"ok": False, "error": str(e)}, 200
+    if isinstance(res, dict):
+        try:                                # additive: every older result key is unchanged
+            res["inventory"] = iot_inventory.publish(res, getattr(AGENT.a3, "full_uuids", None))
+        except Exception as e:              # noqa: BLE001 — the inventory never breaks the run
+            res["inventory"] = {"ok": False, "error": "device inventory unavailable: %s" % e}
     return {"ok": True, "agent": AGENT.meta(), "result": res,
             "options": {"use_pack": use_pack,
                         "pack_size": len(iot_common.term_pack()),
@@ -117,6 +131,69 @@ def registry(p):
             "detections": data["detections"], "rejected": data.get("rejected", [])}, 200
 
 
-ACTIONS = {"run": run, "tags_apply": tags_apply, "tag_candidate": tag_candidate,
+def drill(p):
+    """Read: one page of the device inventory (filters / search / sort on the server)."""
+    return payload.drill(iot_inventory.HOUND, p, iot_inventory.SECTIONS)
+
+
+def inventory_export(p):
+    """Read: EVERY row of the device inventory for this filter + search, as CSV."""
+    sel, err = iot_inventory.selection(p)
+    if err:
+        return err, 200 if err.get("expired") else 400
+    run, flt, q = sel
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(iot_inventory.CSV_COLS)
+    n = 0
+    for r in payload.STORE.iter_rows(run, iot_inventory.SECTION, flt, q):
+        r = dict(r, also="; ".join(r.get("also") or []))
+        vals = [r.get(c) if r.get(c) is not None else "" for c in iot_inventory.CSV_COLS]
+        w.writerow([("'" + v) if isinstance(v, str) and v[:1] in ("=", "+", "-", "@") else v for v in vals])
+        n += 1
+    return {"ok": True, "rows": n, "csv": buf.getvalue()}, 200
+
+
+# the two schemes the Classifier reads (core/classify.py): a Device Type it maps to a class
+# (Camera → IoT, Switch → Network …), or the IoT squad's own per-device tag.
+TAG_SCHEMES = {"device_type": ("Asset Inventory", "Device Type: {v}"), "iot": ("IoT", "{v}")}
+_BAD_VALUE = re.compile(r"[\x00-\x1f'\"]")
+
+
+def inventory_tag(p):
+    """Gated: tag every asset in the inventory list (run + filter + search) with
+    scheme device_type → Asset Inventory : 'Device Type: <value>'  (Gate 1 / Classifier scheme), or
+    scheme iot         → IoT : '<value>'                          (the per-device IoT tag).
+    Add-only; paged by navi_cli.tag_set (≤ 1,999 per navi job, a background series above)."""
+    p = p or {}
+    if not confirmed(p):
+        return {"ok": False, "error": "confirm=true required to tag"}, 400
+    sel, err = iot_inventory.selection(p)
+    if err:
+        return err, 200 if err.get("expired") else 400
+    scheme = p.get("scheme") or "device_type"
+    if scheme not in TAG_SCHEMES:
+        return {"ok": False, "error": "scheme must be one of: " + ", ".join(TAG_SCHEMES)}, 400
+    value = " ".join(str(p.get("value") or "").split())
+    if not value or len(value) > 120 or _BAD_VALUE.search(value):
+        return {"ok": False, "error": "a tag value (≤ 120 characters, no quotes) is required"}, 400
+    run, flt, q = sel
+    uuids = payload.STORE.uids(run, iot_inventory.SECTION, flt, q)
+    if not uuids:
+        return {"ok": False, "error": "no assets in this list"}, 400
+    cat, fmt = TAG_SCHEMES[scheme]
+    tag_value = fmt.format(v=value)
+    jobs = navi_cli.tag_set(cat, tag_value, uuids=uuids, agent="iot_squad")
+    s = navi_cli.jobs_summary(jobs)
+    return {"ok": bool(jobs) and all(j.get("ok") or j.get("queued") for j in jobs),
+            "queued": any(j.get("queued") for j in jobs), "job_ids": s["job_ids"], "jobs": s["jobs"],
+            "value": "%s : %s" % (cat, tag_value), "asset_count": len(uuids),
+            "message": ("queued %d batch(es) for %d assets" % (len(jobs), len(uuids)) if len(jobs) > 1
+                        else (jobs[0].get("message") if jobs else s.get("error"))),
+            "writes_enabled": navi_cli.writes_enabled(),
+            "write_gate_reason": navi_cli.write_gate_reason()}, 200
+
+
+ACTIONS = {"run": run, "drill": drill, "inventory_export": inventory_export, "inventory_tag": inventory_tag, "tags_apply": tags_apply, "tag_candidate": tag_candidate,
            "detections_decide": detections_decide, "detections_export": detections_export,
            "registry": registry}
