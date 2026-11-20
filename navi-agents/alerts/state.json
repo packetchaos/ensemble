@@ -1,15 +1,66 @@
 {
   "snap": {
-    "al19fa4150e9b5291": 0.0,
-    "al19fa54d5c57731d": 30.0,
-    "al19fa54db22d2ca0": 0.0
+    "al19fa4150e9b5291": 1.0,
+    "al19fa54d5c57731d": 12.0,
+    "al19fa54db22d2ca0": 1.0
   },
   "fired": {
     "al19fa4150e9b5291": false,
-    "al19fa54d5c57731d": true,
+    "al19fa54d5c57731d": false,
     "al19fa54db22d2ca0": false
   },
   "history": [
+    {
+      "ts": "2026-11-20T04:43:16Z",
+      "source": "contract",
+      "evaluated": 3,
+      "newly": [],
+      "still": 0,
+      "sent": false
+    },
+    {
+      "ts": "2026-11-20T04:43:16Z",
+      "source": "contract",
+      "evaluated": 3,
+      "newly": [],
+      "still": 0,
+      "sent": false
+    },
+    {
+      "ts": "2026-11-20T04:30:27Z",
+      "source": "contract",
+      "evaluated": 3,
+      "newly": [],
+      "still": 0,
+      "sent": false
+    },
+    {
+      "ts": "2026-11-20T04:30:27Z",
+      "source": "contract",
+      "evaluated": 3,
+      "newly": [],
+      "still": 0,
+      "sent": false
+    },
+    {
+      "ts": "2026-11-20T04:27:56Z",
+      "source": "contract",
+      "evaluated": 3,
+      "newly": [],
+      "still": 0,
+      "sent": false
+    },
+    {
+      "ts": "2026-11-20T04:27:56Z",
+      "source": "contract",
+      "evaluated": 3,
+      "newly": [
+        "End-of-life / unsupported software rising",
+        "New CISA KEV exposure"
+      ],
+      "still": 0,
+      "sent": false
+    },
     {
       "ts": "2026-11-19T13:30:18Z",
       "source": "contract",
@@ -245,5 +296,5 @@
       "sent": false
     }
   ],
-  "last_run": "2026-11-19T13:30:18Z"
+  "last_run": "2026-11-20T04:43:16Z"
 }

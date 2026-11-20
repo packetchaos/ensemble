@@ -147,8 +147,8 @@ function render(){
   const disp=(n,pct,label,color)=>'<div class="k"><div class="v" style="color:'+color+'">'+(n||0)
     +' <span style="font-size:13px;color:var(--mut);font-weight:600">'+(pct||0)+'%</span></div><div class="l">'+label+'</div></div>';
   document.getElementById('kpi').innerHTML=
-    kbox(k.routes,'routes',SC.owned,k.routes_owned,k.routes_partial,k.routes_unowned)
-    +kbox(k.paths,'paths',SC.owned,k.paths_owned,k.paths_partial,k.paths_unowned,((k.paths_via_route||0)+' owned via route'))
+    kbox(k.routes,'routes',SC.owned,k.routes_owned,k.routes_partial,k.routes_unowned,((k.routes_assigned||0)+' assigned directly'))
+    +kbox(k.paths,'paths',SC.owned,k.paths_owned,k.paths_partial,k.paths_unowned,((k.paths_via_route||0)+' covered through their route · '+(k.paths_assigned||0)+' assigned directly'))
     +'<div class="k"><div class="v">'+(k.owners||0)+'</div><div class="l">owners assigned</div></div>'
     +'<div class="k" style="border-color:var(--crit)"><div class="v" style="color:var(--crit)">'+(k.unowned_assets||0)+'</div><div class="l">Ownerless Risk (assets)</div></div>'
     +disp(k.mitigated,k.mitigated_pct,'mitigated','var(--ok)')
@@ -262,12 +262,35 @@ async function pathDetail(path,app){ const el=document.getElementById('pathDetai
   const d=o.result; window.__GAP=Object.assign({app},d);
   const rowsH=(d.assets||[]).map(a=>'<tr><td><b>'+esc(a.hostname||a.ip||a.uuid)+'</b> <span class="sub">'+esc(a.ip||'')+'</span></td><td class="mono">'+(a.acr||'—')+'</td><td class="mono">'+(a.plugins||0)+'</td><td>'+(safeUrl(a.url,'')?'<a href="'+esc(safeUrl(a.url))+'" target="_blank">open ↗</a>':'<span class="sub">—</span>')+'</td></tr>').join('');
   el.innerHTML='<div class="card" style="margin:0;border:1px solid var(--accent)">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><b>🕳 Newly-found gap:</b> <span class="mono">'+esc(d.path)+'</span><div class="sub">under <b>'+esc(app.trim())+'</b> · '+(d.asset_count||0)+' asset(s) · '+(d.plugins||[]).length+' plugin(s) · '+(d.findings||[]).length+' finding(s)'+((d.owners||[]).length?(' · owner: '+esc(d.owners.join(', '))):'')+'</div></div>'
-    +'<button class="btn" id="gapEmail" style="white-space:nowrap">📧 Email this gap → Notify & Report</button></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><b>📂 Path:</b> <span class="mono">'+esc(d.path)+'</span><div class="sub">under <b>'+esc(app.trim())+'</b> · '+(d.asset_count||0)+' asset(s) · '+(d.plugins||[]).length+' plugin(s) · '+(d.findings||[]).length+' open finding(s)'+(()=>{
+      // build 498: coverage of this path from the map (owned through its own tag or its route)
+      const it=((DATA&&DATA.paths)||[]).find(x=>x.name===d.path);
+      const cov=it&&it.findings?' · <b style="color:'+(it.status==='owned'?'var(--ok)':it.status==='partial'?'var(--cx-e7c66b)':'var(--crit)')+'">'+(it.coverage_pct||0)+'% owned</b>':'';
+      const po=(d.path_owners||[]), ro=(d.route_owners||[]);
+      return cov+(po.length?' · path owner: '+esc(po.join(', ')):'')+(ro.length?' · via route: '+esc(ro.join(', ')):'')+(!po.length&&!ro.length?' · <b style="color:var(--crit)">no owner</b>':''); })()+'</div></div>'
+    +'<span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
+    +'<button class="btn" id="gapEmail" style="white-space:nowrap" title="Email this path, its assets and finding IDs to its owner">📧 Email this path → Notify & Report</button>'
+    +((d.assets||[]).some(a=>a.ip)?'<select id="gapRemPid" class="fld" style="font-size:12px;max-width:260px" title="The plugin to remediate on these hosts">'
+       +(d.plugins||[]).map(p=>'<option value="'+esc(p)+'">'+esc(p)+((d.plugin_names||{})[p]?' · '+esc(String(d.plugin_names[p]).slice(0,48)):'')+'</option>').join('')+'</select>'
+       +'<button class="btn" id="gapRemediate" style="white-space:nowrap" title="Hand these hosts + the plugin to Remote Remediation — pre-filled; nothing runs until you confirm there">🛠 Remediate → Remote Remediation</button>'
+       +'<button class="btn ghost sm" id="gapValidate" style="white-space:nowrap" title="Hand this path + hosts to Remote Remediation to check it exists on each host first">🔎 Validate path</button>':'')
+    +'</span></div>'
     +((d.assets||[]).length?'<div style="overflow:auto;margin-top:8px"><table style="width:100%"><thead><tr><th>Asset</th><th>ACR</th><th>Plugins here</th><th>Tenable</th></tr></thead><tbody>'+rowsH+'</tbody></table></div>':'<p class="sub" style="margin-top:8px">No assets resolved for this path.</p>')
     +(d.findings&&d.findings.length?'<p class="sub" style="margin-top:8px">Finding IDs ('+d.findings.length+'): <span class="mono">'+esc(d.findings.slice(0,60).join(', '))+(d.findings.length>60?' …':'')+'</span></p>':'')
     +'</div>';
   const b=document.getElementById('gapEmail'); if(b)b.onclick=emailGap;
+  const rb=document.getElementById('gapRemediate'); if(rb) rb.onclick=()=>remediateGap('remediate');
+  const vb=document.getElementById('gapValidate'); if(vb) vb.onclick=()=>remediateGap('validate_path');
+}
+/* build 498: hand the clicked path to Remote Remediation for immediate action — the same
+   sessionStorage hand-off every specialist uses (console.js c2Handoff): its hosts, the path and
+   the chosen plugin. The C2 page shows "Request from Exposure Routes", pre-fills, and runs
+   nothing until the operator chooses and confirms. */
+function remediateGap(intent){ const g=window.__GAP; if(!g) return;
+  const sel=document.getElementById('gapRemPid');
+  const targets=(g.assets||[]).filter(a=>a.ip).map(a=>({ip:String(a.ip).split(',')[0].trim(), uuid:a.uuid, hostname:a.hostname||''}));
+  if(!targets.length){ alert('No host on this path has an IP address in navi.db — nothing to hand to Remote Remediation.'); return; }
+  c2Handoff({intent, targets, path:g.path, plugin_id:intent==='remediate'&&sel?sel.value:'', source:'Exposure Routes'});
 }
 function emailGap(){ const g=window.__GAP; if(!g)return;
   const uuids=(g.assets||[]).map(a=>a.uuid).filter(Boolean);
@@ -308,7 +331,11 @@ function drawSankey(){ const wrap=document.getElementById('graph');
   items.forEach(it=>{ const fi=items.indexOf(it);
     if(DISP_NODE[it.status]){ const node=DISP_NODE[it.status]; links.push({fi,to:node,v:it.assets,kind:it.status}); ownerTot[node]=(ownerTot[node]||0)+it.assets; return; }
     const owned=Math.max(0,it.owned_assets||0), un=Math.max(0,(it.assets||0)-owned), ow=(it.owners&&it.owners.length)?it.owners:[];
-    if(ow.length&&owned>0){ const per=owned/ow.length; ow.forEach(o=>{ links.push({fi,to:o,v:per,kind:'owned'}); ownerTot[o]=(ownerTot[o]||0)+per; }); }
+    // per-owner share of the item's assets (an item's own Owner tag wins on its assets; the
+    // covering route/path owners fill in the rest) — even split only when no shares were sent
+    const sh=it.owner_assets||null, shT=sh?Object.values(sh).reduce((a,b)=>a+b,0):0;
+    if(ow.length&&owned>0){ if(sh&&shT>0){ Object.keys(sh).forEach(o=>{ const v=owned*sh[o]/shT; if(v>0){ links.push({fi,to:o,v,kind:'owned'}); ownerTot[o]=(ownerTot[o]||0)+v; } }); }
+      else { const per=owned/ow.length; ow.forEach(o=>{ links.push({fi,to:o,v:per,kind:'owned'}); ownerTot[o]=(ownerTot[o]||0)+per; }); } }
     if(un>0){ links.push({fi,to:UN,v:un,kind:'un'}); ownerTot[UN]=(ownerTot[UN]||0)+un; } });
   const owners=Object.keys(ownerTot).sort((a,b)=>{ const sa=_isSpecialNode(a),sb=_isSpecialNode(b); if(sa!==sb)return sa?1:-1; if(a===UN)return 1; if(b===UN)return -1; return ownerTot[b]-ownerTot[a]; });
   const sumL=items.reduce((s,it)=>s+it.assets,0), sumR=owners.reduce((s,o)=>s+ownerTot[o],0);
@@ -567,6 +594,12 @@ async function emailGraph(){
   });
 }
 document.getElementById('emGraphBtn').onclick=()=>{ const f=document.getElementById('emGraphForm'); const show=f.style.display==='none'; f.style.display=show?'flex':'none'; if(show)document.getElementById('emGraphTo').focus(); };
+
+/* build 498: ⛶ full screen on the ownership graph (threads or Sankey) — standalone, and inside the
+   Exposure Routes page (its iframe allows full screen) */
+(function(){ const card=document.getElementById('graphCard'), em=document.getElementById('emGraphBtn');
+  if(!card||!em||typeof hFull!=='function') return;
+  const b=hFull(card,{grow:'#graph', growOffset:170}); b.id='graphFs'; em.parentNode.insertBefore(b, em); })();
 document.getElementById('emGraphSend').onclick=emailGraph;
 document.getElementById('emGraphCancel').onclick=()=>{ document.getElementById('emGraphForm').style.display='none'; document.getElementById('emGraphRes').innerHTML=''; };
 document.getElementById('emGraphTo').addEventListener('keydown',e=>{ if(e.key==='Enter')emailGraph(); });

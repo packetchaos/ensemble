@@ -169,7 +169,7 @@ const API=(()=>{ const A=agentApi('classify');
     if(ts && !(body && Object.prototype.hasOwnProperty.call(body,'tag_scope'))) body=Object.assign({}, body||{}, {tag_scope:{key:ts.key, value:ts.value}});
     return A.post(action, body); }}; })();
 let DATA=null, CUR=null;
-const COL={"Windows":"var(--cx-6ea8ff)","Linux":"var(--cx-e7c66b)","macOS":"#9aa7b8","IoT":"var(--cx-a78bfa)","OT":"var(--cx-f43f5e)","Network":"var(--cx-3fb0c9)","Virtual Infrastructure":"var(--ok)","Cloud":"#38bdf8","Server":"var(--cx-4a6fd0)","Workstation":"var(--cx-2fa06e)","Mobile":"var(--cx-e0913a)","Unclassified":"var(--cx-f43f5e)"};
+const COL={"Windows":"var(--cx-6ea8ff)","Linux":"var(--cx-e7c66b)","macOS":"#9aa7b8","IoT":"var(--cx-a78bfa)","OT":"var(--cx-f43f5e)","Network":"var(--cx-3fb0c9)","Virtual Infrastructure":"var(--ok)","Cloud":"#38bdf8","Server":"var(--cx-4a6fd0)","Workstation":"var(--cx-2fa06e)","Mobile":"var(--cx-e0913a)","Unix":"#c084fc","Medical":"#f472b6","Web Application":"#22d3ee","Mainframe":"#94a3b8","Unclassified":"var(--cx-f43f5e)"};
 const col=c=>COL[c]||"#8a99ad";
 
 const fnum=n=>(n==null?'—':Number(n).toLocaleString());
@@ -305,7 +305,7 @@ function drill(cls, quiet){
       +`<span class="sub">Classify by hand:</span>`
       +`<select id="ucFacet" class="fld" title="Classification category">${fopt('Device Type')}<option value="__custom">＋ Custom category…</option></select>`
       +`<input id="ucFacetCustom" class="fld" placeholder="your category — e.g. Kiosk, POS" style="display:none;min-width:150px">`
-      +`<input id="ucVal" class="fld" placeholder="value — e.g. Server, Desktop, Camera, Printer, Firewall" style="min-width:210px">`
+      +`<input id="ucVal" class="fld" placeholder="value — e.g. PC, Server-on-prem, VDI, Printer, Firewall" style="min-width:210px">`
       +`<button class="btn sm" id="ucTag">🏷️ Tag <span id="ucN">0</span> selected</button>`
       +`<button class="btn ghost sm" id="ucAll">Select all</button>`
       +`<span id="ucRes" class="sub"></span></div>`
@@ -567,13 +567,15 @@ function renderMem(){
   if(nx)nx.onclick=()=>{ MEMPAGE++; renderMem(); };
 }
 /* ===== OS Signals — detect → gated tag (mirrors the IoT squad) ===== */
-const FACETS=['OS','Class','Device Type','Network','Cloud','App','IoT'];
-const fopt=sel=>FACETS.map(f=>`<option${f===sel?' selected':''}>${f}</option>`).join('');
-/* Value suggestions per category (build 473): Device Type offers the standard physical types
-   (server, desktop, camera, printer, switch …) from the server; Class / Cloud their known values.
+/* build 499: 'Class' is no longer offered as a category — Device Type carries it. A cohort from an
+   older cached run that still says Class keeps its own option so it is not silently re-faceted. */
+const FACETS=['OS','Device Type','Network','Cloud','App','IoT'];
+const fopt=sel=>(sel&&!FACETS.includes(sel)?[...FACETS,sel]:FACETS).map(f=>`<option${f===sel?' selected':''}>${f}</option>`).join('');
+/* Value suggestions per category (build 499): Device Type offers PC / PC-VDI / VDI /
+   Server-on-prem / Server-VDI / printer / camera + network gear from the server; Cloud its known values.
    The box still takes any value — your own types are fine. */
-let DEVTYPES=['Server','Desktop','Laptop','Workstation','Phone / Tablet','Hypervisor','Switch','Router','Firewall','Wireless Access Point','Load Balancer','Camera','Printer','NAS','VoIP','Media','UPS / Power','Badge Reader','Embedded','PLC','HMI','RTU','Engineering Workstation','OT Device'];
-const CLASSVALS=['Windows','Linux','macOS','Server','Workstation','Mobile','IoT','OT','Network','Cloud','Virtual Infrastructure'];
+let DEVTYPES=['PC','PC-VDI','VDI','Server-on-prem','Server-VDI','Printer','Camera','Switch','Router','Firewall','Wireless Access Point','Load Balancer','Network Device'];
+const CLASSVALS=['Windows','Linux','macOS','Unix','Server','Workstation','Mobile','IoT','OT','Medical','Network','Cloud','Virtual Infrastructure','Web Application','Mainframe'];
 function ensureLists(){ const mk=(id,vals)=>{ let d=document.getElementById(id); if(!d){ d=document.createElement('datalist'); d.id=id; document.body.appendChild(d); }
     d.innerHTML=vals.map(v=>'<option value="'+esc(v)+'"></option>').join(''); };
   mk('dlDev',DEVTYPES); mk('dlClass',CLASSVALS); mk('dlCloud',['AWS','Azure','GCP']); }

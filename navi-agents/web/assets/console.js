@@ -2524,7 +2524,10 @@ function c2Handoff(req){
   if(r.plugin_id!=null&&r.plugin_id!=='') out.plugin_id=String(r.plugin_id);
   if(r.cve) out.cve=String(r.cve);
   try{ sessionStorage.setItem('c2_handoff', JSON.stringify(out)); }catch(e){}
-  location.href='/agents/c2/page.html';
+  // from an embedded same-origin frame (the Ownership Map inside Exposure Routes) leave the frame
+  // too — the hand-off is in this tab's sessionStorage either way (build 498)
+  let W=window; try{ if(window.top && window.top!==window && window.top.location.origin===location.origin) W=window.top; }catch(e){}
+  W.location.href='/agents/c2/page.html';
 }
 const _C2H={}; let _C2H_N=0;
 function c2Link(intent, payload, label){
@@ -2679,7 +2682,7 @@ async function mountActivity(agentId){
   const tagOp=ops.find(x=>x.op==='tag');
   const chip=(v,l,cls,title)=>'<div class="actv-k '+(cls||'')+'"'+(title?' title="'+esc(title)+'"':'')+'><div class="v">'+v+'</div><div class="l">'+l+'</div></div>';
   let kp='';
-  const lst=r.last||{}, stp=lst.action==='ensemble'?'via Run the Ensemble':(lst.steps&&lst.steps.length>1)?lst.steps.length+' steps':(/^(run|load|search|overview|build)$/.test(lst.action||'')?'':lst.action);
+  const lst=r.last||{}, stp=lst.action==='ensemble'?'via Run the Ensemble':(lst.steps&&lst.steps.length>1)?lst.steps.length+' steps':(/^(run|load|search|overview|build|snapshot)$/.test(lst.action||'')?'':lst.action);
   kp += r.last_at ? chip(_actAgo(r.last_at),'last run'+(stp?' · '+esc(stp):'')+(lst.ok===0?' (failed)':''), lst.ok===0?'bad':'', new Date(r.last_at*1000).toLocaleString()+((lst.steps||[]).length>1?' — '+lst.steps.join(' → '):''))
                   : chip('never','last run on this install','dim');
   if(r.count) kp += chip(_actN(r.count),'run'+(r.count>1?'s':'')+' recorded','', (r.fresh||0)+' fresh, '+((r.count||0)-(r.fresh||0))+' served from the server cache');

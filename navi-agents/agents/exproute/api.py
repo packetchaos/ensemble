@@ -3,7 +3,7 @@ from core import navi_cli, llm, jobq, tagscope
 from .agent import (ExpRouteAgent, owners, routes, paths, tag_owner, coverage,
                     ownership_map, path_detail, resolve_owner,
                     parse_dispositions, disposition_label,
-                    snapshot_state, start_build, _base, retag_owner_tags)
+                    snapshot_state, start_build, _base, retag_owner_tags, note_run)
 from core.gates import confirmed
 
 AGENT = ExpRouteAgent()
@@ -60,18 +60,23 @@ def snapshot(p):
       {refresh_owners:true}  re-pull the owner directory from Tenable, then rebuild
     A build answers {building:{job_id, started}}; poll /api/jobs/<id>, then peek."""
     force, ro = bool(p.get("force")), bool(p.get("refresh_owners"))
+    # build 498: a ▶ Run / rebuild from the page carries its run id → Done so far records the
+    # run when the snapshot is ready (served from cache now, or when the build ends)
+    rid = p.get("record_run") if isinstance(p.get("record_run"), str) and not p.get("peek") else None
     sc = _scope(p)
     st = snapshot_state(scope=sc)
     if st["snap"] and not force and not ro:
+        note_run(rid, ok=True, cached=True)
         return {"ok": True, "result": st["snap"], "cached": True}, 200
     if p.get("peek"):
         return {"ok": True, "result": None, "building": st["building"]}, 200
     if st["building"]:
+        note_run(rid, ok=True)                      # joined a build already running
         return {"ok": True, "result": None, "building": st["building"]}, 200
     if sc and not tagscope.count(*sc):
         return {"ok": False, "error": f"no asset in navi.db carries the tag {sc[0]} : {sc[1]} — "
                                       "a tag added in Tenable reaches navi.db after `navi update assets`"}, 200
-    b = start_build(_submit_for(sc), refresh_owners=ro, scope=sc)
+    b = start_build(_submit_for(sc), refresh_owners=ro, scope=sc, record_run=rid)
     return {"ok": True, "result": None, "building": b}, 200
 
 

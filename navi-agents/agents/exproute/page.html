@@ -23,6 +23,23 @@
     <div id="kpi"><div class="setupcard"><div class="big">Press ▶ Run</div><p class="sub">Who owns each exposure route and path, where the <b>Ownerless Risk</b> is, how much of it is high-VPR, and how evenly the work is spread — with the Sankey and the Ownership Map built from the same run.</p></div></div>
   </section>
 
+  <section class="card" id="zipCard" style="display:none" data-nav="Plugin coverage" data-nav-icon="🧩">
+    <h2 style="margin:0 0 2px;font-size:17px">🧩 Plugin coverage — is every open finding owned?</h2>
+    <p class="sub" style="margin:0">Every open, non-info finding is zipped to its plugin's <b>route</b> and the <b>paths</b> that plugin was found at on that asset — 1:1 or many-to-many. A finding is <b>owned</b> when its asset carries an <span class="tagval">Owner</span> tag for that route <i>or</i> one of those paths; <b>decided</b> when it carries Ignored / Accepted / Mitigated instead.</p>
+    <div id="zipSrc" class="sub" style="font-size:11.5px;margin-top:4px"></div>
+    <div id="zipKpi" style="margin-top:6px"></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px">
+      <div style="flex:1;min-width:300px"><h3 style="margin:0 0 4px;font-size:14px">🎯 Close the gap — tag a route</h3>
+        <p class="sub" style="margin:0 0 6px;font-size:11.5px">Unowned findings an owner on this route would close (on every asset it touches).</p>
+        <table id="zipRoutes"><thead><tr><th>Route</th><th>Closes</th><th>Assets</th><th>Paths</th><th></th></tr></thead><tbody></tbody></table></div>
+      <div style="flex:1;min-width:300px"><h3 style="margin:0 0 4px;font-size:14px">🎯 …or tag a path</h3>
+        <p class="sub" style="margin:0 0 6px;font-size:11.5px">The same findings counted by path — a path owner covers them even when the route isn't owned.</p>
+        <table id="zipPaths"><thead><tr><th>Path</th><th>Closes</th><th>Assets</th><th>Routes</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <h3 style="margin:14px 0 4px;font-size:14px">Plugins not fully owned <span class="sub" id="zipPlugCount"></span></h3>
+    <table id="zipPlugins"><thead><tr><th>Plugin</th><th>Severity</th><th>Route</th><th>Paths</th><th>Open / findings</th><th>Status</th></tr></thead><tbody></tbody></table>
+  </section>
+
   <section class="card" id="mapCard" style="display:none" data-nav="Ask · map owners" data-nav-icon="✨">
     <h2 style="margin:0">✨ Ask — describe the ownership mapping</h2>
     <p class="sub" style="margin:2px 0 8px">e.g. <i>"give all payment &amp; billing routes to VM Team, put /opt and nginx paths under Networking Systems, assign the docker routes to Custom Apps."</i><br>
@@ -73,7 +90,7 @@
   <section class="card" id="secMap" style="display:none" data-nav="Ownership Map" data-nav-icon="🗺">
     <div class="toolbar" style="margin:0"><div><h2 style="margin:0">🗺 Ownership Map</h2>
       <p class="sub" style="margin:2px 0 0">The full Exposure Routes map from the same run — the CVE → plugin → app → path reduction, the threads graph, owner workload and the <b style="color:var(--crit)">Ownerless Risk</b> gaps you can assign inline. Ticking several gaps and sending them to Exposure Routes opens the quick-assign card on this page.</p></div>
-      <a class="btn ghost sm" href="/web/ownermap.html" style="margin-left:auto" title="Open the Ownership Map on its own page">Open full page ↗</a></div>
+      <a class="btn ghost sm" href="/web/ownermap.html" style="margin-left:auto" title="Open the Ownership Map on its own page">Open full page ↗</a><span id="secMapFs"></span></div>
     <div id="omWrap" style="margin-top:8px"></div>
   </section>
 
@@ -119,11 +136,15 @@ function _onWhat(kind,name){ const n=_assetsOn(kind,name); return (n!=null?n+' a
 let BUILDING=null, SNAP_META=null;
 async function load(opts){ opts=opts||{}; const btn=document.getElementById('load'); btn.disabled=true;
   flash('flash','<span class="spin"></span> '+(opts.force?'rebuilding the ownership snapshot…':opts.refresh_owners?'re-pulling owners from Tenable…':'loading the ownership snapshot…'),'run');
-  let o; try{ o=await API.post('snapshot',{_nocache:true,force:!!opts.force,refresh_owners:!!opts.refresh_owners}); }catch(e){ o={ok:false,error:e.message}; }
+  // build 498: this page opts out of the page cache, so it sends its own run id — the server
+  // records the run in Done so far when the snapshot is ready (like every other specialist)
+  const rid='er'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  let o; try{ o=await API.post('snapshot',{_nocache:true,force:!!opts.force,refresh_owners:!!opts.refresh_owners,record_run:rid}); }catch(e){ o={ok:false,error:e.message}; }
+  const ran=()=>{ try{ window.dispatchEvent(new Event('hounds:ran')); }catch(e){} };
   if(!o||!o.ok){ btn.disabled=false; flash('flash','✗ '+esc((o&&(o.error||o.message))||'failed'),'crit'); return; }
-  if(o.result){ btn.disabled=false; applySnap(o.result,!!o.cached); return; }
+  if(o.result){ btn.disabled=false; applySnap(o.result,!!o.cached); ran(); return; }
   if(o.building) await waitBuild(o.building);
-  btn.disabled=false;
+  btn.disabled=false; ran();
 }
 /* Follow a background build to the end, then fetch the cached snapshot. Survives leaving
    the page: the job keeps running server-side, and peek-on-open re-attaches here. */
@@ -147,9 +168,10 @@ async function waitBuild(b){
 }
 /* render a snapshot: owners, coverage, Sankey, embedded map, metrics — all from one result */
 function applySnap(s,cached){
-  DATA=s.load||{}; COV=s.coverage||null; SNK=s.map||null; SNAP_META=s.meta||{};
+  DATA=s.load||{}; COV=s.coverage||null; SNK=s.map||null; SNAP_META=s.meta||{}; ZIP=(s.zip&&s.zip.ok)?s.zip:null;
   try{ loadAppliedTags(); }catch(e){}
   ['coverCard','ownersCard','mapCard','snkCard','secMap'].forEach(id=>document.getElementById(id).style.display='block');
+  document.getElementById('zipCard').style.display=ZIP?'block':'none';
   mountSectionNav();
   renderOwners();
   if(COV) coverRender(COV);
@@ -157,7 +179,48 @@ function applySnap(s,cached){
   const c=DATA.counts||{};
   if(!(c.routes||c.paths)) flash('flash','⚠ No routes/paths in navi.db. Run navi config update route + paths, then ▶ Run again.','warn');
   else flashClear('flash');
-  renderMetrics(); snapLine(cached);
+  renderMetrics(); zipRender(); snapLine(cached);
+}
+/* ===== Plugin coverage — the route / path / plugin zipper (snapshot.zip) ===== */
+let ZIP=null;
+function zipRender(){
+  if(!ZIP) return;
+  const N=v=>(v==null?0:v).toLocaleString(), pc=(a,b)=>b?Math.round(100*(a||0)/b):0;
+  const f=ZIP.findings||{}, pl=ZIP.plugins||{}, a=ZIP.assets||{}, lk=ZIP.links||{}, ra=ZIP.ratio||{};
+  document.getElementById('zipSrc').innerHTML=ZIP.source==='index'
+    ? '⚡ from the route/path/plugin index (Settings ▸ ⚡ Optimize)'
+    : (String(ZIP.source||'').indexOf('unavailable')===0 ? '⚠ '+esc(ZIP.source)
+       : 'computed from navi.db — run ⚡ Optimize in Settings to build the index (faster on large estates; it goes stale when routes or paths are rebuilt)');
+  renderGlance('zipKpi', [
+    {title:'Findings', t:'Open, non-info findings (one per plugin × asset). Fixed and info findings are not counted.',
+     hero:{v:pc(f.owned,f.total)+'%', l:'open findings owned', u:`${N(f.owned)} of ${N(f.total)} · ${N(f.decided)} decided · ${N(f.unowned)} unowned · ${N(f.orphan)} unreachable`, sev:'ok'},
+     bar:[{label:'owned',value:f.owned||0,color:'ok'},{label:'decided',value:f.decided||0,color:'info'},{label:'unowned',value:f.unowned||0,color:'crit'},{label:'no route or path',value:f.orphan||0,color:'var(--mut)'}],
+     chips:[{v:pc(a.closed,a.total)+'%', l:'assets closed', u:`${N(a.closed)} of ${N(a.total)} — every open finding has an owner`, sev:'info'},
+            {v:N(a.ownerless), l:'Ownerless Risk — assets', u:'not one open finding owned or decided', sev:a.ownerless?'crit':'none'},
+            {v:N(f.orphan), l:'findings no tag can reach', u:'no route and no path — rebuild routes (navi config update route)', sev:f.orphan?'high':'none',
+             t:'A plugin with no route usually means the route table is older than the plugin. Rebuild it from Settings (routes) and run ⚡ Optimize.'}]},
+    {title:'Plugins', t:'A plugin is owned when every one of its open findings has an owner; decided when the rest carry Ignored / Accepted / Mitigated.',
+     hero:{v:pc(pl.owned,pl.total)+'%', l:'plugins fully owned', u:`${N(pl.owned)} of ${N(pl.total)} · ${N(pl.decided)} decided · ${N(pl.partial)} partial · ${N(pl.unowned)} unowned · ${N(pl.unrouted)} unrouted`, sev:'ok', href:'#zipPlugins'},
+     bar:[{label:'owned',value:pl.owned||0,color:'ok'},{label:'decided',value:pl.decided||0,color:'info'},{label:'partial',value:pl.partial||0,color:'med'},{label:'unowned',value:pl.unowned||0,color:'crit'},{label:'unrouted',value:pl.unrouted||0,color:'var(--mut)'}],
+     chips:[{v:N(lk.both), l:'findings reachable by route and path', sev:'info'},
+            {v:N(lk.route_only), l:'by route only', u:'no path in its output', sev:'info'},
+            {v:N(lk.path_only), l:'by path only', u:'plugin has no route', sev:lk.path_only?'med':'none'}]},
+    {title:'Route ↔ path', t:'How routes and paths pair up through shared plugins.',
+     hero:{v:N(ra.one_to_one), l:'1 : 1 route ↔ path pairs', u:`${N(ra.routes_many_paths)} routes span many paths · ${N(ra.paths_many_routes)} paths carry many routes`, sev:'info'},
+     chips:[{v:N(ra.routes_no_path), l:'routes with no path', u:'only a route owner can cover them', sev:'info'},
+            {v:N(ra.paths_no_route), l:'paths on no route', u:'need a direct path owner', sev:ra.paths_no_route?'med':'none'}]}
+  ]);
+  const gapRow=(kind)=>x=>`<tr><td class="mono" style="font-size:11.5px;word-break:break-word">${kind==='path'?'<a href="#" class="zpath" data-zn="'+esc(x.name)+'" data-za="'+esc((x.routes||[])[0]||'')+'" title="Open this path — its assets, owners, 📧 email or 🛠 Remote Remediation">'+esc(x.name)+'</a>':esc(x.name)}</td><td><b>${N(x.closes)}</b></td><td>${N(x.assets)}</td><td>${kind==='route'?N(x.paths):(()=>{ const r=x.routes||[]; return r.length?'<span title="'+esc(r.join(', '))+'">'+esc(r.slice(0,3).join(', '))+(r.length>3?' <span class="sub">+'+N(r.length-3)+' more</span>':'')+'</span>':'<span class="sub">no route</span>'; })()}</td><td><button class="btn sm" data-zk="${kind}" data-zn="${esc(x.name)}">🏷 Tag owner</button></td></tr>`;
+  const none=c=>`<tr><td colspan="${c}" class="sub">Nothing left to close here.</td></tr>`;
+  document.querySelector('#zipRoutes tbody').innerHTML=(ZIP.gap_routes||[]).length?ZIP.gap_routes.map(gapRow('route')).join(''):none(5);
+  document.querySelector('#zipPaths tbody').innerHTML=(ZIP.gap_paths||[]).length?ZIP.gap_paths.map(gapRow('path')).join(''):none(5);
+  document.querySelectorAll('#zipRoutes [data-zk],#zipPaths [data-zk]').forEach(b=>b.onclick=()=>showQuickAssign([{kind:b.dataset.zk,name:b.dataset.zn}]));
+  document.querySelectorAll('#zipPaths .zpath').forEach(a=>a.onclick=e=>{ e.preventDefault(); openPathDetail(a.dataset.zn, a.dataset.za); });
+  const rows=ZIP.top_plugins||[], ST={decided:'b-appr',partial:'b-planned',unowned:'b-err',unrouted:'b-pending'}, SVC={critical:'var(--crit)',high:'var(--high)',medium:'var(--med)',low:'var(--low)'};
+  document.getElementById('zipPlugCount').textContent='('+N(rows.length)+((pl.total-pl.owned)>rows.length?' of '+N(pl.total-pl.owned)+' — the '+N(ZIP.top_limit)+' with the most open findings':'')+')';
+  hPageReset('zipPlugins'); hPaginate('zipPlugins', rows, r=>`<tr><td><span class="mono">${esc(r.plugin_id)}</span> ${esc(r.name||'')}</td><td>${r.severity?'<b style="color:'+(SVC[r.severity]||'var(--ink-3)')+'">'+esc(r.severity)+'</b>':'—'}</td><td>${r.route?esc(r.route):'<span class="sub">no route</span>'}</td><td>${N(r.paths)}</td><td><b>${N(r.open)}</b> / ${N(r.findings)}</td><td><span class="badge ${ST[r.status]||''}">${esc(r.status)}</span></td></tr>`,
+    {empty:'<tr><td colspan="6" class="sub">Every plugin is fully owned. 🎉</td></tr>'});
+  setNavCount('zipCard', pc(f.owned,f.total)+'% owned');
 }
 const s_n=m=>(m&&m.scope&&m.scope.assets!=null)?m.scope.assets:null;
 function snapLine(cached){ const m=SNAP_META||{}, el=document.getElementById('snapMeta'); if(!el) return;
@@ -174,6 +237,7 @@ function omFeed(){
   if(f && f.__ready){ try{ f.contentWindow.omLoad(SNK); }catch(e){} return; }
   if(f) return;                                   // still loading — onload feeds the latest SNK
   f=document.createElement('iframe'); f.id='omFrame'; f.title='Ownership Map'; f.src='/web/ownermap.html?embed=1';
+  f.setAttribute('allow','fullscreen'); f.setAttribute('allowfullscreen','');   // the graph's ⛶ (build 498)
   f.onload=()=>{ const w=f.contentWindow; f.__ready=true;
     // a tag view: the embedded map's own POSTs to exproute (inline Assign, path drill-down) carry
     // this page's tag_scope (console.js jpost reads window.__TAG_SCOPE / __TAG_SCOPE_AGENT), and its confirm dialogs
@@ -186,6 +250,18 @@ function omFeed(){
     new MutationObserver(sync).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']}); sync();
     try{ w.omLoad(SNK); }catch(e){} fit(); };
   wrap.appendChild(f);
+}
+/* build 498: open ONE path's detail in the embedded Ownership Map — its assets, owners and the
+   📧 Email / 🛠 Remote Remediation hand-offs — from a click anywhere on this page */
+function openPathDetail(name, app){
+  const f=document.getElementById('omFrame'), w=f&&f.contentWindow;
+  if(!w||typeof w.pathDetail!=='function'){ const m=document.getElementById('secMap'); if(m) m.scrollIntoView({behavior:'smooth'}); return; }
+  try{ const lc=w.document.getElementById('linkCard'); if(lc) lc.style.display='';
+    if(app && typeof w.showPaths==='function') w.showPaths(app);
+    w.pathDetail(name, app||'');
+    setTimeout(()=>{ const el=w.document.getElementById('pathDetail'); const top=f.getBoundingClientRect().top+window.scrollY+(el?el.offsetTop:0)-80;
+      window.scrollTo({top:Math.max(0,top), behavior:'smooth'}); }, 120);
+  }catch(e){ const m=document.getElementById('secMap'); if(m) m.scrollIntoView({behavior:'smooth'}); }
 }
 /* ===== Metrics — from the load counts, coverage and the ownership map ===== */
 const VPR_B=[['critical (9–10)',9,99,'var(--crit)'],['high (7–8.9)',7,9,'#e0913a'],['medium (4–6.9)',4,7,'#e7c66b'],['low (< 4)',0,4,'#7cc48a']];
@@ -216,16 +292,20 @@ function renderMetrics(){
      hero:{v:N(routes), l:'exposure routes', u:S?`${N(k.routes_with_paths)} with paths · ${N(k.routes_no_paths)} without`:'', href:'#snkCard'},
      chips:[{v:N(paths), l:'distinct paths', u:S?`${N(k.paths_covered)} under a route · ${N(k.paths_orphan)} orphan — need a direct owner`:'', href:'#secMap'},
             {v:N(k.asset_scope!=null?k.asset_scope:v.assets_with_routes), l:tagScope()?'tagged assets on a route / path':'assets in scope', u:v.avg_routes!=null?`${v.avg_routes} routes per asset on average`:''},
-            {v:rr?rr+'%':'—', l:'fewer items to own', u:rf?`${N(rf)} route findings${tagScope()?' on this tag':''} → ${N(v.total_routes)} routes`:'own routes, not findings', sev:'ok', href:'#coverCard',
-             t:`${rr?rr+'%':'—'} fewer items to own — `+(rf?`${N(rf)} route findings → ${N(v.total_routes)} routes; `:'')+'one owner decision per route covers all of its findings'}]},
-    {title:'Ownership', t:'Partial = fewer owned assets than the route has. A path counts as owned when its route is.',
-     hero:{v:dash(pc(k.routes_owned,k.routes)+'%'), l:'routes fully owned', u:S?`${N(k.routes_owned)} owned · ${N(k.routes_partial)} partial · ${N(k.routes_unowned)} none`:'', sev:'ok', href:'#snkCard'},
-     bar:S?st('routes'):null,
-     chips:[{v:dash(pc(k.paths_owned,k.paths)+'%'), l:'paths owned', u:S?`${N(k.paths_owned)} owned · ${N(k.paths_via_route)} via their route`:'', sev:'ok', href:'#secMap'},
-            {v:dash(N(k.unowned_assets)), l:'Ownerless Risk — assets', u:S?`no owner on the routes/paths they sit on · of ${N(k.asset_scope)}${tagScope()?' on this tag':''}`:'', sev:'crit', href:'#snkCard',
-             t:`${dash(N(k.unowned_assets))} Ownerless Risk assets — the ⛔ Unassigned node on the Sankey`+(S?` · no owner on the routes/paths they sit on · of ${N(k.asset_scope)}`:'')},
-            {v:v.assets_with_routes?pc(v.closed,v.assets_with_routes)+'%':'—', l:'assets closed', u:`${N(v.closed)} of ${N(v.assets_with_routes)} — every route they sit on has an owner`, sev:'info', href:'#coverCard'}],
-     ranked:S?{title:'Paths by ownership', items:st('paths').filter(x=>x.value).map(x=>({label:x.label, value:x.value, sev:PSEV[x.label], href:'#secMap'}))}:null},
+            {v:rr?rr+'%':'—', l:'fewer items to own', u:rf?`${N(rf)} open route findings${tagScope()?' on this tag':''} → ${N(v.total_routes)} routes`:'own routes, not findings', sev:'ok', href:'#coverCard',
+             t:`${rr?rr+'%':'—'} fewer items to own — `+(rf?`${N(rf)} open route findings → ${N(v.total_routes)} routes; `:'')+'one owner decision per route covers all of its findings'}]},
+    {title:'Ownership', t:'Routes and paths are how plugins get assigned. A finding is owned when its asset carries an Owner tag for the plugin\'s route or a path it was found at; a route or path is covered when every finding on it is owned, whichever tag owns it. Open, non-info findings only.',
+     hero:ZIP?{v:pc((ZIP.findings||{}).owned,(ZIP.findings||{}).total)+'%', l:'open findings owned', u:`${N((ZIP.findings||{}).owned)} of ${N((ZIP.findings||{}).total)} · ${N((ZIP.plugins||{}).owned)} of ${N((ZIP.plugins||{}).total)} plugins fully owned`, sev:'ok', href:'#zipCard'}
+             :{v:dash(pc(k.routes_owned,k.routes)+'%'), l:'routes fully owned', u:S?`${N(k.routes_owned)} owned · ${N(k.routes_partial)} partial · ${N(k.routes_unowned)} none`:'', sev:'ok', href:'#snkCard'},
+     bar:ZIP?[{label:'owned',value:(ZIP.findings||{}).owned||0,color:'ok'},{label:'decided',value:(ZIP.findings||{}).decided||0,color:'info'},{label:'unowned',value:(ZIP.findings||{}).unowned||0,color:'crit'},{label:'no route or path',value:(ZIP.findings||{}).orphan||0,color:'var(--mut)'}]:(S?st('routes'):null),
+     chips:[{v:dash(pc(k.routes_owned,k.routes)+'%'), l:'routes covered', u:S?`${N(k.routes_owned)} fully · ${N(k.routes_partial)} partial · ${N(k.routes_unowned)} none · ${N(k.routes_assigned)} assigned directly`:'', sev:'ok', href:'#snkCard',
+             t:'A route is covered when every open finding on it is owned — by its own Owner tag or by tags on the paths those findings sit at. "Assigned directly" = routes with an Owner tag of their own.'},
+            {v:dash(pc(k.paths_owned,k.paths)+'%'), l:'paths covered', u:S?`${N(k.paths_owned)} fully · ${N(k.paths_partial)} partial · ${N(k.paths_via_route)} through their route · ${N(k.paths_assigned)} assigned directly`:'', sev:'ok', href:'#secMap',
+             t:'A path is covered when every open finding on it is owned — by its own Owner tag or by the route those findings belong to. Own a route and all of its paths are covered; giving one of them to someone else keeps it covered.'},
+            {v:dash(N(k.unowned_assets)), l:'Ownerless Risk — assets', u:S?`not one open finding owned or decided · of ${N(k.asset_scope)}${tagScope()?' on this tag':''}`:'', sev:'crit', href:'#zipCard',
+             t:`${dash(N(k.unowned_assets))} Ownerless Risk assets`+(S?` · not one open finding on them is owned or decided through its route or a path · of ${N(k.asset_scope)}`:'')},
+            {v:(v.assets_total||v.assets_with_routes)?pc(v.closed,v.assets_total||v.assets_with_routes)+'%':'—', l:'assets closed', u:`${N(v.closed)} of ${N(v.assets_total||v.assets_with_routes)} — every open finding has an owner`, sev:'info', href:'#zipCard'}],
+     ranked:S?{title:'Paths by coverage', items:st('paths').filter(x=>x.value).map(x=>({label:x.label, value:x.value, sev:PSEV[x.label], href:'#secMap'}))}:null},
     {title:'Risk without an owner', t:'Routes and paths without a full owner, by their highest VPR.',
      hero:{v:dash(N(hi.length)), l:'high-VPR routes / paths without an owner', u:S?`VPR ≥ 7 · ${N(hiAssets)} unowned assets behind them`:'', sev:'high', href:'#secMap',
            t:'unowned or partially owned; the highest VPR on each route/path counts'},
@@ -242,7 +322,7 @@ function renderMetrics(){
   ]);
   setNavCount('snkCard', S?N(gaps.length)+' gaps':'');
   setNavCount('secMap', S?N(k.unowned_assets)+' ownerless':'');
-  setNavCount('coverCard', v.assets_with_routes?pc(v.closed,v.assets_with_routes)+'% closed':'');
+  setNavCount('coverCard', (v.assets_total||v.assets_with_routes)?pc(v.closed,v.assets_total||v.assets_with_routes)+'% closed':'');
   setNavCount('ownersCard', N(cnt.owners));
 }
 /* ===== Ownership coverage (donuts) ===== */
@@ -264,13 +344,13 @@ function coverRender(v){
     +(()=>{ const dir=((DATA&&DATA.counts)||{}).owners||0, has=(SNK&&SNK.kpi&&SNK.kpi.owners)||v.owners_assigned||0, den=Math.max(dir,has);
         return donut(Math.min(has,den),den,'Owners with a route/path','#a78bfa',`${has} of ${den.toLocaleString()} users &amp; groups · ${Math.max(0,den-has).toLocaleString()} with no assigned work`); })()
     +`<div style="text-align:center;min-width:150px"><div style="font-size:32px;font-weight:800;color:var(--accent)">${v.avg_routes||0}</div><div style="font-weight:600;font-size:13px">avg routes / asset</div><div class="sub" style="font-size:11.5px">${v.assets_with_routes} asset(s) · ${v.total_routes} routes</div></div>`
-    +donut(v.routes_owned,v.total_routes,'Routes with an owner','#a78bfa')
-    +donut(v.owned_paths,v.total_paths,'Distinct paths with an owner','var(--ok)')+'</div>'
+    +donut(v.routes_owned,v.total_routes,'Routes covered — every finding owned','#a78bfa')
+    +donut(v.owned_paths,v.total_paths,'Paths covered — every finding owned','var(--ok)')+'</div>'
     /* Decision outcomes — the result of what you did to each route/path, plus assets fully closed. */
     +(st?('<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:12px">'
       +`<div class="toolbar" style="margin:0 0 6px;justify-content:center;gap:8px"><b>🧭 Decision outcomes</b><span class="sub">dispositions are % of ${st.toLocaleString()} routes + paths${tagScope()?' on this tag':''}</span></div>`
       +'<div style="display:flex;gap:30px;flex-wrap:wrap;justify-content:center;align-items:center">'
-      +donut(v.closed,v.assets_with_routes,'Assets closed — every route owned','#a78bfa')
+      +donut(v.closed,v.assets_total||v.assets_with_routes,'Assets closed — every open finding owned','#a78bfa')
       +donut(v.mitigated||0,st,'Mitigated','var(--ok)')
       +donut(v.accepted||0,st,'Risk accepted','#6ea8ff')
       +donut(v.ignored||0,st,'Ignored','#8a99ad')
@@ -281,10 +361,10 @@ function coverRender(v){
       +(rr?`<span class="chip" style="color:#6ea8ff;border-color:rgba(110,168,255,.5)">${rr}% fewer route items</span>`:'')+'</div>'
       +'<div style="display:flex;gap:26px;flex-wrap:wrap;justify-content:center">'
       +(pf?wbar(pf,dp,'Path findings → distinct paths','var(--ok)'):'')
-      +(rf?wbar(rf,rc,tagScope()?'Route findings on this tag → routes':'Route vulns → routes','#6ea8ff'):'')+'</div>'
+      +(rf?wbar(rf,rc,tagScope()?'Open route findings on this tag → routes':'Open route findings → routes','#6ea8ff'):'')+'</div>'
       +'<p class="sub" style="text-align:center;margin:8px 0 0">Assigning ownership by <b>distinct route/path</b> instead of per-finding collapses the triage queue — one owner decision covers many findings.</p></div>'):'')
     +(v.owned===0?'<p class="sub" style="text-align:center;margin-top:8px">No <span class="tagval">Owner</span> tags in navi.db yet — assign owners below, then <b>↻ Refresh navi.db</b>.</p>'
-      :`<p class="sub" style="text-align:center;margin-top:8px">${v.owned} asset(s) own-tagged. An asset is <b>closed</b> only when all its routes are owned (the <span class="tagval">Owner : &lt;app&gt;: &lt;user&gt;</span> scheme).</p>`)
+      :`<p class="sub" style="text-align:center;margin-top:8px">${v.owned} asset(s) own-tagged. An asset is <b>closed</b> when every open finding on it is owned through its plugin's route or a path it was found at (the <span class="tagval">Owner : &lt;route or path&gt;: &lt;user&gt;</span> scheme).</p>`)
     +(v.note?('<p class="sub" style="text-align:center;color:var(--warn,#e7c66b)">'+esc(v.note)+'</p>'):'');
 }
 /* ===== owners split into Users / Groups, paginated 20/page ===== */
@@ -462,7 +542,11 @@ function snkRender(){ const wrap=document.getElementById('snkGraph'); if(!SNK){ 
   items.forEach(it=>{ const fi=items.indexOf(it);
     if(SNK_DNODE[it.status]){ const node=SNK_DNODE[it.status]; links.push({fi,to:node,v:it.assets,kind:it.status}); ownerTot[node]=(ownerTot[node]||0)+it.assets; return; }
     const owned=Math.max(0,it.owned_assets||0), un=Math.max(0,(it.assets||0)-owned), ow=(it.owners&&it.owners.length)?it.owners:[];
-    if(ow.length&&owned>0){ const per=owned/ow.length; ow.forEach(o=>{ links.push({fi,to:o,v:per,kind:'owned'}); ownerTot[o]=(ownerTot[o]||0)+per; }); }
+    // per-owner share of the item's assets (an item's own Owner tag wins on its assets; the
+    // covering route/path owners fill in the rest) — even split only when no shares were sent
+    const sh=it.owner_assets||null, shT=sh?Object.values(sh).reduce((a,b)=>a+b,0):0;
+    if(ow.length&&owned>0){ if(sh&&shT>0){ Object.keys(sh).forEach(o=>{ const v=owned*sh[o]/shT; if(v>0){ links.push({fi,to:o,v,kind:'owned'}); ownerTot[o]=(ownerTot[o]||0)+v; } }); }
+      else { const per=owned/ow.length; ow.forEach(o=>{ links.push({fi,to:o,v:per,kind:'owned'}); ownerTot[o]=(ownerTot[o]||0)+per; }); } }
     if(un>0){ links.push({fi,to:UN,v:un,kind:'un'}); ownerTot[UN]=(ownerTot[UN]||0)+un; } });
   SNK_LAST={items, links};
   const owners=Object.keys(ownerTot).sort((a,b)=>{ const sa=_snkSpecial(a),sb=_snkSpecial(b); if(sa!==sb)return sa?1:-1; if(a===UN)return 1; if(b===UN)return -1; return ownerTot[b]-ownerTot[a]; });
@@ -477,13 +561,18 @@ function snkRender(){ const wrap=document.getElementById('snkGraph'); if(!SNK){ 
     const dy=rY[lk.to]+(rOff[lk.to]||0)+th/2; rOff[lk.to]=(rOff[lk.to]||0)+th; const mx=(leftX+nodeW+rightX)/2, c=SNK_RC[lk.kind]||'var(--ok)';
     ribbons+='<path d="M'+(leftX+nodeW)+' '+sy.toFixed(1)+' C '+mx+' '+sy.toFixed(1)+', '+mx+' '+dy.toFixed(1)+', '+rightX+' '+dy.toFixed(1)+'" fill="none" stroke="'+c+'" stroke-opacity="0.42" stroke-width="'+th.toFixed(1)+'" data-i="'+lk.fi+'" data-o="'+esc(lk.to)+'"/>'; });
   const short=s=>{s=String(s);return s.length>30?('…'+s.slice(-29)):s;}; let ln='',rn='';
-  items.forEach((it,i)=>{ const c=SNK_SC[it.status]||'#888'; ln+='<g class="xsl" data-i="'+i+'" data-name="'+esc(it.name)+'" style="cursor:pointer"><rect x="'+leftX+'" y="'+lY[i].toFixed(1)+'" width="'+nodeW+'" height="'+lH[i].toFixed(1)+'" rx="2" fill="'+c+'"/><text x="'+(leftX-8)+'" y="'+(lY[i]+lH[i]/2+4).toFixed(1)+'" text-anchor="end" font-size="12" fill="var(--ink)">'+esc(short(it.name))+'</text><text x="'+(leftX-8)+'" y="'+(lY[i]+lH[i]/2+16).toFixed(1)+'" text-anchor="end" font-size="9.5" fill="var(--mut)">'+it.owned_assets+'/'+it.assets+'</text></g>'; });
+  const covTip=it=>it.name+' — '+it.status+(it.findings?' · '+(it.coverage_pct||0)+'% of '+Number(it.findings).toLocaleString()+' open findings owned':'')
+    +((it.via_routes||[]).length?' · covered through route '+it.via_routes.join(', '):'')+((it.via_paths||[]).length?' · covered through paths '+it.via_paths.slice(0,5).join(', ')+(it.via_paths.length>5?' +'+(it.via_paths.length-5):''):'')
+    +(it.assigned?' · assigned directly to '+(it.direct_owners||it.owners||[]).join(', '):' · no Owner tag of its own');
+  items.forEach((it,i)=>{ const c=SNK_SC[it.status]||'#888'; ln+='<g class="xsl" data-i="'+i+'" data-name="'+esc(it.name)+'" style="cursor:pointer"><title>'+esc(covTip(it))+'</title><rect x="'+leftX+'" y="'+lY[i].toFixed(1)+'" width="'+nodeW+'" height="'+lH[i].toFixed(1)+'" rx="2" fill="'+c+'"/><text x="'+(leftX-8)+'" y="'+(lY[i]+lH[i]/2+4).toFixed(1)+'" text-anchor="end" font-size="12" fill="var(--ink)">'+esc(short(it.name))+'</text><text x="'+(leftX-8)+'" y="'+(lY[i]+lH[i]/2+16).toFixed(1)+'" text-anchor="end" font-size="9.5" fill="var(--mut)">'+it.owned_assets+'/'+it.assets+'</text></g>'; });
   owners.forEach(o=>{ const nc=_snkColor(o); rn+='<g class="xso" data-o="'+esc(o)+'" style="cursor:pointer"><rect x="'+rightX+'" y="'+rY[o].toFixed(1)+'" width="'+nodeW+'" height="'+rH[o].toFixed(1)+'" rx="2" fill="'+nc+'"/><text x="'+(rightX+nodeW+8)+'" y="'+(rY[o]+rH[o]/2+4).toFixed(1)+'" font-size="12" font-weight="600" fill="'+nc+'">'+esc(o)+' <tspan font-weight="400" fill="var(--mut)">'+Math.round(ownerTot[o])+'</tspan></text></g>'; });
   wrap.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="min-width:700px"><text x="'+leftX+'" y="14" text-anchor="end" font-size="10.5" fill="var(--mut)">ROUTES / PATHS →</text><text x="'+(rightX+nodeW)+'" y="14" font-size="10.5" fill="var(--mut)">OWNERS</text>'+ribbons+ln+rn+'</svg>';
   const svg=wrap.querySelector('svg'), pth=svg.querySelectorAll('path');
   const hi=pred=>pth.forEach(p=>p.setAttribute('stroke-opacity',pred(p)?0.9:0.05)), reset=()=>pth.forEach(p=>p.setAttribute('stroke-opacity','0.42'));
   svg.querySelectorAll('.xsl').forEach(g=>{ g.onmouseenter=()=>hi(p=>p.dataset.i===g.dataset.i); g.onmouseleave=reset;
-    g.onclick=()=>{ const t=document.getElementById('mapTbl'); if(t)t.scrollIntoView({behavior:'smooth',block:'center'}); }; });
+    g.onclick=()=>{ const it=(SNK_LAST&&SNK_LAST.items||[])[+g.dataset.i];
+      if(it&&it.type==='path'){ openPathDetail(it.name,(it.routes||[])[0]||''); return; }   // build 498: path → its detail (email / remediate)
+      const t=document.getElementById('mapTbl'); if(t)t.scrollIntoView({behavior:'smooth',block:'center'}); }; });
   svg.querySelectorAll('.xso').forEach(g=>{ g.onmouseenter=()=>hi(p=>p.dataset.o===g.dataset.o); g.onmouseleave=reset;
     g.onclick=()=>{ if((g.dataset.o||'').indexOf('Unassigned')>=0){ const cc=document.getElementById('coverCard'); if(cc)cc.scrollIntoView({behavior:'smooth'}); } }; });
 }
@@ -549,6 +638,7 @@ hWidget('snkCard',{title:'Ownership Sankey — routes / paths → owners', visua
   note:()=>'Band thickness = assets · ⛔ Unassigned = Ownerless Risk',
   rows:()=>(SNK_LAST?SNK_LAST.links.map(l=>({'route / path':SNK_LAST.items[l.fi].name, type:SNK_LAST.items[l.fi].type, owner:l.to,
     assets:Math.round(l.v*10)/10, status:SNK_LAST.items[l.fi].status||''})):[])});
+try{ const fs=hFull(document.getElementById('secMap'),{grow:'#omFrame', growOffset:110}); document.getElementById('secMapFs').appendChild(fs); }catch(e){}   // ⛶ the whole Ownership Map (build 498)
 try{ hMailAuto(); }catch(e){}
 /* explicit-run: nothing scans navi.db until ▶ Run — UNLESS we arrived from the standalone map
    with gap(s) to assign, in which case run, then open the quick-assign for them. */

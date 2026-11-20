@@ -380,6 +380,9 @@ def _after_sync(job):
     it, only when those indexes exist. Cheap (catalog read + one UPDATE); never fatal."""
     try:
         from core import hx_optimize
+        if job.get("kind") in ("routes", "paths"):
+            _refresh_summaries(job)              # the route/path/plugin index reads these tables
+            return
         if job.get("kind") not in hx_optimize.SYNC_KINDS:
             return
         r = hx_optimize.reapply_unordered()
@@ -409,14 +412,17 @@ def _refresh_summaries(job):
     hx_asset) were built before, they are now stale — start ⚡ Optimize to rebuild them (indexes
     already exist, so it is ANALYZE + the summaries). Never when they were never built: the user
     hasn't opted in to writes on navi.db yet."""
-    if job.get("kind") not in ("assets", "vulns", "full", "everything") or job.get("_no_refresh"):
+    if job.get("kind") not in ("assets", "vulns", "full", "everything", "routes", "paths") or job.get("_no_refresh"):
         return
     try:
         from core import hx_optimize, hx_summary
         hx_summary.invalidate()
         st = hx_optimize.status()
         sm = st.get("summary") or {}
-        if not sm.get("present") or sm.get("fresh"):
+        # stale = a sync changed vulns/assets, OR a route/paths rebuild left the route/path/plugin
+        # index (hx_rpp) behind while the other summaries are still fresh
+        rpp_stale = sm.get("rpp") is not None and not sm.get("rpp_fresh")
+        if not sm.get("present") or (sm.get("fresh") and not rpp_stale):
             return
         if not job.get("_local"):
             # Optimize writes navi.db (loopback + confirm when started by hand): a sync started

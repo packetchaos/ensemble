@@ -10,3 +10,5 @@ LLM, validated and previewed before any gated write.
   bulk; without one, per-tag set / +N / −N still works.
 - **Writes:** gated `navi enrich acr` (`NAVI_ALLOW_WRITES=1` + `confirm: true`); assets tagged
   exactly `NO : UPDATE` are skipped, and every change lands in the ACR log.
+- **At a glance:** ACR spread by Tenable band, average / top / bottom AES, default vs changed
+  (ACR log ∪ `NO : UPDATE`), drift and the ACR × AES crossover — `core/acr_estate.py`, see [ACR_SPEC.md](../../ACR_SPEC.md).

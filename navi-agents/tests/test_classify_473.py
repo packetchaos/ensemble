@@ -71,9 +71,22 @@ check(("Device Type", "Printer") in sig and ("Device Type", "Camera") in sig,
       "Nessus Device Type names the printer and camera (a printer on embedded Linux is not 'OS: Linux')")
 check(("OS", "Windows Server 2022") in sig or any(f == "OS" and "Windows" in v for f, v in sig), "general-purpose hosts still go by OS")
 
-for label in ("Server", "Desktop", "Laptop", "Camera", "Printer", "Switch", "Router", "Firewall", "Wireless Access Point",
-              "NAS", "VoIP", "UPS / Power", "PLC", "Hypervisor"):
+for label in ("PC", "Server-on-prem", "PC-VDI", "VDI", "Server-VDI", "Printer", "Camera",
+              "Switch", "Router", "Firewall", "Wireless Access Point", "Load Balancer", "Network Device"):
     check(label in classify.DEVICE_TYPE_LABELS, "Device Type option: %s" % label)
+for label in ("Server", "Desktop", "Laptop", "NAS", "PLC", "Class"):
+    check(label not in classify.DEVICE_TYPE_LABELS, "build 499: no longer offered: %s" % label)
+b499 = {"PC": "Workstation", "PC-VDI": "Workstation", "VDI": "Virtual Infrastructure", "Server-on-prem": "Server",
+        "Server-VDI": "Server", "server-vdi pool": "Server", "Network Device": "Network", "on-prem server": "Server"}
+g499 = {v: (classify.device_type(v) or ("", ""))[1] for v in b499}
+check(g499 == b499, "build 499 device types → class %s" % g499)
+check(classify.device_type("Server-VDI")[0] == "Server-VDI" and classify.device_type("on-prem server")[0] == "Server-on-prem",
+      "VDI / on-prem words win over the broad 'server'")
+check(classify._net_device_type("core-fw-01", "") == "Firewall" and classify._net_device_type("edge-rtr", "") == "Router"
+      and classify._net_device_type("idf-sw-3", "") == "Switch" and classify._net_device_type("box", "") == "Network Device",
+      "network signals suggest a Device Type, not Class: Network")
+check(classify._general_purpose_type("Windows 11") == "PC" and classify._general_purpose_type("Ubuntu 22.04") == "Server-on-prem",
+      "general-purpose hosts → PC / Server-on-prem")
 want = {"Server": "Server", "Desktop": "Workstation", "Laptop": "Workstation", "Camera": "IoT", "Printer": "IoT",
         "Switch": "Network", "Firewall": "Network", "PLC": "OT", "Hypervisor": "Virtual Infrastructure",
         "HP LaserJet printer": "IoT", "PowerEdge Server": "Server", "APC Smart-UPS": "IoT", "Engineering Workstation": "OT"}
@@ -90,8 +103,9 @@ check(argos._decipher("Asset Inventory", "Device Type: Server")["band"] == "info
       "Argos: a Server device type is not weighted as an IoT signal")
 from agents.classify import api as capi  # noqa: E402
 o, _ = capi.signals({})
-check("Server" in o["result"]["device_types"], "the page gets the Device Type options from the server")
+check("PC" in o["result"]["device_types"] and "Switch" in o["result"]["device_types"], "the page gets the Device Type options from the server")
 pg = open(os.path.join(ROOT, "agents", "classify", "page.html"), encoding="utf-8").read()
+check("const FACETS=['OS','Device Type'" in pg and "'Class','Device Type'" not in pg, "page: Class is not a category option")
 check("function bindList(" in pg and "'dlDev'" in pg and "bindList(_fsel, document.getElementById('ucVal'))" in pg
       and "bindList(document.getElementById('sigfacet-'+i)" in pg, "page: value boxes suggest the device types")
 print("\n%d failure(s)" % len(fails))

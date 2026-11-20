@@ -3,7 +3,7 @@
 ACR protection (NO : UPDATE) and the ACR log: see core/acr_protect.py + core/acrlog.py.
 Reads: preview, metrics, log, log_export. Gated writes: apply, bulk_apply (optional
 protect_after), protect (tag NO : UPDATE — never a removal; removal is Garmr's)."""
-from core import acr_protect, acrlog, navi_cli, llm
+from core import acr_estate, acr_protect, acrlog, navi_cli, llm
 from .agent import ACRCalibrationAgent
 from core.gates import confirmed
 
@@ -106,12 +106,18 @@ def preview(p):
 
 
 def metrics(p):
-    """Read: At-a-glance numbers + the Protection list (navi.db NO : UPDATE × the ACR log)."""
+    """Read: At-a-glance numbers — the estate (core/acr_estate: ACR spread, AES avg/top/bottom, default vs
+    changed) + the Protection list (navi.db NO : UPDATE × the ACR log). payload: {show, limit, fresh}."""
     show = str(p.get("show") or "all")
     if show not in ("all", "protected", "unprotected", "pending"):
         show = "all"
-    return {"ok": True, **acr_protect.metrics(show=show, limit=p.get("limit") or 2000),
-            "writes_enabled": navi_cli.writes_enabled()}, 200
+    out = {"ok": True, **acr_protect.metrics(show=show, limit=p.get("limit") or 2000),
+           "writes_enabled": navi_cli.writes_enabled()}
+    try:                     # the estate half (ACR spread, AES, default vs changed) — never breaks Protection
+        out["estate"] = acr_estate.estate(fresh=bool(p.get("fresh")))
+    except Exception as e:   # noqa: BLE001
+        out["estate"] = {"ok": False, "error": "estate metrics unavailable: %s" % e}
+    return out, 200
 
 
 def _filters(p):

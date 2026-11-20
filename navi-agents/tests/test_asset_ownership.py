@@ -96,7 +96,10 @@ check(k["top_unowned"] and k["top_unowned"]["uuid"] == "a2", "highest-ACR unowne
 check(rows["a5"]["claimed_pct"] == 100.0, "owned + dispositioned route counted once (claimed ≤ 100%%): %s"
       % rows["a5"]["claimed_pct"])
 check(all(x["claimed_pct"] is None or x["claimed_pct"] <= 100 for x in r["assets"]), "no claimed_pct > 100")
-check(k["surface_items"] == 8 and k["surface_handled"] <= k["surface_items"], "route/path items")
+# build 498: the surface is OPEN, non-info findings — 7 Apache + a2's 2 unrouted criticals (a6's fixed one out)
+check(k["surface_items"] == 9 and k["surface_handled"] <= k["surface_items"], "surface = 9 open findings")
+check(rows["a2"]["surface"] == 3 and rows["a2"]["claimed_pct"] == 0.0 and rows["a6"]["surface"] == 1,
+      "a2: 3 open findings, none owned; a6: only its open Apache finding counts")
 own = {o["name"]: o for o in r["owners"]}
 check(r["owners_total"] == 5 and own["Linux Team"]["tech"] == 1 and own["Linux Team"]["assets"] == 1,
       "owners by asset count (a name counts an asset once)")

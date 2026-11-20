@@ -223,23 +223,40 @@ def snapshot_state(db_path=None, tag_key=None, tag_value=None) -> dict:
     return {"snap": s, "stale": stale, "building": bld or None, "key": key}
 
 
-def start_build(submit, db_path=None, tag_key=None, tag_value=None) -> dict:
+def note_run(rid, ok=True, ms=0, cached=False):
+    """Build 498: a ▶ Run on this page is a run in "Done so far" (core.activity), recorded when
+    the snapshot it asked for is ready — the page opts out of the page cache, so it sends its
+    own `record_run` id (Run the Ensemble records its own runs and never passes one)."""
+    if not rid:
+        return
+    try:
+        from core import activity
+        activity.note_run("sla", "snapshot", ok=bool(ok), ms=float(ms or 0), cached=bool(cached), rid=str(rid)[:40])
+    except Exception:
+        pass
+
+
+def start_build(submit, db_path=None, tag_key=None, tag_value=None, record_run=None) -> dict:
     """Start (or join) the background build for one view. `submit(fn)` puts fn on the job
-    queue and returns the job stub. One build per (navi.db, view) at a time."""
+    queue and returns the job stub. One build per (navi.db, view) at a time.
+    record_run: the page's run id — recorded in Done so far when the build ends."""
     key = _file_key(db_path, tag_key, tag_value)
     with _SLOCK:
         if key in _BUILDING:
             return dict(_BUILDING[key])
 
         def _work():
+            t0, ok = _time.time(), False
             try:
                 s = build_snapshot(db_path, tag_key, tag_value)
                 m = s["meta"]
+                ok = True
                 return {"ok": True, "ready": True, "build_sec": m["build_sec"],
                         "message": f"SLA snapshot built in {m['build_sec']}s"}
             finally:
                 with _SLOCK:
                     _BUILDING.pop(key, None)
+                note_run(record_run, ok=ok, ms=(_time.time() - t0) * 1000)
         job = submit(_work)
         _BUILDING[key] = {"job_id": job.get("id"), "started": _iso(_time.time()),
                           "view": _view(tag_key, tag_value)}

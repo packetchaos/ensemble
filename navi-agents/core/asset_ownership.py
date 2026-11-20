@@ -167,6 +167,24 @@ def _route_members(db_path=None, scope=None) -> dict:
     return out
 
 
+def _finding_members(db_path=None, scope=None) -> dict:
+    """uuid -> {(route app or None, (paths…)): open findings} — build 498: the asset's OPEN,
+    NON-INFO findings (one per plugin) grouped by the route their plugin is on and the paths it
+    was found at there, from the route / path / plugin index (core/hx_rpp, the same rows
+    Exposure Routes uses; straight from navi.db when the index is stale). Routes and paths are
+    how plugins get ASSIGNED; ownership is counted on these findings."""
+    from core import hx_rpp
+    out = {}
+    fs, ps = _sc(scope, "asset_uuid")
+    for _pid, au, app, pths in hx_rpp.iter_findings(db_path, fs, ps, budget="job"):
+        if not au:
+            continue
+        g = out.setdefault(au, {})
+        k = (app, tuple(pths))
+        g[k] = g.get(k, 0) + 1
+    return out
+
+
 def _path_members(db_path=None, scope=None) -> dict:
     out = {}
     if not _has_table("vuln_paths", db_path):
@@ -249,8 +267,9 @@ def _is_crown(a):
     return any(_nk(v) in _CROWN_TAG_VALUES for vs in a.get("_tagmap", {}).values() for v in vs)
 
 
-def _asset_ownership(a, routes_on, paths_on):
-    """Compute the ownership picture for ONE asset from its tags + route/path surface."""
+def _asset_ownership(a, groups):
+    """Compute the ownership picture for ONE asset from its tags + its open findings grouped by
+    route and paths (`groups`, from _finding_members)."""
     tm = a.get("_tagmap", {})
     # ---- layer 1: Asset Owner (single, complete) ----
     asset_owner, ao_mode = None, None
@@ -286,18 +305,29 @@ def _asset_ownership(a, routes_on, paths_on):
         elif user:
             tech.add(user)
             owned_names.add(_nk(nm))
-    surface_items = {("route", _nk(r)) for r in routes_on} | {("path", _nk(p)) for p in paths_on}
-    surface = len(surface_items)
-    # which surface items are owned / dispositioned
-    owned = sum(1 for _, nm in surface_items if nm in owned_names)
     disp_map = {}
     for nm, d in disp_names:
         disp_map[nm] = d
-    dispositioned = sum(1 for _, nm in surface_items if nm in disp_map)
-    # claimed: asset owner closes everything; else owned + dispositioned handled items.
-    # An item can carry both an owner tag and a disposition — count it once, so the
-    # claimed share can never exceed 100%.
-    handled_items = sum(1 for _, nm in surface_items if nm in owned_names or nm in disp_map)
+    # build 498: the surface is the asset's OPEN, non-info FINDINGS (one per plugin) — routes and
+    # paths are how they get assigned. A finding is owned when this asset carries an Owner tag
+    # for its plugin's route OR one of the paths it was found at (own the CentOS route → every
+    # CentOS finding on it is owned, whichever path it sits at); dispositioned when it carries
+    # Ignored / Accepted / Mitigated there instead. `groups` = {(route, (paths…)): findings}.
+    surface = owned = dispositioned = 0
+    mit = acc = ign = 0
+    for (app, pths), n in (groups or {}).items():
+        names = ([_nk(app)] if app else []) + [_nk(p) for p in pths]
+        surface += n
+        if any(x in owned_names for x in names):
+            owned += n
+            continue
+        d = next((disp_map[x] for x in names if x in disp_map), None)
+        if d:
+            dispositioned += n
+            mit += n if d == "Mitigated" else 0
+            acc += n if d == "Accepted" else 0
+            ign += n if d == "Ignored" else 0
+    handled_items = owned + dispositioned
     if asset_owner:
         claimed_pct = 100.0
         handled = surface
@@ -308,10 +338,6 @@ def _asset_ownership(a, routes_on, paths_on):
         handled = 0
         claimed_pct = 100.0 if (asset_owner or biz) else None   # None = no exposure surface
     has_any_owner = bool(asset_owner or tech or biz)
-    # disposition rollup for this asset (share of surface)
-    mit = sum(1 for _, nm in surface_items if disp_map.get(nm) == "Mitigated")
-    acc = sum(1 for _, nm in surface_items if disp_map.get(nm) == "Accepted")
-    ign = sum(1 for _, nm in surface_items if disp_map.get(nm) == "Ignored")
     return {
         "asset_owner": asset_owner, "asset_owner_mode": ao_mode,
         "business_owners": biz, "tech_owners": sorted(tech),
@@ -320,6 +346,28 @@ def _asset_ownership(a, routes_on, paths_on):
         "mitigated": mit, "accepted": acc, "ignored": ign,
         "unclaimed": (surface > 0 and not has_any_owner and handled == 0),
     }
+
+
+# build 499: specialist findings grouped by what they mean (crown-jewel triage). The same lanes
+# as the page's CJ_LANES — checked in this order; anything else is context (tiers, classes,
+# inventories), which is not a specialist FINDING.
+SIGNAL_LANES = (
+    ("id", re.compile(r"(^|[-\s])(ai|nhi)(\b|[-\s])|identity|account reuse|llm|atlas", re.I)),
+    ("ex", re.compile(r"kev|attack path|mitre|exposure score|priority|exploit", re.I)),
+    ("hy", re.compile(r"lifecycle|\beol\b|end of life|outdated|software risk|cert|pqc|quantum|crypto", re.I)),
+    ("vi", re.compile(r"scan health|cred|agent group|coverage|audit", re.I)),
+)
+
+
+def signal_lanes(sig) -> dict:
+    """{lane id: [tag keys]} for an asset's signals; context keys are left out."""
+    out = {}
+    for k in (sig or {}):
+        for lid, rx in SIGNAL_LANES:
+            if rx.search(k):
+                out.setdefault(lid, []).append(k)
+                break
+    return out
 
 
 def _hound_signals(a):
@@ -404,20 +452,20 @@ def _rollup(db_path, emit, scope=None):
         raise LookupError("no tags table in navi.db — run `navi config update assets` to filter by a tag")
     # build 489: a tag view reads only the tag's assets; each asset's row is built exactly as in
     # the whole estate (its own tags, routes, paths and findings), only the population changes
-    routes_by = _route_members(db_path, scope)
-    paths_by = _path_members(db_path, scope)
+    finds_by = _finding_members(db_path, scope)     # build 498: per-finding (route, paths)
     risk_by = _vuln_risk(db_path, scope)
     owners = {}                       # name -> {assets, crown, business, asset, tech}
     K = dict(n=0, with_surface=0, unclaimed=0, fully=0, biz=0, asset=0, tech=0, claimed_sum=0.0, claimed_n=0,
              surf_total=0, mit=0, acc=0, ign=0, owned=0, crown=0, crown_owned=0, crown_unclaimed=0, crown_biz=0,
              crown_no_owner=0, kev=0, blind=0, no_signal=0, cred_fail=0, surf_owned=0, surf_disp=0, surf_handled=0,
              surface_items=0, ao_complete=0, ao_remainder=0, crit_assets=0, kev_findings=0, unowned_crit=0,
-             unowned_crit_findings=0, unowned_kev=0)
+             unowned_crit_findings=0, unowned_kev=0, crown_crit=0, crown_kev=0, crown_blind=0)
     tu, tu_key = None, None
     for a in _iter_assets_with_tags(db_path, scope):
-        ro = routes_by.get(a["uuid"], set())
-        pa = paths_by.get(a["uuid"], set())
-        own = _asset_ownership(a, ro, pa)
+        grp = finds_by.get(a["uuid"]) or {}
+        ro = {app for (app, _p) in grp if app}
+        pa = {p for (_a, ps) in grp for p in ps}
+        own = _asset_ownership(a, grp)
         sig = _hound_signals(a)
         is_crown = _is_crown(a)
         primary_owner = (own["asset_owner"] or (own["tech_owners"][0] if own["tech_owners"] else None)
@@ -434,6 +482,7 @@ def _rollup(db_path, emit, scope=None):
             "unclaimed": own["unclaimed"], "has_owner": own["has_owner"],
             "mitigated": own["mitigated"], "accepted": own["accepted"], "ignored": own["ignored"],
             "signals": sig, "signal_count": len(sig),
+            "risk_signals": sum(len(v) for v in signal_lanes(sig).values()),   # findings, not context
             "crit": crit, "kev": kevf,
         }
         K["n"] += 1
@@ -479,6 +528,9 @@ def _rollup(db_path, emit, scope=None):
             K["crown_unclaimed"] += 1 if (row["surface"] > 0 and not row["has_owner"]) else 0
             K["crown_biz"] += 1 if row["business_owners"] else 0
             K["crown_no_owner"] += 0 if row["has_owner"] else 1
+            K["crown_crit"] += 1 if crit else 0          # build 499: the crown-jewel summary strip
+            K["crown_kev"] += 1 if kevf else 0
+            K["crown_blind"] += 1 if row["risk_signals"] == 0 else 0     # no specialist FINDING
         K["blind"] += 1 if is_blind else 0
         K["no_signal"] += 1 if row["signal_count"] == 0 else 0
         if any("cred failure" in _nk(k) + " " + _nk(str(v)) for k, vs in sig.items() for v in (vs or [""])):
@@ -531,6 +583,7 @@ def _rollup(db_path, emit, scope=None):
         "surface_dispositioned": K["surf_disp"], "surface_handled": K["surf_handled"],
         "surface_handled_pct": pct(K["surf_handled"], K["surface_items"]),
         "crown_no_owner": K["crown_no_owner"],
+        "crown_crit": K["crown_crit"], "crown_kev": K["crown_kev"], "crown_blind": K["crown_blind"],
         "has_vulns": bool(risk_by) or (bool(scope) and _any_open_finding(db_path)),
         "crit_assets": K["crit_assets"],
         "kev_finding_assets": K["kev_findings"],
@@ -905,6 +958,36 @@ def _asset_routes_paths(uuid, db_path=None):
     return sorted(set(routes)), sorted(set(paths))
 
 
+def _groups_for(uuids, db_path=None):
+    """{uuid: {(route or None, (paths…)): open findings}} for these assets (≤ a chunk)."""
+    from core import hx_rpp
+    out = {u: {} for u in uuids}
+    if not uuids:
+        return out
+    frag = " AND asset_uuid IN (%s)" % ",".join("?" * len(uuids))
+    for _pid, au, app, pths in hx_rpp.iter_findings(db_path, frag, tuple(uuids), budget="job"):
+        g = out.setdefault(au, {})
+        k = (app, tuple(pths))
+        g[k] = g.get(k, 0) + 1
+    return out
+
+
+def _cascade_names(groups, owned, mode):
+    """The Owner-tag names that give one asset's open findings an owner (build 498). Routes and
+    paths are how plugins get assigned: a ROUTE tag covers every finding of its plugins (at any
+    path), so the cascade tags the asset's routes, plus the paths of findings whose plugin has
+    no route. 'remainder' skips findings already owned (their route or a path is owned here)."""
+    names = set()
+    for (app, pths), _n in (groups or {}).items():
+        if mode == "remainder" and any(x in owned for x in ([_nk(app)] if app else []) + [_nk(p) for p in pths]):
+            continue
+        if app:
+            names.add(app)
+        else:
+            names.update(pths)
+    return names
+
+
 def owner_cascade(uuids, owner, mode="complete", db_path=None, chunk=900) -> dict:
     """The Owner cascade of assign_asset_owner() for a WHOLE asset set, computed in bulk
     (build 464): {"<route or path>: <owner>": {asset uuids}} — exactly the per-asset tags
@@ -913,28 +996,11 @@ def owner_cascade(uuids, owner, mode="complete", db_path=None, chunk=900) -> dic
     paths and existing Owner tags are read ≤`chunk` assets per statement. No size cap."""
     mode = "remainder" if str(mode).lower().startswith("rem") else "complete"
     uu = sorted({str(u) for u in (uuids or []) if u})
-    by_plugin = {}
-    if _has_table("vuln_route", db_path):
-        for r in _q("SELECT app_name, plugin_list FROM vuln_route", path=db_path):
-            if r.get("app_name"):
-                for pid in set(re.findall(r"'([^']*)'", str(r.get("plugin_list") or ""))):
-                    by_plugin.setdefault(pid, set()).add(r["app_name"])
-    have_paths = _has_table("vuln_paths", db_path)
-    hv = db.indexed_by("hx_v_asset", db_path)
     out = {}
     for i in range(0, len(uu), chunk):
         part = uu[i:i + chunk]
         ph = ",".join("?" * len(part))
-        names = {u: set() for u in part}
-        if by_plugin:
-            for r in _q("SELECT DISTINCT asset_uuid, plugin_id FROM vulns%s WHERE asset_uuid IN (%s)" % (hv, ph),
-                        tuple(part), db_path):
-                names[r["asset_uuid"]] |= by_plugin.get(str(r.get("plugin_id")), set())
-        if have_paths:
-            for r in _q("SELECT DISTINCT asset_uuid, path FROM vuln_paths WHERE asset_uuid IN (%s) AND path IS NOT NULL" % ph,
-                        tuple(part), db_path):
-                if r.get("path"):
-                    names[r["asset_uuid"]].add(r["path"])
+        groups = _groups_for(part, db_path)
         owned = {}
         if mode == "remainder":
             for r in _q("SELECT asset_uuid, tag_value FROM tags WHERE asset_uuid IN (%s) AND " % ph
@@ -944,10 +1010,8 @@ def owner_cascade(uuids, owner, mode="complete", db_path=None, chunk=900) -> dic
                     nm, user = val.rsplit(": ", 1)
                     if user.strip() and not _disp_of(user):
                         owned.setdefault(r["asset_uuid"], set()).add(_nk(nm))
-        for u, nms in names.items():
-            for nm in nms:
-                if mode == "remainder" and _nk(nm) in owned.get(u, ()):
-                    continue
+        for u in part:
+            for nm in _cascade_names(groups.get(u), owned.get(u, set()), mode):
                 out.setdefault(f"{nm}: {owner}", set()).add(u)
     return out
 
@@ -972,14 +1036,16 @@ def assign_assets_owner(uuids, owner, mode="complete", db_path=None, agent="asse
 
 
 def assign_asset_owner(uuid, owner, mode="complete", db_path=None) -> dict:
-    """Give ONE asset a single complete owner. mode='complete' → the owner owns
-    EVERY route & path on the asset; mode='remainder' → only the routes/paths that
-    don't already have an owner. Writes the ``Asset Owner`` tag and cascades ``Owner``
+    """Give ONE asset a single complete owner. mode='complete' → the owner owns every open
+    finding on the asset (its routes, plus the paths of findings with no route); mode=
+    'remainder' → only the findings nobody owns yet (build 498 — a route tag covers its paths). Writes the ``Asset Owner`` tag and cascades ``Owner``
     tags for the covered routes/paths so both this view and Atlas close the asset."""
     if not uuid or not owner:
         return {"ok": False, "message": "asset and owner required"}
     mode = "remainder" if str(mode).lower().startswith("rem") else "complete"
-    routes, paths = _asset_routes_paths(uuid, db_path)
+    groups = _groups_for([uuid], db_path).get(uuid) or {}
+    routes = sorted({app for (app, _p) in groups if app})
+    paths = sorted({p for (_a, ps) in groups for p in ps})
     # what's already owned on this asset (route/path names)?
     owned = set()
     for r in _q("SELECT tag_value FROM tags WHERE asset_uuid=? AND " + tagname.sql_lit("tag_key", "Owner")
@@ -992,9 +1058,7 @@ def assign_asset_owner(uuid, owner, mode="complete", db_path=None) -> dict:
                 owned.add(_nk(nm))
     q1 = _uuid_query([uuid])
     jobs, targets = [], []
-    for nm in routes + paths:
-        if mode == "remainder" and _nk(nm) in owned:
-            continue
+    for nm in sorted(_cascade_names(groups, owned, mode)):
         targets.append(nm)
         r = navi_cli.tag("Owner", f"{nm}: {owner}", query=q1, remove=False, agent="asset_ownership")
         jobs.append({"name": nm, "ok": r.get("ok", True)})

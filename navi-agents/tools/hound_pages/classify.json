@@ -12,11 +12,11 @@
  "capabilities": [
   [
    "Classes from tags",
-   "the Ensemble's own taxonomy — Asset Inventory, IoT, Device Type, OS — rolled up into Windows, Linux, macOS, Server, Workstation, Mobile, IoT, OT, network, hypervisor, cloud and Unclassified."
+   "the Ensemble's own taxonomy — Asset Inventory, IoT, Device Type, OS — rolled up into Windows, Linux, macOS, Unix, Server, Workstation, Mobile, IoT, OT, Medical, network, hypervisor, cloud, Web Application, Mainframe and Unclassified — IoT Squad vendor tags (Ubiquiti, pfSense, Hikvision …) included."
   ],
   [
    "Standard device types",
-   "Server, Desktop, Laptop, Workstation, Phone / Tablet, Camera, Printer, NAS, VoIP, UPS / Power, Badge Reader, Switch, Router, Firewall, Wireless Access Point, Load Balancer, Hypervisor, PLC, HMI, RTU — offered as you tag, and each maps to its class."
+   "PC, PC-VDI, VDI, Server-on-prem, Server-VDI, Printer, Camera, Switch, Router, Firewall, Wireless Access Point, Load Balancer, Network Device — offered as you tag, and each maps to its class."
   ],
   [
    "OS and device signals",

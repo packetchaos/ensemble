@@ -345,7 +345,10 @@ for path in (PLAIN, IDX):
 check(json.dumps(eres[PLAIN], sort_keys=True, default=str) == json.dumps(eres[IDX], sort_keys=True, default=str),
       "Exposure Routes: identical ownership map / coverage with and without the indexes")
 con = sqlite3.connect(PLAIN)
-pairs = con.execute("SELECT DISTINCT plugin_id, asset_uuid FROM vulns").fetchall()
+# build 496: Exposure Routes counts OPEN, NON-INFO findings only
+from core import hx_rpp  # noqa: E402
+pairs = con.execute("SELECT DISTINCT plugin_id, asset_uuid FROM vulns WHERE " + hx_rpp.finding_where(
+    {r[1] for r in con.execute('PRAGMA table_info("vulns")')})).fetchall()
 con.close()
 naive = {}
 for pid, au in pairs:
@@ -354,11 +357,11 @@ for pid, au in pairs:
         if pid in pl:
             naive.setdefault(app, set()).add(au)
 check(eres[PLAIN][2] == {k: sorted(v) for k, v in naive.items()},
-      "Exposure Routes: route → assets == the old every-pair computation")
+      "Exposure Routes: route → assets == every open, non-info (plugin, asset) pair")
 use(IDX)
 b = E._base(IDX)
 check(E.plugin_assets(b, "11005", IDX) == len({au for pid, au in pairs if pid == "11005"}),
-      "Exposure Routes: champion asset count by one index lookup == the pair count")
+      "Exposure Routes: champion asset count == its open, non-info pair count")
 
 
 def test_wave2_quickwins():

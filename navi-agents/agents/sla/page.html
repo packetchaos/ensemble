@@ -98,13 +98,17 @@ function viewPayload(extra){ const p=Object.assign({_nocache:true},extra||{}); i
    re-attaches (peek on open) — nothing is computed on open. */
 async function run(opts){ opts=opts||{}; const my=++SEQ; saveView(); const rb=document.getElementById('refresh'); rb.disabled=true;
   flash('flash','<span class="spin"></span> '+(opts.force?'rebuilding the SLA snapshot…':'loading the SLA snapshot…'),'run');
-  let o; try{ o=await API.post('snapshot', viewPayload({force:!!opts.force})); }catch(e){ o={ok:false,error:e.message}; }
+  // build 498: page cache is off here, so the page sends its own run id — the server records
+  // the run in Done so far when the snapshot is ready (like every other specialist)
+  const rid='sl'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const ran=()=>{ try{ window.dispatchEvent(new Event('hounds:ran')); }catch(e){} };
+  let o; try{ o=await API.post('snapshot', viewPayload({force:!!opts.force, record_run:rid})); }catch(e){ o={ok:false,error:e.message}; }
   if(my!==SEQ) return;
   if(!o||!o.ok){ rb.disabled=false; flash('flash','✗ '+esc((o&&(o.error||o.message))||'failed'),'crit'); return; }
   if(o.history) HIST=o.history;
-  if(o.result){ rb.disabled=false; flashClear('flash'); applySnap(o.result,!!o.cached,!!o.stale); return; }
+  if(o.result){ rb.disabled=false; flashClear('flash'); applySnap(o.result,!!o.cached,!!o.stale); ran(); return; }
   if(o.building) await waitBuild(o.building, my);
-  if(my===SEQ) rb.disabled=false;
+  if(my===SEQ){ rb.disabled=false; ran(); }
 }
 /* Follow a background build to the end, then peek the cached snapshot. */
 async function waitBuild(b,my){

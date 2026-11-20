@@ -50,8 +50,16 @@ _IOT_TYPES = [
 # tag maps to a class. (label, class, keywords matched in a tag value, lower-case). A Server /
 # Desktop / Laptop tag keeps the OS class when the asset also has an OS tag; otherwise it is
 # its own Server / Workstation class. Old values (e.g. "NAS", "VoIP") keep matching.
+# Build 499: the offered set is DEVICE_TYPE_LABELS below (PC / VDI / Server-on-prem / printer /
+# camera + network gear). Every other label here is still RECOGNISED — existing tags keep their
+# class — but is no longer offered as a choice.
 DEVICE_TYPES = [
-    ("Server", "Server", ("server", "general-purpose")),
+    ("PC", "Workstation", ("pc", "personal computer")),
+    ("PC-VDI", "Workstation", ("pc-vdi", "vdi desktop", "virtual desktop")),
+    ("VDI", "Virtual Infrastructure", ("vdi",)),
+    ("Server-on-prem", "Server", ("server-on-prem", "on-prem", "on prem", "general-purpose")),
+    ("Server-VDI", "Server", ("server-vdi", "vdi server")),
+    ("Server", "Server", ("server",)),
     ("Desktop", "Workstation", ("desktop",)),
     ("Laptop", "Workstation", ("laptop", "notebook")),
     ("Workstation", "Workstation", ("workstation", "thin client", "kiosk")),
@@ -62,6 +70,7 @@ DEVICE_TYPES = [
     ("Firewall", "Network", ("firewall",)),
     ("Wireless Access Point", "Network", ("wireless", "access point", "wap")),
     ("Load Balancer", "Network", ("load balancer", "load-balancer", "proxy", "packet-shaper")),
+    ("Network Device", "Network", ("network device", "network appliance", "network")),
     ("Camera", "IoT", ("camera", "webcam", "nvr", "dvr")),
     ("Printer", "IoT", ("printer", "print server", "mfp", "copier")),
     ("NAS", "IoT", ("nas", "storage")),
@@ -69,6 +78,10 @@ DEVICE_TYPES = [
     ("Media", "IoT", ("media", "smart tv", "display", "chromecast")),
     ("UPS / Power", "IoT", ("ups", "power", "pdu")),
     ("Badge Reader", "IoT", ("badge", "door controller", "access control")),
+    ("Smart Home", "IoT", ("smart home", "thermostat", "smart plug", "smart bulb", "smart speaker")),
+    ("Consumer Device", "IoT", ("consumer device", "game console", "gaming console", "photo frame")),
+    ("Medical Device", "Medical", ("medical device", "medical", "infusion pump", "patient monitor", "imaging", "iomt")),
+    ("Building Automation", "OT", ("building automation", "bms", "bacnet", "hvac controller", "lighting controller")),
     ("Embedded", "IoT", ("embedded", "iot")),
     ("PLC", "OT", ("plc",)),
     ("HMI", "OT", ("hmi",)),
@@ -76,12 +89,18 @@ DEVICE_TYPES = [
     ("Engineering Workstation", "OT", ("engineering workstation",)),
     ("OT Device", "OT", ("ot device", "scada", "ics", "dcs", "historian")),
 ]
-DEVICE_TYPE_LABELS = [d[0] for d in DEVICE_TYPES]
-# the order a value is matched in: OT first ("engineering workstation" ≠ Workstation), then the
-# more specific network / IoT words before the broad server / workstation ones
-_DEV_MATCH = ([d for d in DEVICE_TYPES if d[1] == "OT"] + [d for d in DEVICE_TYPES if d[1] in ("Network", "Virtual Infrastructure")]
+# the Device Type choices the pages offer (all assets): hosts, VDI, printer, camera, network gear
+DEVICE_TYPE_LABELS = ["PC", "PC-VDI", "VDI", "Server-on-prem", "Server-VDI", "Printer", "Camera",
+                      "Switch", "Router", "Firewall", "Wireless Access Point", "Load Balancer", "Network Device"]
+_VDI = [d for d in DEVICE_TYPES if "VDI" in d[0] and d[0] != "VDI"] + [d for d in DEVICE_TYPES if d[0] == "VDI"]  # specific first
+# the order a value is matched in: OT first ("engineering workstation" ≠ Workstation), then VDI
+# ("server-vdi" ≠ Server), then the more specific network / IoT words before the broad server /
+# workstation ones
+_DEV_MATCH = ([d for d in DEVICE_TYPES if d[1] == "OT"] + _VDI
+              + [d for d in DEVICE_TYPES if d[1] in ("Network", "Virtual Infrastructure") and d not in _VDI]
               + [d for d in DEVICE_TYPES if d[1] == "IoT" and d[0] != "Embedded"] + [d for d in DEVICE_TYPES if d[1] == "Mobile"]
-              + [d for d in DEVICE_TYPES if d[1] in ("Server", "Workstation")] + [d for d in DEVICE_TYPES if d[0] == "Embedded"])
+              + [d for d in DEVICE_TYPES if d[1] in ("Server", "Workstation") and d not in _VDI]
+              + [d for d in DEVICE_TYPES if d[0] == "Embedded"])
 # Nessus Device Type (plugin 54615) "Remote device type : <x>" → a Device Type label
 # (general-purpose is decided by the OS: Windows desktop editions / macOS → Desktop, else Server)
 _NESSUS_DEVTYPE = {"printer": "Printer", "camera": "Camera", "webcam": "Camera", "switch": "Switch",
@@ -107,14 +126,90 @@ def device_type(value):
     return None
 
 
+# Build 500 — vendor / product → Device Type. The IoT Discovery Squad tags what it FOUND, which is
+# usually a vendor or product ("Device Type: Ubiquiti", "IoT: pfSense", "Device Type: Raspberry Pi
+# Foundation" from the network-card vendor) rather than a generic type, so without this every one
+# of those landed in Other. Groups mirror the Squad's built-in term pack (core.iot_common).
+_VENDOR_TYPES = [
+    # VoIP / badge vendors first: a 'Cisco SPA' phone is VoIP before the broad 'cisco' is Network
+    ("VoIP", ("yealink", "polycom", "grandstream", "snom", "avaya", "mitel", "cisco spa", "cisco ip phone")),
+    ("Badge Reader", ("hid global", "lenel", "axis access", "axis a1001", "genetec", "paxton")),
+    ("Firewall", ("pfsense", "opnsense", "fortinet", "fortigate", "sonicwall", "watchguard", "palo alto",
+                  "check point", "checkpoint", "sophos", "barracuda", "netgate")),
+    ("Router", ("mikrotik", "draytek", "ubee", "sagemcom", "edgerouter", "routeros")),
+    ("Wireless Access Point", ("ruckus", "aruba", "meraki mr", "unifi ap")),
+    ("Network Device", ("ubiquiti", "unifi", "ubnt", "netgear", "tp-link", "zyxel", "juniper", "meraki",
+                        "cisco", "arista", "extreme networks", "brocade", "hirschmann", "moxa", "d-link")),
+    ("Camera", ("hikvision", "dahua", "axis communications", "hanwha", "vivotek", "reolink", "amcrest",
+                "wyze", "lorex", "geovision", "mobotix", "flir", "arlo", "ring")),
+    ("NAS", ("synology", "qnap", "terastation", "buffalo", "western digital", "netapp", "drobo", "iomega",
+             "readynas", "truenas")),
+    ("Embedded", ("raspberry", "beaglebone", "arduino", "espressif", "esp32", "esp8266", "particle")),
+    ("Media", ("sonos", "roku", "chromecast", "smarttv", "apple tv", "fire tv", "vizio", "lg webos")),
+    ("Smart Home", ("lifx", "shelly", "tuya", "kasa", "wemo", "philips hue", "hue bridge", "ecobee", "sonoff",
+                    "harmony hub", "nest", "google home", "amazon technologies", "amazon echo", "aura home")),
+    ("Consumer Device", ("nintendo", "playstation", "sony interactive", "xbox", "apple", "samsung")),
+    ("Printer", ("lexmark", "zebra", "xerox", "ricoh", "kyocera", "konica minolta", "brother", "canon",
+                 "epson", "jetdirect", "laserjet", "officejet")),
+    ("Building Automation", ("crestron", "lutron", "honeywell", "johnson controls", "tridium", "niagara",
+                             "kmc", "bosch security", "distech", "automated logic")),
+    ("OT Device", ("siemens", "simatic", "rockwell", "allen-bradley", "schneider", "modicon", "emerson",
+                   "beckhoff", "wago", "phoenix contact", "abb", "mitsubishi electric", "omron", "yokogawa",
+                   "ge fanuc", "codesys", "red lion", "advantech")),
+    ("Medical Device", ("draeger", "drager", "ge healthcare", "philips medical", "baxter", "medtronic",
+                        "b. braun", "bd alaris", "mindray", "nihon kohden")),
+    ("UPS / Power", ("eaton", "vertiv", "apc", "tripp lite", "cyberpower", "schneider apc")),
+]
+_DT_CLASS = {d[0]: d[1] for d in DEVICE_TYPES}
+
+
+def vendor_type(value):
+    """(label, class) for a vendor / product name the IoT Squad (or an OUI lookup) wrote — None if
+    the name is not a known vendor. First group wins."""
+    v = (value or "").strip().lower()
+    if not v:
+        return None
+    def has(terms):
+        return any(re.search(r"(?<![a-z0-9])" + re.escape(t) + r"(?![a-z0-9])", v) for t in terms)
+    if has(("apc",)):                      # 'Schneider APC' is a UPS, not the OT 'schneider'
+        return ("UPS / Power", _DT_CLASS["UPS / Power"])
+    for label, terms in _VENDOR_TYPES:
+        if has(terms):
+            return (label, _DT_CLASS[label])
+    return None
+
+
+def device_kind(value):
+    """(label, class) for ANY device value — a generic type ('Camera', 'embedded') first, then a
+    vendor / product name ('Ubiquiti', 'pfSense'). None when neither is known."""
+    return device_type(value) or vendor_type(value)
+
+
 def _general_purpose_type(os_):
-    """Server or Desktop for a general-purpose host, from its OS string."""
+    """PC or Server-on-prem for a general-purpose host, from its OS string."""
     o = (os_ or "").lower()
     if "windows" in o and "server" not in o:
-        return "Desktop"
+        return "PC"
     if "mac os" in o or "macos" in o:
-        return "Desktop"
-    return "Server"
+        return "PC"
+    return "Server-on-prem"
+
+
+_FW_VENDOR = ("pfsense", "opnsense", "fortigate", "fortios", "pan-os", "palo alto", "sonicwall",
+              "cisco asa", "watchguard", "check point", "gaia", "sophos xg", "sophos sfos", "barracuda")
+
+
+def _net_device_type(host, osl):
+    """The Device Type for a host the network signals flagged: Firewall / Router / Switch from the
+    hostname or OS, else the generic Network Device (never the retired 'Class: Network')."""
+    h = host or ""
+    if any(k in h for k in ("-fw", "fw-", "firewall")) or any(v in osl for v in _FW_VENDOR):
+        return "Firewall"
+    if any(k in h for k in ("-rtr", "rtr-", "router", "-gw", "gw-")):
+        return "Router"
+    if any(k in h for k in ("-sw", "sw-", "switch")):
+        return "Switch"
+    return "Network Device"
 
 
 _CREDFAIL = ("110723", "104410", "24786", "21745")
@@ -221,7 +316,15 @@ def os_confidence(db_path=None, scope=None):
 
 
 # tag categories that carry classification meaning
-_TAG_CATS = ("Asset Inventory", "OS", "Operating System", "IoT", "Device Type", "Class")
+# build 500: every key another agent (or a customer) writes that says WHAT an asset is —
+#   Asset Inventory  'Class:'/'OS:'/'Device Type:'/'IoT:'/'OT:'/'Network:'/'Cloud:'/'Mobile:'/'Medical:'/'App:'
+#                    (Linnaeus, IoT Discovery Squad, Argos) — plus customer facets
+#   IoT              '<device or vendor>'   (IoT Squad cross-reference tagging)
+#   OT / Network / Cloud / Mobile / Medical / Device Type / Asset Type / OS / Operating System / Class
+#   WAS Technology / WAS Severity / WAS OWASP   (WAS — the asset is a web application)
+_TAG_CATS = ("Asset Inventory", "OS", "Operating System", "IoT", "OT", "Device Type", "Asset Type", "Class",
+             "Network", "Cloud", "Mobile", "Medical")
+_WAS_CATS = ("WAS Technology", "WAS Severity", "WAS OWASP")
 
 
 def _uuids(sql, db_path=None):
@@ -276,13 +379,39 @@ def _linux_distro(os_str):
     return "Linux"
 
 
+_OS_VIRT = ("esxi", "vmware vsphere", "vcenter", "proxmox", "xenserver", "citrix hypervisor", "nutanix ahv", "hyper-v server")
+_OS_NET = ("cisco ios", "ios xe", "ios-xe", "ios xr", "nx-os", "nxos", "cisco asa", "pan-os", "junos", "fortios",
+           "routeros", "pfsense", "opnsense", "arubaos", "arista eos", "sonicos", "edgeos", "vyos", "extremexos",
+           "comware", "vrp", "big-ip", "tmos", "netscaler", "gaia")
+_OS_MOBILE = ("ipados", "android", "iphone", "ipad", "watchos")
+_OS_UNIX = ("aix", "solaris", "sunos", "hp-ux", "hpux", "freebsd", "openbsd", "netbsd", "dragonfly", "illumos",
+            "unix", "tru64", "irix")
+_OS_MAINFRAME = ("z/os", "zos", "os/390", "mvs", "z/vm", "os/400", "ibm i ")
+
+
+def _os_word(o, terms):
+    return any(re.search(r"(?<![a-z0-9])" + re.escape(t.strip()) + r"(?![a-z0-9])", o) for t in terms)
+
+
 def _os_to_class(osv):
+    """Class for an OS string — the family an OS tag / fingerprint names. Network, hypervisor and
+    mobile OSes are checked before the desktop families ('Cisco IOS' is not iOS; ESXi is not Linux)."""
     o = (osv or "").lower()
+    if _os_word(o, _OS_VIRT):
+        return "Virtual Infrastructure"
+    if _os_word(o, _OS_NET):
+        return "Network"
     if "windows" in o:
         return "Windows"
+    if _os_word(o, _OS_MOBILE) or re.search(r"(?<![a-z0-9])ios(?![a-z0-9])", o):
+        return "Mobile"
+    if _os_word(o, _OS_MAINFRAME):
+        return "Mainframe"
+    if _os_word(o, _OS_UNIX):                      # before Linux: 'Oracle Solaris' is not Oracle Linux
+        return "Unix"
     if any(d in o for d in ("linux", "ubuntu", "debian", "cent", "fedora", "rocky", "red hat", "rhel", "oracle", "suse", "alma", "amazon")):
         return "Linux"
-    if "mac" in o:
+    if "mac os" in o or "macos" in o or "os x" in o or o.strip() == "mac":
         return "macOS"
     return "Other"
 
@@ -291,7 +420,7 @@ def _os_to_class(osv):
 def _read_tags(db_path=None):
     """{uuid: {facet: value}} across every accepted scheme."""
     out = {}
-    incat = tagname.sql_lit("tag_key", *_TAG_CATS)          # + test-run names (core.tagname)
+    incat = tagname.sql_lit("tag_key", *(_TAG_CATS + _WAS_CATS))   # + test-run names (core.tagname)
     try:
         rows = db.query(f"SELECT asset_uuid, tag_key, tag_value FROM tags WHERE {incat}", path=db_path)
     except Exception:
@@ -307,13 +436,17 @@ def _read_tags(db_path=None):
                 d.setdefault(facet.strip().lower(), fv.strip())
         elif k == "operating system":
             d.setdefault("os", v)
-        elif k in ("os", "iot", "device type", "class"):
+        elif k == "asset type":
+            d.setdefault("device type", v)
+        elif k.startswith("was "):
+            d.setdefault("was", "Web App")
+        elif k in ("os", "iot", "ot", "device type", "class", "network", "cloud", "mobile", "medical"):
             d.setdefault(k, v)
     return out
 
 
 # Asset Inventory facets that are pure DESCRIPTORS, never a classification on their own.
-_DESCRIPTOR_FACETS = ("os", "operating system", "app", "application", "software", "version")
+_DESCRIPTOR_FACETS = ("os", "operating system", "app", "application", "software", "version", "was")
 
 
 def _tag_class(th):
@@ -330,18 +463,30 @@ def _tag_class(th):
         return (p[0].strip(), (p[1].strip() if len(p) > 1 else th.get("os") or th.get("device type") or ""), "tag: Class")
     if th.get("cloud"):
         return ("Cloud", th["cloud"], "tag: Cloud")
+    if th.get("medical"):
+        return ("Medical", th["medical"], "tag: Medical")
     if th.get("network"):
         return ("Network", th["network"], "tag: Network")
     if th.get("ot"):
         return ("OT", th["ot"], "tag: OT")
-    if th.get("iot"):
-        return ("IoT", th["iot"], "tag: IoT")
-    if th.get("device type"):
-        dv = th["device type"]
-        hit = device_type(dv)
-        if hit and hit[1] in ("Server", "Workstation") and th.get("os"):
-            return (_os_to_class(th["os"]), dv, "tag: Device Type")      # a Windows server stays Windows
-        return (hit[1] if hit else "Other", dv, "tag: Device Type")
+    if th.get("mobile"):
+        return ("Mobile", th["mobile"], "tag: Mobile")
+    # IoT / Device Type: a generic type OR a vendor / product name (build 500) — the IoT Squad
+    # tags what it found ('Ubiquiti', 'pfSense'), so a pfSense box is Network, not IoT or Other
+    for facet, label in (("device type", "tag: Device Type"), ("iot", "tag: IoT")):
+        dv = th.get(facet)
+        if not dv:
+            continue
+        hit = device_kind(dv)
+        osc = _os_to_class(th["os"]) if th.get("os") else ""
+        if hit and hit[1] in ("Server", "Workstation") and osc:
+            return (osc, dv, label)                                      # a Windows server stays Windows
+        if hit and hit[0] == "Consumer Device" and osc in ("macOS", "Windows", "Mobile"):
+            return (osc, dv, label)                                      # an 'Apple' NIC on a Mac is a Mac
+        if hit:
+            sub = dv if hit[0].lower() in dv.strip().lower() else hit[0] + " — " + dv
+            return (hit[1], sub, label)
+        return ("IoT" if facet == "iot" else "Other", dv, label)
     osv = th.get("os")
     if osv:
         return (_os_to_class(osv), osv, "tag: OS")
@@ -352,6 +497,8 @@ def _tag_class(th):
         val = (th.get(facet) or "").strip()
         if val:
             return (val, "", "tag: " + facet.title())
+    if th.get("was"):
+        return ("Web Application", "", "tag: WAS")       # known only as a scanned web app
     return None
 
 
@@ -473,8 +620,8 @@ def classify(db_path=None, glance=False, scope=None):
         c["cloud"] += 1 if r["cloud"] else 0
         key = r["sub"] or r["reason"] or "—"
         c["subs"][key] = c["subs"].get(key, 0) + 1
-    order = ["Windows", "Linux", "macOS", "Server", "Workstation", "Mobile", "IoT", "OT", "Network", "Cloud",
-             "Virtual Infrastructure", "Other", "Unclassified"]
+    order = ["Windows", "Linux", "macOS", "Unix", "Server", "Workstation", "Mobile", "IoT", "OT", "Medical",
+             "Network", "Cloud", "Virtual Infrastructure", "Web Application", "Mainframe", "Other", "Unclassified"]
     class_list = []
     for name in order + [k for k in classes if k not in order]:
         if name in classes:
@@ -503,8 +650,12 @@ def classify(db_path=None, glance=False, scope=None):
             stats["servers" if "server" in sub else "workstations"] += 1
         elif c == "macOS":
             stats["workstations"] += 1
-        elif c == "Linux":
+        elif c in ("Linux", "Unix", "Mainframe"):
             stats["servers"] += 1
+        elif c == "Medical":
+            stats["medical"] = stats.get("medical", 0) + 1
+        elif c == "Web Application":
+            stats["webapps"] = stats.get("webapps", 0) + 1
         elif c == "Server":
             stats["servers"] += 1
         elif c == "Workstation":
@@ -610,9 +761,16 @@ def _signal_class(a, S):
     if nt in ("printer", "camera", "webcam", "scada", "mobile", "voip", "storage"):
         return ("Device Type", _NESSUS_DEVTYPE[nt])
     if u in S["net"] or any(k in host for k in _NET_HOST):
-        return ("Class", "Network")
+        return ("Device Type", _net_device_type(host, osl))
     if u in S["hyper"] or "esxi" in osl:
-        return ("Class", "Virtual Infrastructure")
+        return ("Device Type", "Hypervisor")
+    oc = _os_to_class(os_) if os_ else ""
+    if oc in ("Unix", "Mainframe"):                # before Linux: 'Oracle Solaris' is not Oracle Linux
+        return ("OS", os_)
+    if oc == "Mobile":
+        return ("Device Type", "Phone / Tablet")
+    if oc == "Network":
+        return ("Device Type", _net_device_type(host, osl))
     if "windows" in osl or u in S["sw_win"]:
         return ("OS", _win_version(os_) if os_ else "Windows")
     if ("linux" in osl or any(d in osl for d in ("ubuntu", "debian", "cent", "fedora", "rocky", "red hat", "oracle", "suse", "alma", "amazon"))) or u in S["sw_nix"]:

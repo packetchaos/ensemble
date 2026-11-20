@@ -37,6 +37,7 @@ import time
 
 VERSION = 1
 TABLES = ("hx_plugin", "hx_asset", "hx_meta")     # + hx_hits / hx_route_plugin (core/hx_signals)
+                                                   # + hx_rpp / hx_rpp_path (core/hx_rpp)
 
 KEV_LIKE = "CISA-KNOWN-EXPLOITED"
 # The broad EOL name match the hounds share (eol.py / software.py / fused_score / ai_assets use
@@ -114,7 +115,16 @@ def inspect(c):
            # Phase 1b (core/hx_signals): hound → hash of the output predicate its hx_hits rows hold
            "signals": {k[4:]: v for k, v in m.items() if k.startswith("sig:")},
            "hits": {k[5:]: v for k, v in m.items() if k.startswith("hits:")},
-           "route_plugin": m.get("route_plugin")}
+           "route_plugin": m.get("route_plugin"),
+           # the route/path/plugin index (core/hx_rpp): also stale when vuln_route / vuln_paths
+           # were rebuilt (a route or paths update doesn't touch vulns)
+           "rpp": m.get("rpp"), "rpp_paths": m.get("rpp_paths"), "rpp_fresh": False}
+    if fresh and m.get("rpp") is not None:
+        try:
+            from core import hx_rpp
+            out["rpp_fresh"] = m.get("rpp_src") == hx_rpp.src_fingerprint(c)
+        except Exception:
+            out["rpp_fresh"] = False
     return out
 
 
@@ -296,6 +306,24 @@ def build(c, emit=None, live=None, cancel=None, signals=None):
             for t in hx_signals.DDL:
                 c.execute('DROP TABLE IF EXISTS "%s"' % t)
             extra = {}
+        # the route / path / plugin index (Exposure Routes' ownership zipper)
+        from core import hx_rpp
+        phase[0] = "hx_rpp"
+        emit("▶ hx_rpp — every open finding zipped to its route and paths")
+        t1 = time.time()
+        try:
+            extra.update(hx_rpp.write(c, emit))
+            emit("  (hx_rpp in %.1fs)" % (time.time() - t1))
+        except sqlite3.OperationalError as e:
+            if cancel.is_set() or any(w in str(e).lower() for w in ("interrupt", "locked", "busy")):
+                raise
+            emit("· route/path/plugin index not built — %s: %s" % (type(e).__name__, e))
+            for t in hx_rpp.DDL:
+                c.execute('DROP TABLE IF EXISTS "%s"' % t)
+        except Exception as e:                       # never lose the summaries over the index
+            emit("· route/path/plugin index not built — %s: %s" % (type(e).__name__, e))
+            for t in hx_rpp.DDL:
+                c.execute('DROP TABLE IF EXISTS "%s"' % t)
         total = round(time.time() - t0, 2)
         meta = {"version": str(VERSION), "fingerprint": fingerprint(c),
                 "built_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

@@ -114,21 +114,27 @@ def pids(pl):
     return {str(x) for x in json.loads(str(pl or "[]").replace("'", '"'))}
 
 
-# hand-computed over the tag's assets
+# hand-computed over the tag's assets. Build 496: Exposure Routes counts OPEN, NON-INFO findings
+# (distinct plugin × asset) — the sample has no state column (= open) — and a path only for one
+# of those findings.
+from core import hx_rpp  # noqa: E402
+_W = hx_rpp.finding_where({r[1] for r in con.execute('PRAGMA table_info("vulns")')})
+open_pairs = {(str(p), a) for p, a in con.execute("SELECT DISTINCT plugin_id, asset_uuid FROM vulns WHERE " + _W)}
 route_assets_h = {}
+routed = set()
 for app, pl in con.execute("SELECT app_name, plugin_list FROM vuln_route WHERE app_name IS NOT NULL"):
     ids = pids(pl)
-    aus = {a for (p, a) in con.execute("SELECT DISTINCT plugin_id, asset_uuid FROM vulns") if str(p) in ids}
+    routed |= ids
+    aus = {a for (p, a) in open_pairs if p in ids}
     route_assets_h.setdefault(app, set()).update(aus)
-path_rows_h = [(p, a) for p, a in con.execute("SELECT path, asset_uuid FROM vuln_paths WHERE path IS NOT NULL") if a in S]
+path_rows_h = sorted({(p.strip(), a) for pid, p, a in con.execute(
+    "SELECT plugin_id, path, asset_uuid FROM vuln_paths WHERE path IS NOT NULL")
+    if a in S and p and p.strip() and (str(pid), a) in open_pairs})
 path_assets_h = {}
 for p, a in path_rows_h:
     path_assets_h.setdefault(p, set()).add(a)
-on_surface_h = set().union(*[a & S for a in route_assets_h.values()], *path_assets_h.values())
-route_findings_h = 0
-for pl, in con.execute("SELECT plugin_list FROM vuln_route"):
-    ids = pids(pl)
-    route_findings_h += sum(1 for p, a in con.execute("SELECT plugin_id, asset_uuid FROM vulns") if str(p) in ids and a in S)
+on_surface_h = {a for (p, a) in open_pairs if a in S}
+route_findings_h = sum(1 for (p, a) in open_pairs if p in routed and a in S)
 con.close()
 
 # ── 1. whole estate unchanged ─────────────────────────────────────────────────
@@ -156,7 +162,7 @@ cv = A.coverage(scope=SC)
 check(all(b["route_assets"].get(a, set()) == (aus & S) for a, aus in route_assets_h.items()),
       "every route's assets = its estate assets ∩ the tag")
 check({k: v for k, v in b["path_assets"].items()} == path_assets_h, "every path's assets = the tag's assets on it")
-check(m["kpi"]["asset_scope"] == len(on_surface_h), f"assets on a route/path = {len(on_surface_h)} (hand count)")
+check(m["kpi"]["asset_scope"] == len(on_surface_h), f"assets with an open finding = {len(on_surface_h)} (hand count)")
 check(cv["total_paths"] == len(path_assets_h) and cv["path_findings"] == len(path_rows_h),
       "distinct paths / path findings counted over the tag only")
 check(cv["route_findings"] == route_findings_h, f"route findings on the tag = {route_findings_h} (hand count)")
@@ -169,7 +175,14 @@ check(m["scope"]["label"] == f"{TK} : {TV}" and m["scope"]["assets"] == len(S) a
       "scoped results say their scope")
 rs = A.routes(scope=SC)
 check(all(r["total_vulns"] > 0 and "total_vulns_estate" in r for r in rs), "scoped routes: findings on the tag + navi's estate total kept")
-check(sum(p["assets"] for p in A.paths(scope=SC)) == sum(len(v) for v in path_assets_h.values()), "scoped paths: assets on the tag")
+_raw = {}
+_c = sqlite3.connect(DB)
+for _p, _a in _c.execute("SELECT path, asset_uuid FROM vuln_paths WHERE path IS NOT NULL"):
+    if _a in S:
+        _raw.setdefault(_p, set()).add(_a)
+_c.close()
+check(sum(p["assets"] for p in A.paths(scope=SC)) == sum(len(v) for v in _raw.values()),
+      "scoped paths (navi's raw path list): assets on the tag")
 fn = m["funnel"]
 con = sqlite3.connect(DB)
 check(fn.get("findings") == con.execute("SELECT COUNT(*) FROM vulns WHERE asset_uuid IN (SELECT asset_uuid FROM tags "

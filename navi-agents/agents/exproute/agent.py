@@ -12,10 +12,11 @@ import hashlib
 import json as _json
 import os
 import re
+import functools
 import threading
 import time as _time
 
-from core import db, navi_cli, tagname, hx_summary, tagscope, snapcache
+from core import db, navi_cli, tagname, hx_summary, hx_rpp, tagscope, snapcache
 from core.agents.base import Agent
 from core.security import private_open as _popen
 
@@ -544,7 +545,7 @@ def _base(db_path=None, scope=None) -> dict:
     # disp_assets       assets carrying a disposition for the name
     # user_assets       (name, user) -> assets, so an owner's workload is only their own assets
     name_owners, name_assets, name_display, tagged = {}, {}, {}, set()
-    owned_assets, disp_assets, user_assets, asset_owned = {}, {}, {}, {}
+    owned_assets, disp_assets, user_assets, asset_owned, asset_disp = {}, {}, {}, {}, {}
     _tf, _ta = _sf(scope, "asset_uuid")
     for r in q("SELECT asset_uuid, tag_value FROM tags WHERE " + tagname.sql_lit("tag_key", "Owner") + " AND tag_value IS NOT NULL" + _tf, _ta):
         val = (r.get("tag_value") or "").strip()
@@ -561,6 +562,7 @@ def _base(db_path=None, scope=None) -> dict:
         name_assets.setdefault(k, set()).add(au)
         if user and disposition_label(user):
             disp_assets.setdefault(k, set()).add(au)
+            asset_disp.setdefault(au, set()).add(k)
         elif user:
             owned_assets.setdefault(k, set()).add(au)
             user_assets.setdefault((k, user), set()).add(au)
@@ -574,37 +576,103 @@ def _base(db_path=None, scope=None) -> dict:
         app_plugins.setdefault(app, set()).update(pids)
         for pid in pids:
             plugin_apps.setdefault(pid, set()).add(app)
-    # findings: DISTINCT (plugin, asset) for the ROUTE plugins only — an index SEARCH per plugin
-    # on hx_v_plugin(plugin_id, asset_uuid, …) — never every pair in vulns (that was 3.9M → 11.8M
-    # rows into Python on the scale DBs). plugin_asset_n holds those plugins' asset counts; the
-    # champion plugin's count is looked up on its own (plugin_assets()).
+    # ── the route / path / plugin zipper (core/hx_rpp) ───────────────────────────────────────
+    # ONE pass over every OPEN, NON-INFO finding (distinct plugin × asset) with its plugin's route
+    # and the paths that plugin was found at on that asset — from ⚡ Optimize's hx_rpp index when
+    # fresh, else straight from navi.db (same rows). Fixed and info findings no longer count
+    # anywhere on this page. Each finding is:
+    #   owned    the asset carries a real Owner tag for the plugin's route OR one of its paths
+    #   decided  no owner, but a disposition (Ignored/Accepted/Mitigated) for the route or a path
+    #   unowned  it has a route or a path, and neither is owned/decided on this asset
+    #   orphan   no route and no path — tagging can't reach it until routes/paths are rebuilt
     route_assets, plugin_asset_n = {}, {}
-    if plugin_apps:
-        ib = db.indexed_by("hx_v_plugin", db_path)
-        try:
-            _vf, _va = _sf(scope, "asset_uuid")
-            it = db.iter("SELECT DISTINCT plugin_id, asset_uuid FROM vulns" + ib +
-                         " WHERE plugin_id IN (SELECT value FROM json_each(?))" + _vf,
-                         (_json.dumps(sorted(plugin_apps)),) + tuple(_va), path=db_path,
-                         budget=("run" if ib else "job") if not scope else "job", tuples=True)
-            for pid, au in it:
-                pid = str(pid)
-                plugin_asset_n[pid] = plugin_asset_n.get(pid, 0) + 1
-                for app in plugin_apps.get(pid, ()):
-                    route_assets.setdefault(app, set()).add(au)
-        except db.QueryTimeout:
-            raise
-        except Exception:
-            route_assets, plugin_asset_n = {}, {}
     path_assets, path_plugin, path_rows = {}, {}, set()
-    _pf, _pa = _sf(scope, "asset_uuid")
-    for r in q("SELECT path, asset_uuid, plugin_id FROM vuln_paths WHERE path IS NOT NULL" + _pf, _pa):
-        p, au, pid = r["path"], r.get("asset_uuid"), str(r.get("plugin_id"))
-        if not p:                         # " " → None (core.db._row)
-            continue
-        path_assets.setdefault(p, set()).add(au)
-        path_plugin.setdefault(p, set()).add(pid)
-        path_rows.add((p, au))
+    route_paths, path_routes = {}, {}
+    path_inherit = {}                       # path → assets owned for it THROUGH the plugin's route
+    zf = {"total": 0, "owned": 0, "decided": 0, "unowned": 0, "orphan": 0}
+    zl = {"route_only": 0, "path_only": 0, "both": 0, "neither": 0}
+    zp = {}                                 # plugin → [findings, owned, decided, orphan, route, paths set]
+    zr, zpa = {}, {}                        # route / path → findings tagging it would close
+    # build 497: coverage of each route / path by its FINDINGS, whatever method owns them —
+    # [findings, owned, decided] and the assets with a finding on it that isn't owned
+    cov_r, cov_p, open_r, open_p = {}, {}, {}, {}
+    a_open, a_cov, a_all = set(), set(), set()   # a_open: an asset with ANY finding not owned
+    _zf, _za = _sf(scope, "asset_uuid")
+    try:
+        src = "index" if hx_rpp.usable(db_path) else "navi.db"
+        for pid, au, app, pths in hx_rpp.iter_findings(db_path, _zf, _za, budget="job"):
+            pid = str(pid)
+            a_all.add(au)
+            plugin_asset_n[pid] = plugin_asset_n.get(pid, 0) + 1
+            own = asset_owned.get(au, ())
+            dsp = asset_disp.get(au, ())
+            ka = _nk(app) if app else None
+            via_route = bool(ka and ka in own)
+            if app:
+                route_assets.setdefault(app, set()).add(au)
+            for p in pths:
+                path_assets.setdefault(p, set()).add(au)
+                path_plugin.setdefault(p, set()).add(pid)
+                path_rows.add((p, au))
+                if app:
+                    route_paths.setdefault(app, set()).add(p)
+                    path_routes.setdefault(p, set()).add(app)
+                if via_route:
+                    path_inherit.setdefault(p, set()).add(au)
+            zl["both" if app and pths else "route_only" if app else "path_only" if pths else "neither"] += 1
+            e = zp.get(pid)
+            if e is None:
+                e = zp[pid] = [0, 0, 0, 0, app, set()]
+            e[0] += 1
+            e[5].update(pths)
+            zf["total"] += 1
+            is_owned = via_route or any(_nk(p) in own for p in pths)
+            is_dec = (not is_owned) and bool((ka and ka in dsp) or any(_nk(p) in dsp for p in pths))
+            if app:
+                c_ = cov_r.get(app)
+                if c_ is None:
+                    c_ = cov_r[app] = [0, 0, 0]
+                c_[0] += 1
+                c_[1] += is_owned
+                c_[2] += is_dec
+                if not is_owned:
+                    open_r.setdefault(app, set()).add(au)
+            for p in pths:
+                c_ = cov_p.get(p)
+                if c_ is None:
+                    c_ = cov_p[p] = [0, 0, 0]
+                c_[0] += 1
+                c_[1] += is_owned
+                c_[2] += is_dec
+                if not is_owned:
+                    open_p.setdefault(p, set()).add(au)
+            if is_owned:
+                zf["owned"] += 1
+                e[1] += 1
+                a_cov.add(au)
+            elif is_dec:
+                zf["decided"] += 1               # a decision, not an owner: covered, never closed
+                e[2] += 1
+                a_cov.add(au)
+                a_open.add(au)
+            elif not app and not pths:
+                zf["orphan"] += 1
+                e[3] += 1
+                a_open.add(au)
+            else:
+                zf["unowned"] += 1
+                a_open.add(au)
+                if app:
+                    zr[app] = zr.get(app, 0) + 1
+                for p in pths:
+                    zpa[p] = zpa.get(p, 0) + 1
+    except db.QueryTimeout:
+        raise
+    except Exception as e:
+        src = "unavailable: %s" % e
+        route_assets, plugin_asset_n, path_assets, path_plugin, path_rows = {}, {}, {}, {}, set()
+        route_paths, path_routes, path_inherit = {}, {}, {}
+        cov_r, cov_p, open_r, open_p = {}, {}, {}, {}
     if scope:
         # the tag's attack surface: a route is in it when one of the tag's assets is on it, or
         # carries an Owner tag / decision for it (a disposition-only route)
@@ -612,18 +680,102 @@ def _base(db_path=None, scope=None) -> dict:
         _in = set(apps)
         app_plugins = {a: ps for a, ps in app_plugins.items() if a in _in}
         plugin_apps = {pid: {a for a in aps if a in _in} for pid, aps in plugin_apps.items()}
-    route_paths, path_routes = {}, {}
-    for p, pids in path_plugin.items():
-        for pid in pids:
-            for app in plugin_apps.get(pid, ()):
-                route_paths.setdefault(app, set()).add(p)
-                path_routes.setdefault(p, set()).add(app)
+    b["zip_raw"] = {"source": src, "findings": zf, "links": zl, "plugins": zp, "routes": zr,
+                    "paths": zpa, "assets_open": a_open, "assets_covered": a_cov, "assets_all": a_all}
     b.update(name_owners=name_owners, name_assets=name_assets, name_display=name_display,
              owned_assets=owned_assets, disp_assets=disp_assets, user_assets=user_assets,
              asset_owned=asset_owned, tagged=tagged, app_plugins=app_plugins, route_assets=route_assets,
              plugin_asset_n=plugin_asset_n, path_assets=path_assets, path_plugin=path_plugin,
-             path_rows=path_rows, route_paths=route_paths, path_routes=path_routes, apps=apps)
+             path_rows=path_rows, route_paths=route_paths, path_routes=path_routes, apps=apps,
+             asset_disp=asset_disp, path_inherit=path_inherit,
+             cov_r=cov_r, cov_p=cov_p, open_r=open_r, open_p=open_p)
     return b
+
+
+ZIP_TOP = 200          # unowned plugins listed (the UI never gets the full set)
+ZIP_GAP = 25           # routes / paths in each "close the gap" list
+
+
+def zipper(b, db_path=None) -> dict:
+    """Roll _base's per-finding zipper up for the page: findings, plugins, the route ↔ path
+    ratio, the routes/paths that would close the most unowned findings, and the worst plugins."""
+    z = b.get("zip_raw")
+    if not z:
+        return {"ok": False, "note": "No vuln_route table — run `navi config update route` + `navi config update paths`."}
+    zf, zp = dict(z["findings"]), z["plugins"]
+    tot = zf["total"]
+
+    def pct(n, d):
+        return round(100.0 * n / d, 1) if d else 0.0
+    zf["pct_owned"] = pct(zf["owned"], tot)
+    zf["pct_covered"] = pct(zf["owned"] + zf["decided"], tot)
+    pl = {"total": len(zp), "owned": 0, "decided": 0, "partial": 0, "unowned": 0, "unrouted": 0}
+    rows = []
+    for pid, (n, o, d, orph, app, pths) in zp.items():
+        done = o + d
+        st = ("owned" if o == n else                 # every finding has an owner
+              "decided" if done == n else            # the rest carry Ignored/Accepted/Mitigated
+              "unrouted" if orph == n else
+              "unowned" if done == 0 else "partial")
+        pl[st] += 1
+        if st != "owned":
+            rows.append({"plugin_id": pid, "route": app, "paths": len(pths), "findings": n,
+                         "owned": o, "decided": d, "orphan": orph, "open": n - done, "status": st})
+    rows.sort(key=lambda r: (-r["open"], r["plugin_id"]))
+    rows = rows[:ZIP_TOP]
+    # names + severity for the listed plugins only (hx_plugin when fresh, else plugins)
+    meta = {}
+    ids = [r["plugin_id"] for r in rows]
+    if ids:
+        try:
+            if hx_summary.usable(db_path):
+                for r in db.query("SELECT plugin_id, name, sevn FROM hx_plugin WHERE plugin_id IN "
+                                  "(SELECT value FROM json_each(?))", (_json.dumps(ids),), path=db_path):
+                    meta[str(r["plugin_id"])] = (r.get("name"), r.get("sevn"))
+            else:      # the same representative finding hx_plugin uses (its lowest rowid)
+                for r in db.query("SELECT plugin_id, plugin_name name, severity FROM vulns WHERE rowid IN "
+                                  "(SELECT MIN(rowid) FROM vulns" + db.indexed_by("hx_v_plugin", db_path) +
+                                  " WHERE plugin_id IN (SELECT value FROM json_each(?)) GROUP BY plugin_id)",
+                                  (_json.dumps(ids),), path=db_path, budget="job"):
+                    meta[str(r["plugin_id"])] = (r.get("name"), r.get("severity"))
+        except db.QueryTimeout:
+            raise
+        except Exception:
+            meta = {}
+    _sev = {4: "critical", 3: "high", 2: "medium", 1: "low", 0: ""}
+    _sevt = {"4": "critical", "3": "high", "2": "medium", "1": "low", "0": "", "info": "", "none": ""}
+    for r in rows:
+        nm, sv = meta.get(r["plugin_id"], (None, None))
+        r["name"] = nm or ""
+        if isinstance(sv, int):
+            r["severity"] = _sev.get(sv, "")
+        else:
+            t = str(sv or "").strip().lower()
+            r["severity"] = _sevt.get(t, t) if t in _sevt or t in ("critical", "high", "medium", "low") else ""
+    rp, pr = b.get("route_paths") or {}, b.get("path_routes") or {}
+    apps = b.get("apps") or []
+    ratio = {"routes_no_path": sum(1 for a in apps if (b["route_assets"].get(a)) and not rp.get(a)),
+             "routes_one_path": sum(1 for a in apps if len(rp.get(a, ())) == 1),
+             "routes_many_paths": sum(1 for a in apps if len(rp.get(a, ())) > 1),
+             "paths_no_route": sum(1 for p in b["path_assets"] if not pr.get(p)),
+             "paths_one_route": sum(1 for p in b["path_assets"] if len(pr.get(p, ())) == 1),
+             "paths_many_routes": sum(1 for p in b["path_assets"] if len(pr.get(p, ())) > 1)}
+    ratio["one_to_one"] = sum(1 for a in apps if len(rp.get(a, ())) == 1
+                              and len(pr.get(next(iter(rp[a])), ())) == 1)
+    gap_r = sorted(z["routes"].items(), key=lambda x: (-x[1], x[0]))[:ZIP_GAP]
+    gap_p = sorted(z["paths"].items(), key=lambda x: (-x[1], x[0]))[:ZIP_GAP]
+    a_all, a_open, a_cov = z["assets_all"], z["assets_open"], z["assets_covered"]
+    return {"ok": True, "source": z["source"], "findings": zf, "links": dict(z["links"]), "plugins": pl,
+            "ratio": ratio,
+            "gap_routes": [{"name": n, "closes": c, "assets": len(b["route_assets"].get(n, ())),
+                            "paths": len(rp.get(n, ()))} for n, c in gap_r],
+            "gap_paths": [{"name": n, "closes": c, "assets": len(b["path_assets"].get(n, ())),
+                           "routes": sorted(pr.get(n, ()))} for n, c in gap_p],
+            "top_plugins": rows, "top_limit": ZIP_TOP,
+            # closed: every open finding OWNED (a decision isn't an owner); ownerless: not one
+            # finding owned or decided
+            "assets": {"total": len(a_all), "closed": len(a_all - a_open),
+                       "open": len(a_open), "ownerless": len(a_all - a_cov)}}
 
 
 def plugin_assets(b, pid, db_path=None) -> int:
@@ -633,6 +785,8 @@ def plugin_assets(b, pid, db_path=None) -> int:
     n = (b.get("plugin_asset_n") or {}).get(pid)
     if n is not None:
         return int(n)
+    if str((b.get("zip_raw") or {}).get("source", "")) in ("index", "navi.db"):
+        return 0                    # build 496: assets with an OPEN, non-info finding — none
     if b.get("scope"):
         frag, args = _sf(b["scope"], "asset_uuid")
         try:
@@ -727,7 +881,6 @@ def coverage(db_path=None, base=None, om=None, users_total=None, scope=None) -> 
     b = base if base is not None else _base(db_path, scope)
     scope = scope or b.get("scope")
     _f, _a = _sf(scope, "asset_uuid")
-    _w = " WHERE 1=1" + _f if scope else ""
     if not b.get("has_routes"):
         return {"ok": True, "owned": 0, "assets_with_routes": 0, "avg_routes": 0.0,
                 "closed": 0, "total_routes": 0, "total_paths": 0, "owned_paths": 0,
@@ -745,18 +898,15 @@ def coverage(db_path=None, base=None, om=None, users_total=None, scope=None) -> 
     assets_with_routes = len(asset_apps)
     avg_routes = (sum(len(x) for x in asset_apps.values()) / len(asset_apps)) if asset_apps else 0
     total_routes = len(b["apps"])              # distinct route names — what the map counts
-    total_paths = sc("SELECT COUNT(DISTINCT path) FROM vuln_paths" + _w, _a)
-    # workload reduction: raw path findings (every asset×path row) collapse to distinct
-    # paths you actually assign; sum of route vulns collapse to a handful of routes.
-    path_findings = sc("SELECT COUNT(*) FROM vuln_paths" + _w, _a)
-    if not scope:
-        route_findings = sc("SELECT COALESCE(SUM(total_vulns),0) FROM vuln_route")
-    else:   # navi's total_vulns is tenant-wide — count the routes' findings on the tag's assets
-        try:
-            route_findings = sum(_route_findings(list(db.query("SELECT route_id, plugin_list FROM vuln_route",
-                                                                path=db_path)), db_path, scope).values())
-        except Exception:
-            route_findings = 0
+    # build 496: everything below counts OPEN, NON-INFO findings only (the zipper) — navi's
+    # vuln_route.total_vulns and raw vuln_paths rows also count fixed and info findings.
+    # workload reduction: path findings (asset × path) collapse to the distinct paths you
+    # assign; route findings collapse to a handful of routes.
+    _z = b.get("zip_raw") or {}
+    _zl = _z.get("links") or {}
+    total_paths = len(b.get("path_assets") or {})
+    path_findings = len(b.get("path_rows") or ())
+    route_findings = int(_zl.get("route_only", 0)) + int(_zl.get("both", 0))
     # Owner-tag matching is CASE-INSENSITIVE, the same as ownership_map(): an asset is
     # owned for a route/path when it carries an Owner '<name>: …' tag for that name.
     # Route and path ownership come from the map's statuses, so the two widgets can't
@@ -765,8 +915,10 @@ def coverage(db_path=None, base=None, om=None, users_total=None, scope=None) -> 
     om = om if om is not None else ownership_map(db_path, base=b, scope=scope)
     routes_owned = sum(1 for r in om.get("routes", []) if r.get("status") == "owned")
     owned_paths = sum(1 for p in om.get("paths", []) if p.get("status") == "owned")
-    # an ASSET is closed when every route it sits on has a real owner FOR THAT ASSET.
-    closed = sum(1 for au, apps in asset_apps.items() if all(_has_owner_tag(b, au, a) for a in apps)) if owned else 0
+    # an ASSET is closed when every open finding on it is OWNED through its plugin's route or a
+    # path it was found at (build 496 — it used to need every ROUTE owned, so an asset owned
+    # through its paths never closed). Ignored/Accepted/Mitigated isn't an owner.
+    closed = len(set(_z.get("assets_all") or ()) - set(_z.get("assets_open") or ()))
     # --- outcome of decisions on each route/path + who has no assigned work ------
     # Reuse the Ownership Map so these numbers reconcile exactly with the graph.
     #   owners_total    = people the platform knows as owners (any Owner tag, minus
@@ -808,6 +960,7 @@ def coverage(db_path=None, base=None, om=None, users_total=None, scope=None) -> 
             "users_total": int(users_total),
             "assets_with_routes": int(assets_with_routes),
             "avg_routes": round(float(avg_routes or 0), 1), "closed": int(closed),
+            "assets_total": len(_z.get("assets_all") or ()),     # assets with an open finding
             "routes_owned": int(routes_owned),
             "total_routes": int(total_routes), "total_paths": int(total_paths),
             "owned_paths": int(owned_paths), "path_findings": int(path_findings),
@@ -940,20 +1093,69 @@ def ownership_map(db_path=None, base=None, scope=None) -> dict:
         cov = path_routes.get(it["name"], set())
         it["routes"] = sorted(cov)                # which app(s) cover this path
         it["on_route"] = bool(cov)
-    # A path under a FULLY owned route is owned by that route's owner(s) — the same rule
-    # coverage() uses for owned_paths. Marked `inherited` (owners = the route's) so the gap
-    # lists stop showing it as Ownerless Risk; it doesn't add to anyone's workload twice.
+    # ── Status = COVERAGE of the item's findings (build 497) ─────────────────────────────────
+    # Routes and paths are two ways to assign PLUGINS to people. An item is owned when every open,
+    # non-info finding on it is owned — by its own Owner tag, or by the route / path tag that
+    # covers the same finding. Own the CentOS route and every CentOS path is 100% owned too;
+    # hand one of those paths to someone else and it stays 100% owned (now by them).
+    #   owned    every finding on it owned            partial  some
+    #   ignored / accepted / mitigated  none owned, its findings carry that decision
+    #   unowned  none owned
+    # `assigned` = it carries a real Owner tag of its own (direct assignment) — counted
+    # separately; owners = direct owners + the owners of the routes/paths that cover it.
     _route_by = {r["name"]: r for r in routes}
-    for it in paths:
-        if it["status"] in ("unowned", "partial"):
-            via = sorted(a for a in it["routes"] if _route_by.get(a, {}).get("status") == "owned")
-            if via:
-                it["inherited"] = True
-                it["via_routes"] = via
-                it["owners"] = sorted({o for a in via for o in _route_by[a]["owners"]} | set(it["owners"]))
-                it["owner_count"] = len(it["owners"])
-                it["owned_assets"] = it["assets"]
-                it["status"] = "owned"
+    _path_by = {p["name"]: p for p in paths}
+    ua = b["user_assets"]
+    cov_r, cov_p = b.get("cov_r") or {}, b.get("cov_p") or {}
+    open_r, open_p = b.get("open_r") or {}, b.get("open_p") or {}
+    for it in routes + paths:
+        it["direct_owners"] = list(it["owners"])
+        it["assigned"] = bool(it["owners"])
+        is_r = it["type"] == "route"
+        f = (cov_r if is_r else cov_p).get(it["name"])
+        if not f or not f[0]:
+            it.update(findings=0, findings_owned=0, findings_decided=0, coverage_pct=0.0)
+            continue                      # no open finding on it: keep the tag-based status
+        tot, own, dec = f
+        aset = (route_assets if is_r else path_assets).get(it["name"], set())
+        it["findings"], it["findings_owned"], it["findings_decided"] = tot, own, dec
+        it["coverage_pct"] = round(100.0 * own / tot, 1)
+        it["owned_assets"] = len(aset - (open_r if is_r else open_p).get(it["name"], set()))
+        if own >= tot:
+            it["status"] = "owned"
+        elif own:
+            it["status"] = "partial"
+        elif dec:                          # nothing owned; its findings carry a decision
+            it["status"] = (it.get("disposition") or "Accepted").lower()
+        else:
+            it["status"] = "unowned"
+        # who covers it besides its own tag
+        others = it["routes"] if not is_r else sorted(route_paths.get(it["name"], set()))
+        lookup = _route_by if not is_r else _path_by
+        via = sorted(o for o in others if lookup.get(o, {}).get("direct_owners", lookup.get(o, {}).get("owners"))
+                     and owned_by.get(_nk(o), set()) & aset) if own else []
+        if is_r:
+            it["via_paths"] = via
+        else:
+            it["via_routes"] = via
+            it["inherited"] = bool(via) and own > 0 and not it["assigned"]
+        # who owns each of its assets: its OWN Owner tag wins on the assets it's on (a path handed
+        # to bob is bob's there); the routes/paths covering it fill in the rest. Each asset splits
+        # 1 between its owners → owner_assets, so the Sankey shows a reassigned path as the small
+        # slice it is (own CentOS, give bob one path on one asset: CentOS stays all alice's).
+        k = _nk(it["name"])
+        share = {}
+        for au in aset:
+            ow = [o for o in it["direct_owners"] if au in ua.get((k, o), ())]
+            if not ow and own:
+                ow = sorted({u for v in via for u in lookup.get(v, {}).get("direct_owners", lookup.get(v, {}).get("owners", []))
+                             if au in ua.get((_nk(v), u), ())})
+            for o in ow:
+                share[o] = share.get(o, 0.0) + 1.0 / len(ow)
+        it["owner_assets"] = {o: round(v, 2) for o, v in sorted(share.items())}
+        if own and via:
+            it["owners"] = sorted(set(it["direct_owners"]) | {o for o, v in share.items() if v > 0})
+            it["owner_count"] = len(it["owners"])
     route_paths_list = {a: sorted(s) for a, s in route_paths.items()}
     orphan_paths = sorted(p["name"] for p in paths if not p["on_route"])
 
@@ -966,10 +1168,8 @@ def ownership_map(db_path=None, base=None, scope=None) -> dict:
     load = {}
     ua = b["user_assets"]
     for it in routes + paths:
-        if it.get("inherited"):
-            continue
         k = _nk(it["name"])
-        for o in it["owners"]:
+        for o in it.get("direct_owners", it["owners"]):
             e = load.setdefault(o, {"owner": o, "routes": 0, "paths": 0, "assets": set()})
             e["routes" if it["type"] == "route" else "paths"] += 1
             e["assets"] |= ua.get((k, o), set())
@@ -977,23 +1177,11 @@ def ownership_map(db_path=None, base=None, scope=None) -> dict:
                            "assets": len(e["assets"])} for e in load.values()]),
                         key=lambda x: -(x["routes"] + x["paths"]))
 
-    all_assets = set()
-    for s in route_assets.values():
-        all_assets |= s
-    for s in path_assets.values():
-        all_assets |= s
-    # Ownerless Risk: assets with neither an owner nor a decision on ANY route/path they sit
-    # on. (Subtracting every asset with any Owner tag hid assets whose only tag was for a
-    # different route, or a bare team name.)
-    covered = set()
-    for it, aset in [(r, route_assets.get(r["name"], set())) for r in routes] + \
-                    [(p, path_assets.get(p["name"], set())) for p in paths]:
-        if it.get("inherited"):
-            covered |= aset
-            continue
-        k = _nk(it["name"])
-        covered |= (owned_by.get(k, set()) | disp_by.get(k, set())) & aset
-    unowned_assets = len(all_assets - covered)
+    # Ownerless Risk: assets where NO open finding is owned or decided through its route or a
+    # path (build 496: from the per-finding zipper, so an asset owned through a path counts)
+    _z = b.get("zip_raw") or {}
+    all_assets = set(_z.get("assets_all") or ())
+    unowned_assets = len(all_assets - set(_z.get("assets_covered") or ()))
 
     def kc(items, s):
         return sum(1 for i in items if i["status"] == s)
@@ -1004,10 +1192,8 @@ def ownership_map(db_path=None, base=None, scope=None) -> dict:
     n_ignored = sum(1 for i in surface if i["status"] == "ignored")
     n_accepted = sum(1 for i in surface if i["status"] == "accepted")
     n_mitigated = sum(1 for i in surface if i["status"] == "mitigated")
-    # paths owned THROUGH a route — a path inherits ownership when the route covering it
-    # (linked by shared plugin IDs) is fully owned. Distinct paths under any owned route.
-    _owned_route_names = {r["name"] for r in routes if r.get("status") == "owned"}
-    paths_via_route = len({p for a in _owned_route_names for p in route_paths.get(a, set())})
+    # paths covered (fully or partly) THROUGH a route, with no Owner tag of their own
+    paths_via_route = sum(1 for p in paths if p.get("inherited"))
 
     def _pct(n):
         return round(100.0 * n / n_items, 1)
@@ -1021,7 +1207,8 @@ def ownership_map(db_path=None, base=None, scope=None) -> dict:
         # DISTINCT over the table, twice) and handed to both statements as a JSON list
         _ib = db.indexed_by("hx_v_plugin", db_path)
         _present = None
-        _paths_sql, _routes_sql, _fa = "(SELECT COUNT(DISTINCT path) FROM vuln_paths)", "(SELECT COUNT(DISTINCT app_name) FROM vuln_route)", ()
+        # build 496: paths = the distinct paths of OPEN findings (the same set as the map)
+        _paths_sql, _routes_sql, _fa = "(SELECT %d)" % len(b.get("path_assets") or {}), "(SELECT COUNT(DISTINCT app_name) FROM vuln_route)", ()
         if scope:
             # a tag view: the funnel over the tag's findings, paths and routes only
             _ff, _fa = _sf(scope, "asset_uuid")
@@ -1034,8 +1221,8 @@ def ownership_map(db_path=None, base=None, scope=None) -> dict:
                 raise
             except Exception:
                 _present, _findings = "[]", "(SELECT 0)"
-            _paths_sql = "(SELECT COUNT(DISTINCT path) FROM vuln_paths WHERE 1=1" + _ff + ")"
             _routes_sql = "(SELECT %d)" % len(b.get("apps") or [])
+            _fa = ()                                  # no placeholders left in the funnel SQL
         elif hx_summary.usable(db_path):
             # ⚡ Optimize's hx_plugin: the present plugins and their finding counts without a
             # DISTINCT over the index or a COUNT(*) over vulns. Rows whose plugin_id is NULL (not
@@ -1114,6 +1301,9 @@ def ownership_map(db_path=None, base=None, scope=None) -> dict:
                     "paths": len(paths), "paths_unowned": kc(paths, "unowned"),
                     "paths_partial": kc(paths, "partial"), "paths_owned": kc(paths, "owned"),
                     "paths_via_route": int(paths_via_route),
+                    # direct assignments (an Owner tag of its own) — the method, not the coverage
+                    "routes_assigned": sum(1 for r in routes if r.get("assigned")),
+                    "paths_assigned": sum(1 for p in paths if p.get("assigned")),
                     "owners": len(owner_load), "unowned_assets": unowned_assets,
                     "ignored": n_ignored, "ignored_pct": _pct(n_ignored),
                     "accepted": n_accepted, "accepted_pct": _pct(n_accepted),
@@ -1147,9 +1337,19 @@ def path_detail(path, scope=None):
             return []
 
     _sfr, _sar = _sf(scope, "vp.asset_uuid")
+    # build 498: only OPEN, non-info findings (vuln_paths also keeps fixed findings' paths) —
+    # the same rows Exposure Routes' coverage counts (core/hx_rpp)
+    try:
+        from core import hx_rpp
+        _vc = {r["name"] for r in q('SELECT name FROM pragma_table_info("vulns")')}
+        _open = (" AND EXISTS (SELECT 1 FROM vulns WHERE vulns.plugin_id = vp.plugin_id AND vulns.asset_uuid = vp.asset_uuid AND "
+                 + hx_rpp.finding_where(_vc).replace("plugin_id IS NOT NULL AND asset_uuid IS NOT NULL", "1=1")
+                 .replace("state", "vulns.state").replace("severity", "vulns.severity") + ")") if _vc else ""
+    except Exception:
+        _open = ""
     rows = q("SELECT vp.asset_uuid au, vp.plugin_id pid, vp.finding_id fid, a.hostname host, "
              "a.ip_address ip, a.acr acr, a.url url FROM vuln_paths vp "
-             "LEFT JOIN assets a ON a.uuid=vp.asset_uuid WHERE vp.path=?" + _sfr, (path,) + tuple(_sar))
+             "LEFT JOIN assets a ON a.uuid=vp.asset_uuid WHERE vp.path=?" + _open + _sfr, (path,) + tuple(_sar))
     by, findings, plugins = {}, set(), set()
     for r in rows:
         u = r.get("au")
@@ -1163,27 +1363,39 @@ def path_detail(path, scope=None):
                "url": e["url"], "plugins": len(e["plugins"]), "findings": sorted(e["findings"])}
               for e in by.values()]
     assets.sort(key=lambda x: -(float(x["acr"]) if x["acr"] else 0))
+    # the routes of the plugins found here (each plugin has one route)
     try:
-        from core import hx_signals
-        _rp = hx_signals.routes_usable(dbp)
+        from core import hx_rpp
+        import contextlib as _cl
+        with _cl.closing(db.connect(dbp)) as _c:
+            _rm = hx_rpp.route_map(_c)
+        apps = sorted({_rm[p][1] for p in plugins if p in _rm})
     except Exception:
-        _rp = False
-    if _rp:   # Phase 1b: route membership exploded by ⚡ Optimize — no LIKE over plugin_list
-        apps = [r["app"] for r in q("SELECT DISTINCT r.app_name app FROM hx_route_plugin r JOIN vuln_paths vp "
-                "ON r.plugin_id = vp.plugin_id WHERE vp.path=?", (path,)) if r.get("app")]
-    else:
-        apps = [r["app"] for r in q("SELECT DISTINCT r.app_name app FROM vuln_route r JOIN vuln_paths vp "
-            "ON r.plugin_list LIKE '%''' || vp.plugin_id || '''%' WHERE vp.path=?", (path,)) if r.get("app")]
-    owners = set()
-    apps_ci = {a.strip().lower() for a in apps}
-    _tfr, _tar = _sf(scope, "asset_uuid")
-    for r in q("SELECT DISTINCT tag_value FROM tags WHERE " + tagname.sql_lit("tag_key", "Owner") + " AND tag_value IS NOT NULL" + _tfr, tuple(_tar)):
-        val = (r.get("tag_value") or "").strip()
-        if ": " in val:
-            nm, us = val.rsplit(": ", 1)
-            if nm.strip().lower() in apps_ci and us.strip():
-                owners.add(us.strip())
+        apps = []
+    # who covers this path ON ITS ASSETS (build 498): its own Owner tag, or the Owner tag of the
+    # route its plugins belong to — routes and paths are both ways the plugin gets assigned
+    owners, direct, via = set(), set(), set()
+    names = {_nk(path): "path"} | {_nk(a): "route" for a in apps}
+    aus = [a["uuid"] for a in assets if a.get("uuid")]
+    for i in range(0, len(aus), 900):
+        part = aus[i:i + 900]
+        for r in q("SELECT tag_value FROM tags WHERE " + tagname.sql_lit("tag_key", "Owner") + " AND tag_value IS NOT NULL "
+                   "AND asset_uuid IN (%s)" % ",".join("?" * len(part)), tuple(part)):
+            val = (r.get("tag_value") or "").strip()
+            if ": " in val:
+                nm, us = val.rsplit(": ", 1)
+                kind = names.get(_nk(nm))
+                if kind and us.strip() and not disposition_label(us.strip()):
+                    owners.add(us.strip())
+                    (direct if kind == "path" else via).add(us.strip())
+    pnames = {}
+    if plugins:
+        for r in q("SELECT plugin_id, plugin_name FROM vulns WHERE rowid IN (SELECT MIN(rowid) FROM vulns "
+                   "WHERE plugin_id IN (SELECT value FROM json_each(?)) GROUP BY plugin_id)", (_json.dumps(sorted(plugins)),)):
+            pnames[str(r.get("plugin_id"))] = r.get("plugin_name") or ""
     out = {"ok": True, "path": path, "apps": sorted(apps), "owners": sorted(owners),
+           "path_owners": sorted(direct), "route_owners": sorted(via),
+           "plugin_names": pnames,
            "assets": assets, "plugins": sorted(plugins), "findings": sorted(findings),
            "asset_count": len(assets)}
     if scope:
@@ -1203,7 +1415,7 @@ def path_detail(path, scope=None):
 CACHE_DIR = os.environ.get("NAVI_CACHE_DIR") or os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "cache")
 OWNERS_TTL = float(os.environ.get("NAVI_OWNERS_TTL_S", str(6 * 3600)))
-SNAP_VERSION = 1
+SNAP_VERSION = 2   # 496: + zip (route/path/plugin zipper); open non-info findings only
 _SNAP_MEM = {}            # key -> snapshot dict
 _BUILDING = {}            # key -> {"job_id", "started"}
 _SLOCK = threading.Lock()
@@ -1319,7 +1531,7 @@ def build_snapshot(db_path=None, refresh_owners=False, scope=None) -> dict:
     rt, pa = routes(db_path, scope), paths(db_path, scope)
     snap = {"load": {"owners": ow, "routes": rt, "paths": pa,
                      "counts": {"owners": len(ow), "routes": len(rt), "paths": len(pa)}},
-            "coverage": cov, "map": om,
+            "coverage": cov, "map": om, "zip": zipper(b, db_path),
             "meta": {"v": SNAP_VERSION, "sig": sig, "db": _db_file(db_path),
                      "built_at": _iso(t0), "build_sec": round(_time.time() - t0, 2),
                      "owners_at": _iso(ow_at)}}
@@ -1342,17 +1554,52 @@ def snapshot_state(db_path=None, scope=None) -> dict:
     return {"snap": s, "building": bld or None, "key": key}
 
 
-def start_build(submit, db_path=None, refresh_owners=False, scope=None) -> dict:
+def note_run(rid, ok=True, ms=0, cached=False):
+    """Build 498: a ▶ Run on this page is a run in "Done so far" (core.activity) like every other
+    specialist's — recorded when the snapshot it asked for is READY (built, failed, or served from
+    cache), with the real build time. The page opts out of the page cache, so the console's
+    automatic run marker never reaches the server; it sends its own `record_run` id instead.
+    Run the Ensemble records its own runs (core/release.py) and never passes one."""
+    if not rid:
+        return
+    try:
+        from core import activity
+        activity.note_run("exproute", "snapshot", ok=bool(ok), ms=float(ms or 0), cached=bool(cached), rid=str(rid)[:40])
+    except Exception:
+        pass
+
+
+def _recorded(fn, rid):
+    """Wrap a build so it records the run when it ends (ok / failed, with its duration)."""
+    if not rid:
+        return fn
+
+    def _go():
+        t0 = _time.time()
+        ok = False
+        try:
+            out = fn()
+            ok = not (isinstance(out, dict) and out.get("ok") is False)
+            return out
+        finally:
+            note_run(rid, ok=ok, ms=(_time.time() - t0) * 1000)
+    return _go
+
+
+def start_build(submit, db_path=None, refresh_owners=False, scope=None, record_run=None) -> dict:
     """Start (or join) the background build. `submit(fn)` puts fn on the job queue and
-    returns the job stub. One build per navi.db at a time (per tag, for a tag view)."""
+    returns the job stub. One build per navi.db at a time (per tag, for a tag view).
+    record_run: the page's run id — the run is recorded in Done so far when the build ends."""
     if scope:
-        return SNAP_TAG.start(submit, lambda: build_snapshot(db_path, refresh_owners=refresh_owners, scope=scope),
+        return SNAP_TAG.start(submit, _recorded(lambda: build_snapshot(db_path, refresh_owners=refresh_owners, scope=scope),
+                                                record_run),
                               db_path, _tag_extra(scope), label=f"Ownership snapshot · {scope[0]} : {scope[1]}")
     key = _snap_key(db_path)
     with _SLOCK:
         if key in _BUILDING:
             return dict(_BUILDING[key])
 
+        @functools.partial(_recorded, rid=record_run)
         def _work():
             try:
                 s = build_snapshot(db_path, refresh_owners=refresh_owners)

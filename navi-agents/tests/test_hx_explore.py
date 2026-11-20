@@ -188,6 +188,7 @@ def r_exproute():
     exr._owners_live = lambda: []
     s = exr.build_snapshot()
     s.pop("meta", None)
+    (s.get("zip") or {}).pop("source", None)     # build 496: "index" vs "navi.db" — the numbers must match
     return __import__("json").loads(__import__("json").dumps(s, default=sorted, sort_keys=True))
 
 

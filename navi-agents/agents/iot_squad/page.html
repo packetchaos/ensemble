@@ -127,11 +127,11 @@ let iotAppr=lsGet('iotAppr');
 const saveIot=()=>lsSet('iotAppr',iotAppr);
 /* Unified inventory scheme (same as the Classifier): the written tag is
    "Asset Inventory : <Facet>: <device>". The operator can change the facet per device. */
-const IOT_FACETS=['Device Type','IoT','OT','Class','App','Cloud','OS'];
+const IOT_FACETS=['Device Type','IoT','OT','App','Cloud','OS'];   // build 499: 'Class' retired as an option
 let iotFacet=lsGet('iotFacet');
 const saveFacet=()=>lsSet('iotFacet',iotFacet);
 const facetOf=a=>iotFacet[a.value]||a.facet||'Device Type';
-const facetOpts=sel=>IOT_FACETS.map(f=>`<option${f===sel?' selected':''}>${esc(f)}</option>`).join('');
+const facetOpts=sel=>(sel&&!IOT_FACETS.includes(sel)?[...IOT_FACETS,sel]:IOT_FACETS).map(f=>`<option${f===sel?' selected':''}>${esc(f)}</option>`).join('');
 const iotTagVal=a=>facetOf(a)+': '+a.value;                 // "<Facet>: <device>"
 const iotApplied=a=>(typeof tagApplied==='function')&&(tagApplied('Asset Inventory',iotTagVal(a))||tagApplied('IoT',a.value));
 let IOT_SUBMITTED=new Set();

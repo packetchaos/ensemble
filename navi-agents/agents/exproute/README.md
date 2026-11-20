@@ -38,15 +38,65 @@ Speed: membership (route → assets, route ↔ path) is built from linear scans 
 of the old `LIKE '%…%'` cross-joins. 100K findings / 300 routes went from ~3 minutes to 0.4 s;
 600K findings / 1,500 routes builds in ~5 s.
 
+## Build 498
+
+- **Runs are reported like every other specialist's.** ▶ Run / ↻ rebuild / ↻ refresh owners send
+  a run id; the run lands in *Done so far* when the snapshot is ready (its real build time, or a
+  cached run). Run the Ensemble records its own runs. (SLA Tracker got the same fix.)
+- **⛶ full screen** on the Ownership Map section and on its ownership graph (threads / Sankey),
+  standalone and embedded.
+- **Path → Remote Remediation.** Clicking a path (Sankey node, *Close the gap* path, or the map's
+  route → path list) opens its detail — open findings only, % owned, its own owners and the
+  route owners covering it — with **📧 Email this path** *or* **🛠 Remediate → Remote
+  Remediation** (pick the plugin) / **🔎 Validate path**. The hand-off pre-fills the C2 page's
+  hosts; nothing runs until the operator chooses and confirms there.
+- **The Ownership specialist** (asset_ownership) uses the same rule: each asset's *claimed %* is
+  the share of its open findings owned (or dispositioned) through their route or a path, and the
+  Asset Owner cascade tags the asset's routes plus only the paths of findings with no route.
+
+## Plugin coverage — the route / path / plugin index (build 496)
+
+navi assigns every non-info plugin to **one route** (`vuln_route`) and parses **paths** out of
+non-info findings (`vuln_paths`). A route has many plugins; a plugin can sit at many paths and a
+path can carry many plugins, so route ↔ path is 1:1 or many-to-many. Exposure Routes zips the two
+together **per finding**:
+
+- Every **open** (open / reopened), **non-info** finding — one per plugin × asset — is matched to
+  its plugin's route and the paths that plugin was found at on that asset. Fixed and info
+  findings no longer count anywhere on this page.
+- A finding is **owned** when its asset carries a real Owner tag for that route **or** one of
+  those paths; **decided** when it carries Ignored / Accepted / Mitigated instead; **unowned**
+  otherwise; **unreachable** when its plugin has no route and no path (the route table is older
+  than the plugin — rebuild routes).
+- A plugin is owned / decided / partial / unowned / unrouted from its findings; an asset is
+  **closed** when every open finding on it is owned.
+- **Close the gap** lists the routes and the paths whose Owner tag would close the most unowned
+  findings, each with a 🏷 Tag owner button; the plugin list shows the 200 plugins with the most
+  open findings that aren't fully owned.
+
+The index lives in navi.db as `hx_rpp` (finding → route, path count) and `hx_rpp_path` (its
+paths), built by ⚡ Optimize (core/hx_rpp.py). It goes stale when vulns/assets change **or** when
+routes or paths are rebuilt; a console route/paths update re-runs Optimize when the index was
+built before. Until then the page computes the same rows from navi.db directly (slower on large
+estates) and says so. Measured on 150K assets / 3.8M findings / 1,500 routes: the index adds 9 s
+to Optimize and the page's pass takes 12 s with it (37 s without).
+
 ## Ownership rules
 
 - An asset is **owned** for a route/path only by a real owner tag `<name>: <user>` — not
   `Ignored` / `Accepted` / `Mitigated`, not a bare `<name>`. Names compare case- and
   whitespace-insensitively with no wildcards. An owner containing `': '` splits at the known
   route/path name.
-- A route is owned when every asset on it is; a path when every asset is **or** the route
-  covering it is owned (marked `inherited`; it doesn't add to anyone's workload).
-- **Ownerless Risk** = assets with neither an owner nor a decision on any route/path they sit on.
+- **Routes and paths are methods of assigning plugins** (build 497). A route or path is
+  **owned** (covered) when every open finding on it is owned — by its own Owner tag or by the
+  route / path tag that covers the same finding; **partial** when some are. Own the CentOS route
+  and every CentOS path is 100% owned; hand one of those paths to someone else and it stays 100%
+  owned (now by them). A route can likewise be owned entirely through its paths' tags.
+- **Assigned directly** = the route/path carries an Owner tag of its own — counted separately
+  (`routes_assigned`, `paths_assigned`). Workload counts only direct assignments; owners shown on
+  an item = its own plus those of the routes/paths that cover it (`via_routes` / `via_paths`).
+- **Ownerless Risk** = assets where not one open finding is owned or decided through its route or
+  a path.
 - Owner workload counts only the assets tagged to that owner.
 - Routes that share an app name are one route; tagging it tags every `route_id` with the name.
 - Re-tagging an unmatched Owner name (`retag`) moves only the assets carrying the old tag,

@@ -82,7 +82,8 @@ check(cv["closed"] == 5, "closed = every route on the asset has a real owner for
 check(cv["routes_owned"] == 1 and cv["total_routes"] == 5, "coverage agrees with the map (1 owned of 5 distinct routes)")
 
 # a path under a fully owned route is owned (inherited) — the map and coverage agree
-P2 = mk("inherit.db", routes=[(1, "Web", [10])], vulns=[("w1", 10, 8.0), ("w2", 10, 8.0)],
+# (build 496: a path only counts for an open finding — /tmp/orphan is plugin 99's, which has no route)
+P2 = mk("inherit.db", routes=[(1, "Web", [10])], vulns=[("w1", 10, 8.0), ("w2", 10, 8.0), ("w2", 99, 8.0)],
         paths=[(10, "/srv/web/app.jar", "w1"), (99, "/tmp/orphan", "w2")],
         tags=[("w1", "Web: alice"), ("w2", "Web: alice")])
 om2 = A.ownership_map(P2)
@@ -134,7 +135,9 @@ os.utime(P, None)
 check(A.snapshot_state(P)["snap"] is None, "changing navi.db invalidates the snapshot")
 s2 = A.build_snapshot(P)
 check({r["name"]: r for r in s2["map"]["routes"]}["Dup"]["status"] == "owned", "the rebuilt snapshot sees the new tag")
-check(set(s2) == {"load", "coverage", "map", "meta"} and json.dumps(s2, default=list), "snapshot carries owners, coverage and the map")
+check(set(s2) == {"load", "coverage", "map", "zip", "meta"} and json.dumps(s2, default=list),
+      "snapshot carries owners, coverage, the map and the route/path/plugin zipper")
+check(s2["zip"]["findings"]["total"] == 11 and s2["zip"]["source"] == "navi.db", "the zipper counts every open finding (11)")
 
 
 def test_exproute_regressions():

@@ -48,20 +48,24 @@ def _submit(fn):
 
 
 def snapshot(p):
-    from .agent import snapshot_state, start_build
+    from .agent import snapshot_state, start_build, note_run
     tk, tv = _view(p)
+    # build 498: a ▶ Run from the page carries its run id → recorded in Done so far when ready
+    rid = p.get("record_run") if isinstance(p.get("record_run"), str) and not p.get("peek") else None
     st = snapshot_state(tag_key=tk, tag_value=tv)
     base = {"ok": True, "history": _history()}
     if st["snap"] and p.get("peek"):
         return {**base, "result": st["snap"], "cached": True, "stale": st["stale"],
                 "building": st["building"]}, 200
     if st["snap"] and not st["stale"] and not p.get("force"):
+        note_run(rid, ok=True, cached=True)
         return {**base, "result": st["snap"], "cached": True, "stale": False}, 200
     if p.get("peek"):
         return {**base, "result": None, "building": st["building"]}, 200
     if st["building"]:
+        note_run(rid, ok=True)                      # joined a build already running
         return {**base, "result": None, "building": st["building"]}, 200
-    b = start_build(_submit, tag_key=tk, tag_value=tv)
+    b = start_build(_submit, tag_key=tk, tag_value=tv, record_run=rid)
     return {**base, "result": None, "building": b}, 200
 
 

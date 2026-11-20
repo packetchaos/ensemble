@@ -14,9 +14,47 @@
   .crown{color:#e6c34a}
   .ownpill{font-family:var(--mono);font-size:10.5px;border:1px solid var(--line);border-radius:999px;padding:1px 7px;color:var(--ink-2);white-space:nowrap}
   .sig{display:inline-block;font-family:var(--mono);font-size:10px;border:1px solid var(--line2,var(--line));border-radius:999px;padding:1px 7px;margin:2px 3px 0 0;color:var(--ink-2);background:var(--panel-2)}
-  .cjcard{border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:var(--panel);margin:8px 0}
-  .cjcard.gap{border-color:rgba(229,72,77,.5);box-shadow:inset 3px 0 0 var(--crit)}
-  .cjcard.owned{box-shadow:inset 3px 0 0 var(--ok)}
+  /* build 499 — crown jewels: a triage table, findings grouped by what they mean */
+  tr.cjd[hidden]{display:none!important}
+  .cjsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:4px 0 10px}
+  .cjk{border:1px solid var(--line);border-radius:10px;padding:8px 11px;background:var(--panel);cursor:pointer;text-align:left;color:var(--ink);font:inherit}
+  .cjk:hover{border-color:var(--accent)}.cjk.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .cjk .v{font-size:20px;font-weight:800;line-height:1.1}.cjk .l{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+  .cjk.bad .v{color:var(--crit)}.cjk.warn .v{color:var(--amber)}.cjk.ok .v{color:var(--ok)}
+  table.cjt{width:100%;border-collapse:collapse;table-layout:fixed}
+  table.cjt td,table.cjt th{white-space:normal;overflow:visible;text-overflow:clip}
+  table.cjt col.c1{width:23%}table.cjt col.c2{width:18%}table.cjt col.c3{width:13%}table.cjt col.c4{width:27%}table.cjt col.c5{width:19%}
+  .cjfind{display:flex;flex-wrap:wrap;gap:3px}
+  .cjleg{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:11px;color:var(--ink-3);margin:0 0 6px}
+  @media (max-width:760px){ table.cjt{table-layout:auto} table.cjt colgroup{display:none} table.cjt thead{display:none}
+    table.cjt tr.cjr{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;padding:8px 0;border-bottom:1px solid var(--line)}
+    table.cjt tr.cjr td{border:0;padding:2px 6px} table.cjt tr.cjr td:first-child{grid-column:1/-1} table.cjt tr.cjr td:nth-child(4),table.cjt tr.cjr td:nth-child(5){grid-column:1/-1}
+    table.cjt tr.cjd:not([hidden]){display:block} table.cjt tr.cjd td{display:block}
+    .cjact{justify-content:flex-start} }
+  table.cjt th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+  table.cjt td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+  table.cjt tr.cjr{cursor:pointer}table.cjt tr.cjr:hover td{background:var(--panel-2)}
+  table.cjt tr.cjr.gap td:first-child{box-shadow:inset 3px 0 0 var(--crit)}table.cjt tr.cjr.own td:first-child{box-shadow:inset 3px 0 0 var(--ok)}
+  .cjhost{font-weight:700}.cjip{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  .acrb{display:inline-block;min-width:26px;text-align:center;font-family:var(--mono);font-size:11px;font-weight:700;border-radius:6px;padding:1px 5px;background:rgba(229,72,77,.14);color:var(--crit);border:1px solid rgba(229,72,77,.35)}
+  .acrb.hi{background:rgba(230,195,74,.14);color:#e6c34a;border-color:rgba(230,195,74,.4)}
+  .unc{color:var(--crit);font-weight:700;font-size:12px}
+  .rk{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;border-radius:6px;padding:1px 6px;margin-right:4px;white-space:nowrap}
+  .rk.crit{background:rgba(229,72,77,.14);color:var(--crit)}.rk.kev{background:var(--crit);color:#fff}
+  .ln{display:inline-flex;align-items:center;gap:3px;font-size:11px;border-radius:999px;padding:1px 8px;margin:1px 4px 1px 0;border:1px solid var(--line);white-space:nowrap}
+  .ln b{font-family:var(--mono)}
+  .ln.l-ex{border-color:rgba(229,72,77,.5);color:var(--crit)}.ln.l-hy{border-color:rgba(230,160,40,.55);color:var(--amber)}
+  .ln.l-id{border-color:rgba(167,139,250,.55);color:#a78bfa}.ln.l-vi{border-color:rgba(110,168,255,.55);color:#6ea8ff}
+  .ln.l-vi.fail{background:rgba(110,168,255,.12)}
+  .blindb{font-size:11px;color:var(--ink-3);border:1px dashed var(--line);border-radius:999px;padding:1px 8px}
+  tr.cjd td{background:var(--panel-2);padding:10px 14px 12px}
+  .cjlanes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+  .cjlane h4{margin:0 0 4px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em}
+  .cjlane div{font-size:12px;color:var(--ink-2);margin:2px 0}.cjlane div .kk{color:var(--ink-3)}
+  .cjctx{margin-top:8px;font-size:11.5px;color:var(--ink-3)}
+  .cjact{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+  .cjact input{flex:1 1 90px;min-width:0;max-width:140px}
+  .cjact .btn{flex:0 0 auto}
   table.assets td{vertical-align:middle}
   .assignrow input{padding:5px 8px;border-radius:7px;border:1px solid var(--line);background:var(--bg-2);color:var(--ink);font-size:12px}
   .miniseg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
@@ -29,7 +67,7 @@
 
   <section class="card" style="background:radial-gradient(120% 140% at 90% -20%,var(--amber-glow),transparent 60%),var(--panel)">
     <div class="toolbar"><div><div class="acode">Ownership</div><h2 style="margin:0"><img class="bicon" src="/static/icons/asset_ownership.png?v=1" alt="" aria-hidden="true" draggable="false"> Ownership</h2>
-      <p class="sub" style="margin:2px 0 0">Ownership from the <b>asset's</b> point of view: <b>who owns each asset</b>, how much of it is claimed, <b>what isn't owned</b>, and <b>what you're blind to</b> — plus your <b>crown jewels</b> (ACR&nbsp;≥&nbsp;9) and what the Ensemble already know about them. Three layers: <span class="mono">Business Owner</span> (leaders own groups/apps), <span class="mono">Owner</span> (Exposure Routes — routes &amp; paths), and a single <span class="mono">Asset Owner</span> who owns an asset's <b>every</b> route &amp; path (or just the rest).</p></div>
+      <p class="sub" style="margin:2px 0 0">Ownership from the <b>asset's</b> point of view: <b>who owns each asset</b>, how much of it is claimed, <b>what isn't owned</b>, and <b>what you're blind to</b> — plus your <b>crown jewels</b> (ACR&nbsp;≥&nbsp;9) and what the Ensemble already know about them. Three layers: <span class="mono">Business Owner</span> (leaders own groups/apps), <span class="mono">Owner</span> (Exposure Routes — routes &amp; paths), and a single <span class="mono">Asset Owner</span> who owns <b>every</b> open finding on an asset (or just the rest) — routes and paths are how findings get assigned.</p></div>
       <button class="btn run sm" id="load" data-run style="margin-left:auto">▶ Run</button></div>
     <div id="flash" class="flash"></div>
   </section>
@@ -60,7 +98,8 @@
     <div class="toolbar" style="margin:0"><div><h2 style="margin:0;font-size:17px">👑 Crown jewels — what the Ensemble know</h2>
       <p class="sub" style="margin:2px 0 0">Your most business-critical assets (ACR&nbsp;≥&nbsp;<span id="cjAcr">9</span>) — is each one <b>owned</b>, and what have the other specialists already found on it?</p></div>
       <span class="chip" id="cjCount" style="margin-left:auto"></span></div>
-    <div id="cjBody" style="margin-top:8px"></div>
+    <div id="cjSum" class="cjsum"></div>
+    <div id="cjBody" style="margin-top:2px"></div>
   </section>
 
   <!-- Blind spots -->
@@ -110,7 +149,7 @@
 <script src="/static/console.js"></script>
 <script>
 const API=agentApi('asset_ownership');
-let DATA=null, WRITES=false, PLAN=null;
+let CJK=null, DATA=null, WRITES=false, PLAN=null;
 /* build 455 — payload contract: ▶ Run returns the KPIs, the top crown jewels, the blind spots shown,
    the top owners and page 1 of the per-asset table; the table (and "more crown jewels") page, filter
    and search on the server (hDrill / the drill action). No asset list or uuid array reaches the page. */
@@ -187,23 +226,23 @@ function renderPageGlance(k){
     {title:'Coverage',
      hero:mk(fnum(k.owned),'owned at any layer · '+PO(k.owned_pct),{s:'owned',n:k.owned,sev:'ok',t:'Business Owner, route/path Owner or a single Asset Owner'}),
      bar:[{label:'Owned',value:k.owned||0,color:'ok'},{label:'No owner',value:k.no_owner||0,color:'crit'}], legend:false,
-     chips:[mk(fnum(k.assets),TS()?'assets tagged '+tagScopeLabel():'assets in navi.db',{s:'all',n:k.assets,sev:'info',u:TS()?'all of them ↓':'all assets ↓',t:fnum(k.with_surface)+' sit on an exposure route or path'}),
+     chips:[mk(fnum(k.assets),TS()?'assets tagged '+tagScopeLabel():'assets in navi.db',{s:'all',n:k.assets,sev:'info',u:TS()?'all of them ↓':'all assets ↓',t:fnum(k.with_surface)+' have an open finding (on a route or path, or unrouted)'}),
             mk(fnum(k.no_owner),'no owner at any layer · '+PO(k.no_owner_pct),{s:'noowner',n:k.no_owner,sev:bad(k.no_owner,'crit'),u:'assign owners ↓'}),
-            mk(fnum(k.fully_claimed),'fully claimed · every route & path · '+P(k.fully_claimed_pct),{s:'full',n:k.fully_claimed,sev:'ok',t:'of the '+fnum(k.with_surface)+' assets on the exposure surface'}),
+            mk(fnum(k.fully_claimed),'fully claimed · every open finding · '+P(k.fully_claimed_pct),{s:'full',n:k.fully_claimed,sev:'ok',t:'of the '+fnum(k.with_surface)+' assets with an open finding — each one owned (or dispositioned) through its plugin\'s route or a path'}),
             mk(P(k.avg_claimed_pct),'average claimed per asset',{s:'all',sort:'claimed',sev:'info',u:'least-claimed first ↓'}),
-            mk(fnum(k.unclaimed),'unclaimed on the surface · '+P(k.unclaimed_pct),{s:'unclaimed',n:k.unclaimed,sev:bad(k.unclaimed,'crit'),t:'Exposed (routes/paths) with no owner and no disposition'})]},
+            mk(fnum(k.unclaimed),'unclaimed on the surface · '+P(k.unclaimed_pct),{s:'unclaimed',n:k.unclaimed,sev:bad(k.unclaimed,'crit'),t:'Open findings, none owned or dispositioned, and no owner at any layer'})]},
     {title:'Ownership layers',
      hero:mk(fnum(k.business_owned),'with a Business Owner · '+PO(k.business_owned_pct),{s:'biz',n:k.business_owned,sev:'info',t:'Business leaders accountable for groups of assets'}),
      chips:[mk(fnum(k.no_business),'no Business Owner · '+PO(k.no_business_pct),{s:'nobiz',n:k.no_business,sev:bad(k.no_business,'high'),u:'assign one with ✨ Ask ↓'}),
             mk(fnum(k.asset_owned),'single Asset Owner',{s:'asset',n:k.asset_owned,sev:'info',t:'One owner for the whole asset — closes it at 100%'}),
-            mk(fnum(k.asset_owned_complete)+' / '+fnum(k.asset_owned_remainder)+' rest','Asset Owner · everything / the rest',{s:k.asset_owned_remainder&&!k.asset_owned_complete?'remainder':'complete',n:k.asset_owned,t:'complete mode owns every route & path; remainder mode only what was unowned'}),
+            mk(fnum(k.asset_owned_complete)+' / '+fnum(k.asset_owned_remainder)+' rest','Asset Owner · everything / the rest',{s:k.asset_owned_remainder&&!k.asset_owned_complete?'remainder':'complete',n:k.asset_owned,t:'complete mode tags the asset\'s routes (and the paths of findings with no route); remainder mode only what nobody owns yet'}),
             mk(fnum(k.tech_owned),'with route/path owners',{h:'/agents/exproute/page.html',n:k.tech_owned,sev:'info',u:'🧭 Exposure Routes (Exposure Routes) →',t:'Technology owners on routes & paths (Owner tags) — assigned in Exposure Routes'}),
             mk(fnum(k.owners_distinct),'distinct owners',{j:'secOwners',n:k.owners_distinct,sev:'info',u:'owners by asset count ↓'})]},
-    {title:'Routes & paths',
-     hero:mk(P(k.surface_handled_pct),'handled — owned, dispositioned or closed',{h:'/agents/exproute/page.html',n:k.surface_handled,sev:'ok',u:'🧭 Exposure Routes →',t:fnum(k.surface_handled)+' of '+fnum(k.surface_items)+' items'}),
-     chips:[mk(fnum(k.surface_items),'route/path items across assets',{h:'/agents/exproute/page.html',n:k.surface_items,u:'🧭 Exposure Routes →'}),
-            mk(fnum(k.surface_owned),'items with an owner tag',{h:'/agents/exproute/page.html',n:k.surface_owned,sev:'info',u:'🧭 Exposure Routes →'}),
-            mk(fnum(k.mitigated)+' / '+fnum(k.accepted)+' / '+fnum(k.ignored),'mitigated / accepted / ignored',{h:'/agents/exproute/page.html',n:(k.mitigated||0)+(k.accepted||0)+(k.ignored||0),u:'🧭 Exposure Routes →',t:'Route/path dispositions — they count as handled'})]},
+    {title:'Findings · via routes & paths', t:'Routes and paths are how plugins get assigned: a finding is owned when its asset carries an Owner tag for the plugin\'s route or a path it was found at — own a route and every path under it is covered.',
+     hero:mk(P(k.surface_handled_pct),'open findings handled — owned, dispositioned or closed',{h:'/agents/exproute/page.html',n:k.surface_handled,sev:'ok',u:'🧭 Exposure Routes →',t:fnum(k.surface_handled)+' of '+fnum(k.surface_items)+' open findings'}),
+     chips:[mk(fnum(k.surface_items),'open findings across assets',{h:'/agents/exproute/page.html',n:k.surface_items,u:'🧭 Exposure Routes →',t:'Open, non-info findings — one per plugin per asset'}),
+            mk(fnum(k.surface_owned),'owned through a route or path',{h:'/agents/exproute/page.html',n:k.surface_owned,sev:'info',u:'🧭 Exposure Routes →'}),
+            mk(fnum(k.mitigated)+' / '+fnum(k.accepted)+' / '+fnum(k.ignored),'mitigated / accepted / ignored',{h:'/agents/exproute/page.html',n:(k.mitigated||0)+(k.accepted||0)+(k.ignored||0),u:'🧭 Exposure Routes →',t:'Findings whose route or path carries a disposition — they count as handled'})]},
     {title:'Risk without an owner',
      hero:mk(fnum(k.blind),'blind spots · unclaimed crown / ACR ≥ 7',{j:'blindCard',n:k.blind,sev:bad(k.blind,'crit'),u:'claim them ↓'}),
      chips:[mk(fnum(k.crown),'crown jewels · ACR ≥ '+k.crown_acr,{j:'cjCard',n:k.crown,sev:'med',u:'what the Ensemble know ↓'}),
@@ -234,24 +273,83 @@ function renderOwners(list,total){
     document.getElementById('tblFilter').value=a.dataset.owner; setScope('all'); jumpTo('tblCard'); });
 }
 
-/* ---- Crown jewels ---- */
+/* ---- Crown jewels (build 499) ----
+   A triage table instead of a wall of tag text. For each crown jewel the analyst sees, in order:
+   who owns it (and how much), is it exploitable now (open criticals, CISA KEV), what the
+   specialists found GROUPED BY WHAT IT MEANS (exploit / lifecycle & crypto / identity & AI /
+   coverage), and whether we can see it at all (no specialist data = blind). Context tags
+   (tiers, classes, inventories) stay out of the row and live in the expanded detail. */
+const CJ_LANES=[
+  {id:'id', cls:'l-id', icon:'🔐', label:'Identity & AI', re:/(^|[-\s])(ai|nhi)(\b|[-\s])|identity|account reuse|llm|atlas/i},
+  {id:'ex', cls:'l-ex', icon:'⚡', label:'Exploitable / attack path', re:/kev|attack path|mitre|exposure score|priority|exploit/i},
+  {id:'hy', cls:'l-hy', icon:'🧱', label:'Lifecycle & crypto', re:/lifecycle|\beol\b|end of life|outdated|software risk|cert|pqc|quantum|crypto/i},
+  {id:'vi', cls:'l-vi', icon:'👁', label:'Coverage & scanning', re:/scan health|cred|agent group|coverage|audit/i}];
+function cjLanes(sig){ const out={ctx:[]}; CJ_LANES.forEach(l=>out[l.id]=[]);
+  Object.keys(sig||{}).forEach(k=>{ const ln=CJ_LANES.find(l=>l.re.test(k)); (ln?out[ln.id]:out.ctx).push([k,sig[k]||[]]); });
+  return out; }
+const cjFail=items=>items.some(([k,vs])=>/fail|missing|stale|no scan/i.test(k+' '+vs.join(' ')));
+let CJF='all';
+const cjRisk=r=>r.risk_signals!=null?r.risk_signals:CJ_LANES.reduce((n,l)=>n+cjLanes(r.signals)[l.id].length,0);
+const CJ_FILT={all:r=>true, noowner:r=>!r.has_owner, kev:r=>!!r.kev, crit:r=>(r.crit||0)>0, blind:r=>!cjRisk(r)};
 function renderCrown(cj,k){
-  CJ=cj;
+  CJ=cj; CJK=k;
   document.getElementById('cjAcr').textContent=k.crown_acr;
-  document.getElementById('cjCount').textContent=fnum(k.crown)+' jewels · '+fnum(k.crown_no_owner)+' with no owner';
-  if(!cj.length){ document.getElementById('cjBody').innerHTML='<p class="sub">No assets at ACR ≥ '+num(k.crown_acr)+(TS()?' in this tag':'')+'. Calibrate ACR in <a class="applink" href="/agents/acr/page.html">ACR Calibration (Criticality Calibration)</a> to mark your crown jewels.</p>'; return; }
-  document.getElementById('cjBody').innerHTML=cj.map(r=>{
-    const owned=r.has_owner;
-    const sigs=Object.keys(r.signals||{});
-    const sigHtml=sigs.length?sigs.map(kk=>'<span class="sig">'+esc(kk)+(r.signals[kk].length?': '+esc(r.signals[kk].slice(0,2).join(', '))+(r.signals[kk].length>2?'…':''):'')+'</span>').join(''):'<span class="sub">the Ensemble know nothing about this asset yet — it may be unscanned/blind</span>';
-    const own=owned?ownerCell(r):'<span class="crit">unclaimed — no owner</span>';
-    return '<div class="cjcard '+(owned?'owned':'gap')+'">'+
-      '<div class="toolbar" style="margin:0"><div><b>'+(r.crown?'<span class="crown">👑 </span>':'')+esc(r.hostname||r.ip||r.uuid)+'</b> '+
-        '<span class="chip" style="margin-left:6px">ACR '+num(r.acr)+'</span> '+
-        '<span class="chip">'+num(r.routes)+' routes · '+num(r.paths)+' paths</span></div>'+
-        '<span style="margin-left:auto">'+own+'</span></div>'+
-      '<div style="margin-top:6px">'+sigHtml+'</div></div>';
-  }).join('')+(CJNEXT?'<div class="toolbar" style="margin-top:6px"><span class="sub">Showing '+fnum(cj.length)+' of '+fnum(k.crown)+' (unclaimed first)</span><button class="btn ghost sm" id="cjMore">Show more ›</button></div>':'');
+  document.getElementById('cjCount').textContent=fnum(k.crown)+' jewels';
+  const sum=document.getElementById('cjSum');
+  if(!cj.length){ sum.innerHTML=''; document.getElementById('cjBody').innerHTML='<p class="sub">No assets at ACR ≥ '+num(k.crown_acr)+(TS()?' in this tag':'')+'. Calibrate ACR in <a class="applink" href="/agents/acr/page.html">Criticality Calibration</a> to mark your crown jewels.</p>'; return; }
+  const tile=(f,v,l,cls,t)=>'<button type="button" class="cjk '+cls+(CJF===f?' on':'')+'" data-f="'+f+'" title="'+esc(t)+'"><div class="v">'+fnum(v)+'</div><div class="l">'+esc(l)+'</div></button>';
+  sum.innerHTML=tile('all',k.crown,'crown jewels','', 'Show every crown jewel')
+    +tile('noowner',k.crown_no_owner,'no owner at any layer',k.crown_no_owner?'bad':'ok','Nobody is accountable — assign an owner first')
+    +tile('kev',k.crown_kev,'with a CISA KEV finding',k.crown_kev?'bad':'ok','A known-exploited vulnerability is open on it')
+    +tile('crit',k.crown_crit,'with open criticals',k.crown_crit?'warn':'ok','At least one open critical finding')
+    +tile('blind',k.crown_blind,'no specialist findings',k.crown_blind?'warn':'ok','No specialist has found anything on it (only context tags, or none) — check it is scanned and in coverage');
+  sum.querySelectorAll('.cjk').forEach(b=>b.onclick=()=>{ CJF=b.dataset.f; renderCrown(CJ,CJK); });
+  const rows=cj.filter(CJ_FILT[CJF]||CJ_FILT.all);
+  const laneBadges=L=>CJ_LANES.filter(l=>L[l.id].length).map(l=>{ const items=L[l.id];
+      const tip=l.label+': '+items.map(([kk,vs])=>kk+(vs.length?' = '+vs.slice(0,3).join(', ')+(vs.length>3?' …':''):'')).join(' · ');
+      return '<span class="ln '+l.cls+(l.id==='vi'&&cjFail(items)?' fail':'')+'" title="'+esc(tip)+'">'+l.icon+' '+esc(l.label.split(' ')[0])+' <b>'+items.length+'</b></span>'; }).join('');
+  const body=rows.map((r,i)=>{
+    const L=cjLanes(r.signals), any=CJ_LANES.some(l=>L[l.id].length), blind=!any;
+    const owner=r.has_owner
+      ? '<div>'+ownerCell(r)+'</div><div style="margin-top:3px;max-width:150px">'+claimBar(r)+'</div>'
+      : '<span class="unc">⚠ Unclaimed</span><div class="sub" style="font-size:11px">no owner at any layer</div>';
+    const risk=((r.crit||0)>0?'<span class="rk crit" title="open critical findings">● '+fnum(r.crit)+' critical</span>':'')+(r.kev?'<span class="rk kev" title="a CISA known-exploited vulnerability is open">KEV</span>':'')
+      ||'<span class="sub">—</span>';
+    const finds='<div class="cjfind">'+(blind?'<span class="blindb" title="No specialist has found anything on this asset'+(L.ctx.length?' (it only carries context tags)':'')+' — check it is scanned and in coverage">👁 no specialist findings</span>'
+      :laneBadges(L))+'</div>';
+    const act=r.has_owner?'<a class="applink" style="font-size:12px" href="/agents/argos/page.html?target='+encodeURIComponent(r.uuid)+'" title="Open in Asset Dossier">🔦 Dossier</a>'
+      :'<input class="clOwner fld" placeholder="owner" aria-label="Owner for '+esc(r.hostname||r.ip||'')+'"><button class="btn sm clGo" title="Tag this owner as the complete Asset Owner (gated, confirmed first)">🏷 Assign</button>';
+    const lanesH=CJ_LANES.filter(l=>L[l.id].length).map(l=>'<div class="cjlane"><h4 style="color:inherit"><span class="ln '+l.cls+'" style="border:0;padding:0">'+l.icon+' '+esc(l.label)+'</span></h4>'
+        +L[l.id].map(([kk,vs])=>'<div><span class="kk">'+esc(kk)+'</span>'+(vs.length?' · '+esc(vs.join(', ')):'')+'</div>').join('')+'</div>').join('');
+    const owners=[...(r.asset_owner?['👤 '+r.asset_owner+' (asset · '+(r.asset_owner_mode||'complete')+')']:[]),...(r.business_owners||[]).map(o=>'🏛 '+o+' (business)'),...(r.tech_owners||[]).map(o=>'🔧 '+o+' (route/path)')];
+    const detail='<tr class="cjd" data-d="'+i+'" hidden><td colspan="5">'
+      +'<div class="cjlanes">'+(lanesH||'<div class="sub">No findings from the specialists — check this crown jewel is scanned and in coverage.</div>')
+      +'<div class="cjlane"><h4>👥 Ownership</h4>'+(owners.length?owners.map(o=>'<div>'+esc(o)+'</div>').join(''):'<div class="unc">no owner at any layer</div>')
+      +'<div class="kk" style="margin-top:4px">'+(r.surface?fnum(r.surface)+' open findings · '+(r.claimed_pct==null?'—':r.claimed_pct+'%')+' claimed · '+num(r.routes)+' routes / '+num(r.paths)+' paths':'no open findings')+'</div></div></div>'
+      +(L.ctx.length?'<div class="cjctx">Context: '+L.ctx.map(([kk,vs])=>esc(kk)+(vs.length?' = '+esc(vs.slice(0,3).join(', ')):'')).join(' · ')+'</div>':'')
+      +'<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><a class="applink" href="/agents/argos/page.html?target='+encodeURIComponent(r.uuid)+'">🔦 Open in Asset Dossier →</a>'
+      +(r.url&&safeUrl(r.url,'')?'<a class="applink" target="_blank" href="'+esc(safeUrl(r.url))+'">Tenable ↗</a>':'')+'</div></td></tr>';
+    return '<tr class="cjr '+(r.has_owner?'own':'gap')+'" data-i="'+i+'" data-u="'+esc(r.uuid||'')+'">'
+      +'<td><span class="sub cjx">▸</span> <span class="crown">👑</span> <span class="cjhost">'+esc(r.hostname||r.ip||String(r.uuid).slice(0,12))+'</span>'
+      +' <span class="acrb'+((r.acr||0)>=10?'':' hi')+'" title="Asset Criticality Rating">ACR '+num(r.acr)+'</span>'
+      +(r.ip&&r.hostname?'<div class="cjip">'+esc(r.ip)+'</div>':'')+'</td>'
+      +'<td>'+owner+'</td><td>'+risk+'</td><td>'+finds+'</td>'
+      +'<td><div class="cjact assignrow">'+act+'</div></td></tr>'+detail;
+  }).join('');
+  document.getElementById('cjBody').innerHTML=
+    '<div class="cjleg"><span>Findings by kind:</span>'+CJ_LANES.map(l=>'<span class="ln '+l.cls+'">'+l.icon+' '+esc(l.label)+'</span>').join('')+'<span>· hover a badge for its tags · click a row for everything</span></div>'
+    +'<div><table class="cjt norsz" style="table-layout:fixed;width:100%;min-width:0"><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"></colgroup><thead><tr><th>Crown jewel</th><th>Owner</th><th>Exploitable now</th><th>What the specialists found</th><th style="text-align:right">Action</th></tr></thead><tbody>'
+    +(body||'<tr><td colspan="5" class="sub">No crown jewel'+(cj.length<k.crown?' among the '+fnum(cj.length)+' loaded':'')+' matches this filter.</td></tr>')+'</tbody></table></div>'
+    +'<div class="toolbar" style="margin-top:6px"><span class="sub">'+(CJF!=='all'?fnum(rows.length)+' of the '+fnum(cj.length)+' loaded match · ':'')+'Showing '+fnum(cj.length)+' of '+fnum(k.crown)+' · unclaimed first · click a row for detail</span>'
+    +(CJNEXT?'<button class="btn ghost sm" id="cjMore">Show more ›</button>':'')+'</div>';
+  const tb=document.querySelector('#cjBody tbody');
+  tb.querySelectorAll('tr.cjr').forEach(tr=>{
+    tr.onclick=e=>{ if(e.target.closest('input,button,a')) return; const d=tb.querySelector('tr.cjd[data-d="'+tr.dataset.i+'"]'); if(!d) return;
+      d.hidden=!d.hidden; const x=tr.querySelector('.cjx'); if(x) x.textContent=d.hidden?'▸':'▾'; };
+    const go=tr.querySelector('.clGo'), inp=tr.querySelector('.clOwner'); if(!go) return;
+    const fire=async()=>{ if(!inp.value.trim()){ inp.focus(); return; } const ok=await doAssign(tr.dataset.u, inp.value, 'complete', go); go.textContent=ok?'✓ queued':'🏷 Assign'; };
+    go.onclick=fire; inp.addEventListener('keydown',e=>{ if(e.key==='Enter')fire(); });
+  });
   const mb=document.getElementById('cjMore'); if(mb) mb.onclick=async()=>{ mb.disabled=true;
     let o; try{ o=await API.post('drill',{run:RUN,section:'crown',sort:'rank',limit:50,next:CJNEXT}); }catch(e){ o=null; }
     if(!o||!o.ok){ mb.disabled=false; flash('flash','✗ '+esc((o&&o.error)||'could not load more crown jewels'),'crit'); return; }
@@ -307,7 +405,7 @@ function renderTable(){
 async function doAssign(uuid, owner, mode, btn){
   owner=(owner||'').trim(); if(!owner) return false;
   await testRunStatus();
-  if(!confirm('Tag “'+owner+'” as the '+(mode==='complete'?'COMPLETE owner of every route & path':'owner of the REMAINING unowned routes/paths')+' on this asset (1 asset)'+tagScopeNote()+'? This writes an '+tagCat('Asset Owner')+' tag and cascades '+tagCat('Owner')+' tags.'+(WRITES?'':'\n\nWrites are gated (NAVI_ALLOW_WRITES not set) — the job queues but is blocked.'))) return false;
+  if(!confirm('Tag “'+owner+'” as the '+(mode==='complete'?'COMPLETE owner of every open finding (its routes, plus the paths of findings with no route)':'owner of the findings nobody owns yet (their routes / paths)')+' on this asset (1 asset)'+tagScopeNote()+'? This writes an '+tagCat('Asset Owner')+' tag and cascades '+tagCat('Owner')+' tags.'+(WRITES?'':'\n\nWrites are gated (NAVI_ALLOW_WRITES not set) — the job queues but is blocked.'))) return false;
   if(btn){ btn.disabled=true; }
   let o; try{ o=await API.post('assign',{uuid,owner,mode,confirm:true}); }catch(e){ o={ok:false,error:e.message}; }
   if(btn){ btn.disabled=false; }
@@ -326,7 +424,7 @@ async function claimAllBlind(){
   const nB=BLIND.length;
   if(!nB){ flash('flash','No unclaimed assets to claim.','warn'); return; }
   await testRunStatus();
-  if(!confirm('Tag '+tagCat('Asset Owner')+' “'+owner+'” on all '+nB+' unclaimed asset(s)'+tagScopeNote()+' as the COMPLETE owner (every route & path)?'+(WRITES?'':'\n\nWrites are gated (NAVI_ALLOW_WRITES not set) — the job queues but is blocked.'))) return;
+  if(!confirm('Tag '+tagCat('Asset Owner')+' “'+owner+'” on all '+nB+' unclaimed asset(s)'+tagScopeNote()+' as the COMPLETE owner (every open finding — their routes, plus the paths of findings with no route)?'+(WRITES?'':'\n\nWrites are gated (NAVI_ALLOW_WRITES not set) — the job queues but is blocked.'))) return;
   const btn=document.getElementById('claimAllBtn'); btn.disabled=true; btn.textContent='⏳ tagging…';
   // the server rebuilds "the blind spots shown" from this run — no uuid list leaves the page
   let o; try{ o=await API.post('apply',{owner,run:RUN,key:'blind',layer:'asset',mode:'complete',confirm:true}); }catch(e){ o={ok:false,error:e.message}; }
@@ -343,7 +441,7 @@ async function previewPlan(){
   let o; try{ o=await API.post('plan',{prompt}); }catch(e){ o={ok:false,error:e.message}; }
   if(!o.ok){ out.innerHTML='<div class="callbox" style="color:var(--crit)">✗ '+esc(o.error||'failed')+'</div>'; return; }
   PLAN=o;
-  const layerlabel=o.layer==='asset'?('single <b>Asset Owner</b> — '+(o.mode==='remainder'?'the remaining unowned routes/paths':'every route &amp; path')):'<b>Business Owner</b> (group accountability)';
+  const layerlabel=o.layer==='asset'?('single <b>Asset Owner</b> — '+(o.mode==='remainder'?'the findings nobody owned yet':'every open finding (its routes, plus unrouted paths)')):'<b>Business Owner</b> (group accountability)';
   const modeToggle=o.layer==='asset'?'<span class="miniseg" id="plMode"><button data-m="complete" '+(o.mode!=='remainder'?'class="on"':'')+'>Everything</button><button data-m="remainder" '+(o.mode==='remainder'?'class="on"':'')+'>The rest</button></span>':'';
   const sample=(o.matched||[]).slice(0,12).map(a=>'<tr><td>'+(a.crown?'<span class="crown">👑 </span>':'')+esc(a.hostname||a.ip||'')+'</td><td class="mono">'+esc(a.ip||'')+'</td><td>'+num(a.acr)+'</td><td>'+(a.tags||[]).slice(0,4).map(t=>'<span class="sig">'+esc(t)+'</span>').join('')+'</td></tr>').join('');
   out.innerHTML='<div class="callbox">'+
