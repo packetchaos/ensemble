@@ -53,6 +53,18 @@
     <div id="metrics"><div class="setupcard"><div class="big">Press ▶ Run</div><p class="sub">Runs the four-agent pipeline against navi.db — devices found, their exposure, carrier plugins and proposed detections. Your last run is kept on the server, so coming back restores it instantly.</p></div></div>
   </section>
 
+  <section class="card" id="secDevVend" data-nav="Devices &amp; vendors" data-nav-icon="🧭">
+    <h2 style="margin:0 0 2px;font-size:17px">🧭 Devices &amp; vendors</h2>
+    <p class="seclbl">every device and vendor found · how it was found · exposure · its riskiest asset → Asset Dossier · List ↓ narrows the inventory below (export or tag it there)</p>
+    <div id="dvBody"><p class="sub">Press ▶ Run.</p></div>
+  </section>
+
+  <section class="card" id="secPredicted" data-nav="Predicted" data-nav-icon="🔮">
+    <h2 style="margin:0 0 2px;font-size:17px">🔮 Predicted — not confirmed</h2>
+    <p class="seclbl">what you didn't know: devices inferred from Device Type / OUI / mDNS signals or a plugin that mentions a device term · review the evidence, open the riskiest asset, then list &amp; tag — or approve a detection in Gate 2</p>
+    <div id="prBody"><p class="sub">Press ▶ Run.</p></div>
+  </section>
+
   <section class="card" id="secDevices" data-nav="Devices" data-nav-icon="📟">
     <h2 style="margin:0 0 2px;font-size:17px">📟 Device inventory</h2>
     <p class="seclbl">one row per device asset · <b>confirmed</b> by the registry, <b>identified</b> by a certificate, or <b>predicted</b> from signals / plugin terms · click a host for its Asset Dossier deep-dive</p>
@@ -184,9 +196,10 @@ function renderSquad(){
   if(IOT.available===false){
     flash('flash','navi.db has no <span class="mono">'+esc((IOT.missing||['vulns']).join(', '))+'</span> table yet — run <span class="mono">navi config update full</span> (Settings ▸ navi.db tables), then ▶ Run again.','warn');
   }
-  renderMetrics(); renderDevices(); renderTags(); renderProps(); renderCarriers(); renderQA(); loadReg();
+  renderMetrics(); renderDevVend(); renderPredicted(); renderDevices(); renderTags(); renderProps(); renderCarriers(); renderQA(); loadReg();
   mountSectionNav();
-  setNavCount('secDevices', INV&&INV.ok!==false?INV.total:devRows().length); setNavCount('secGate1', (IOT.tag_actions||[]).length);
+  setNavCount('secDevices', INV&&INV.ok!==false?INV.total:devRows().length);
+  setNavCount('secDevVend', INV&&INV.ok!==false?INV.devices_total:''); setNavCount('secPredicted', INV&&INV.ok!==false?((INV.status||{}).predicted||''):''); setNavCount('secGate1', (IOT.tag_actions||[]).length);
   setNavCount('secGate2', (IOT.proposals||[]).length);
   setNavCount('secCarriers', Object.keys((IOT.carriers&&IOT.carriers.carriers)||{}).length);
   setNavCount('secQa', ((IOT.qa||{}).flags||[]).length||'');
@@ -251,36 +264,83 @@ function renderMetrics(){
 /* 📊 Device inventory groups — every number / row narrows the 📟 Device inventory table below
    (server-side filter flags: st:/dev:/type:/vendor:), where it can be exported or tagged. */
 function invGroups(inv,mk,dTxt){
-  const s=inv.status||{}, sev=d=>ST_SEV[d.status]||'none';
-  const rk=(list,flag,lbl,val,opt)=>(list||[]).slice(0,10).map(d=>({label:lbl(d), value:val(d), sev:(opt&&opt.sev)||sev(d),
-    t:lbl(d)+': '+dTxt(val(d))+(d.kev?' · '+fnum(d.kev)+' with a CISA KEV':'')+(d.crit?' · '+fnum(d.crit)+' with criticals':'')+' → list them ↓',
-    onClick:()=>focusDevices({flag:flag+d.name, label:(opt&&opt.prefix||'')+(flag==='type:'?d.type_label:d.name), tlabel:d.type_label, name:flag==='dev:'?d.name:'', chip:(opt&&opt.chip)||''})}));
-  const more=(n,shown,what)=>n>shown?{more:'+ '+fnum(n-shown)+' more '+what+' — all in the list ↓', moreClick:()=>focusDevices(null)}:{};
+  const s=inv.status||{};
   return [
-    {title:'Device inventory · what is on the network',
+    {title:'Device inventory',
      t:'Confirmed = a registry detection; Identified = a certificate fingerprint; Predicted = inferred from Device Type / OUI / mDNS signals or a plugin that mentions a device term — not confirmed yet.',
-     hero:mk(fnum(inv.total),'IoT / OT / embedded devices found',{f:'',n:inv.total,sev:'info',t:'Distinct device assets — one row each in the inventory'}),
+     hero:mk(fnum(inv.total),'devices found',{f:'',n:inv.total,sev:'info',t:'Distinct device assets — one row each in the inventory'}),
      bar:[{label:'Confirmed',value:s.confirmed||0,color:'ok'},{label:'Identified',value:s.identified||0,color:'info'},{label:'Predicted',value:s.predicted||0,color:'med'}],
      chips:[mk(fnum(s.confirmed),'confirmed',{f:'st:confirmed',n:s.confirmed||0,sev:'ok',t:ST_TIP.confirmed}),
             mk(fnum(s.identified),'identified',{f:'st:identified',n:s.identified||0,sev:'info',t:ST_TIP.identified}),
-            mk(fnum(s.predicted),'predicted — review',{f:'st:predicted',n:s.predicted||0,sev:'med',t:ST_TIP.predicted}),
-            mk(fnum(inv.devices_total),'device names',{href:'#secDevices',n:inv.devices_total||0,u:'list ↓'}),
-            mk(fnum(inv.types_total),'device types',{href:'#secDevices',n:inv.types_total||0,u:'list ↓'}),
-            mk(fnum(inv.vendors_total),'vendors',{href:'#secDevices',n:inv.vendors_total||0,u:'list ↓'})]},
-    {title:'Devices found · click one to list its assets',
-     ranked:Object.assign({items:rk(inv.devices,'dev:',d=>d.name+' · '+(ST_LBL[d.status]||''),d=>d.assets), empty:'No devices found — see identity signals below.'},
-       more(inv.devices_total,Math.min(10,(inv.devices||[]).length),'device names'))},
-    {title:'Predicted & potential — not confirmed yet',
-     t:'What you did not know: devices inferred from signals or plugin terms. Open them, then tag or approve a detection (Gate 2).',
-     ranked:{items:rk(inv.predicted,'dev:',d=>d.name+' · '+fnum(d.predicted)+' predicted',d=>d.predicted,{sev:'med',chip:'st:predicted',prefix:'predicted · '}),
-       empty:'Nothing predicted — every device found is confirmed or fingerprinted.'}},
-    {title:'Device type · Tenable Device Type (54615)',
-     ranked:Object.assign({items:rk(inv.types,'type:',d=>d.type_label||d.name,d=>d.assets,{sev:'info',prefix:'type · '}), empty:'No Device Type plugin output on these devices.'},
-       more(inv.types_total,Math.min(10,(inv.types||[]).length),'types'))},
-    {title:'Vendors · Ethernet OUI',
-     ranked:Object.assign({items:rk(inv.vendors,'vendor:',d=>d.name,d=>d.assets,{sev:'none',prefix:'vendor · '}), empty:'No OUI vendor on these devices.'},
-       more(inv.vendors_total,Math.min(10,(inv.vendors||[]).length),'vendors'))}
+            mk(fnum(s.predicted),'predicted — review',{j:'secPredicted',n:s.predicted||0,sev:'med',u:'Predicted ↓',t:ST_TIP.predicted}),
+            mk(fnum(inv.devices_total),'devices',{j:'secDevVend',n:inv.devices_total||0,u:'Devices & vendors ↓'}),
+            mk(fnum(inv.vendors_total),'vendors',{j:'secDevVend',n:inv.vendors_total||0,u:'Devices & vendors ↓'})]},
   ];
+}
+// ---- 🧭 Devices & vendors / 🔮 Predicted — the full rollups (build 505). Every row: who it is, how it
+// was found, how exposed, its riskiest asset (→ Asset Dossier) and "List ↓", which narrows the 📟 table.
+let DVTAB='dev';
+const dossier=t=>t&&t.uuid?`<a class="applink" href="${esc(argosHref(t.uuid))}" title="Asset Dossier — the riskiest asset in this group">${esc(t.hostname||t.ip||String(t.uuid).slice(0,8))}</a>`
+  +`<div class="sub" style="font-size:11px">${t.aes==null?'':'AES '+esc(t.aes)}${t.acr==null?'':' · ACR '+esc(t.acr)}${t.kev?' · <span style="color:var(--crit)">KEV</span>':''}</div>`:'<span class="sub">—</span>';
+function stMix(d){ const tot=Math.max(1,d.assets), seg=(n,c,l)=>n?`<i style="display:inline-block;height:8px;width:${(100*n/tot).toFixed(1)}%;background:var(--${c})" title="${esc(l)}: ${fnum(n)}"></i>`:'';
+  return `<div style="display:flex;width:90px;border-radius:3px;overflow:hidden;background:var(--line)">${seg(d.confirmed,'ok','Confirmed')}${seg(d.identified,'info','Identified')}${seg(d.predicted,'med','Predicted')}</div>`
+    +`<div class="sub" style="font-size:11px">${[['confirmed','conf.'],['identified','ident.'],['predicted','pred.']].filter(k=>d[k[0]]).map(k=>fnum(d[k[0]])+' '+k[1]).join(' · ')}</div>`; }
+function expoCell(d){ const p=[];
+  if(d.kev) p.push(`<span style="color:var(--crit);font-weight:700">${fnum(d.kev)} KEV</span>`);
+  if(d.crit) p.push(`<span style="color:var(--crit)">${fnum(d.crit)} crit</span>`);
+  if(d.high) p.push(`<span style="color:var(--high)">${fnum(d.high)} high</span>`);
+  if(d.aes_high) p.push(`<span style="color:var(--crit)">${fnum(d.aes_high)} AES≥650</span>`);
+  return p.length?p.join('<br>'):'<span class="sub">—</span>'; }
+const relCell=d=>d.related&&d.related.length?`<span title="${esc(d.related.join(', '))}" style="display:inline-block;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom">${esc(d.related.join(', '))}</span>`+(d.related_total>d.related.length?` <span class="sub">+${fnum(d.related_total-d.related.length)}</span>`:''):'<span class="sub">—</span>';
+const listBtn=(i,kind)=>`<button type="button" class="btn ghost sm" data-${kind}="${i}" title="Show these assets in the Device inventory — export or tag them there">List ↓</button>`;
+function renderDevVend(){
+  const box=document.getElementById('dvBody'), inv=INV;
+  if(!inv||inv.ok===false||!inv.run){ box.innerHTML='<p class="sub">'+(inv&&inv.error?'✗ '+esc(inv.error):'Press ▶ Run.')+'</p>'; return; }
+  const tabs=[['dev','Devices',inv.devices_total],['ven','Vendors (OUI)',inv.vendors_total]];
+  const isDev=DVTAB==='dev', list=(isDev?inv.devices:inv.vendors)||[], tot=isDev?inv.devices_total:inv.vendors_total;
+  box.innerHTML='<div class="fchips" id="dvTabs">'+tabs.map(t=>`<button type="button" data-t="${t[0]}"${t[0]===DVTAB?' class="on"':''}>${esc(t[1])} <b>${fnum(t[2])}</b></button>`).join('')+'</div>'
+    +'<div class="toolbar" style="margin:6px 0"><input id="dvQ" class="fld" style="flex:1;margin:0" placeholder="filter '+(isDev?'devices':'vendors')+'…"></div>'
+    +`<div class="tscroll"><table id="dvTbl" class="nocsv"><thead><tr><th>${isDev?'Device':'Vendor'}</th><th>Assets</th><th>Riskiest asset</th><th>Exposure</th><th>Max AES</th><th>How found</th><th>${isDev?'Vendors':'Devices'}</th><th>Type</th><th></th></tr></thead><tbody></tbody></table></div>`
+    +(tot>list.length?`<p class="sub">Top ${fnum(list.length)} of ${fnum(tot)} by asset count — the rest are in the <a class="applink" href="#secDevices">Device inventory</a> (search by name).</p>`:'');
+  box.querySelectorAll('#dvTabs button').forEach(b=>b.onclick=()=>{ DVTAB=b.dataset.t; window.__hpg&&(window.__hpg.dvTbl=0); renderDevVend(); });
+  const flag=isDev?'dev:':'vendor:';
+  const draw=()=>{ const q=(document.getElementById('dvQ').value||'').toLowerCase();
+    const rows=list.map((d,i)=>[d,i]).filter(([d])=>!q||(d.name+' '+(d.related||[]).join(' ')+' '+(d.types||[]).join(' ')).toLowerCase().includes(q));
+    hPaginate('dvTbl', rows, ([d,i])=>`<tr><td style="max-width:240px"><a class="applink" href="#secDevices" data-dv="${i}" title="${esc(d.name)} — list these assets ↓"><b>${esc(d.name)}</b></a></td>`
+      +`<td class="mono"><b>${fnum(d.assets)}</b></td><td>${dossier(d.top)}</td><td style="font-size:12px">${expoCell(d)}</td>`
+      +`<td class="mono"${(d.max_aes||0)>=650?' style="color:var(--crit);font-weight:700"':''}>${d.max_aes==null?'—':esc(d.max_aes)}<div class="sub" style="font-size:11px">${d.avg_acr==null?'':'avg ACR '+esc(d.avg_acr)}</div></td>`
+      +`<td>${stMix(d)}</td><td class="sub">${relCell(d)}</td><td class="sub">${esc((d.types||[]).join(', ')||'—')}</td><td>${listBtn(i,'dv')}</td></tr>`,
+      {cols:9, empty:'<tr><td colspan="9" class="sub">'+(list.length?'Nothing matches.':(isDev?'No devices found.':'No OUI vendor on these devices.'))+'</td></tr>',
+       wire:tb=>tb.querySelectorAll('[data-dv]').forEach(el=>el.onclick=ev=>{ ev.preventDefault(); const d=list[+el.dataset.dv]; if(!d) return;
+         focusDevices({flag:flag+d.name, label:(isDev?'':'vendor · ')+d.name, tlabel:d.type_label, name:isDev?d.name:''}); })}); };
+  document.getElementById('dvQ').oninput=()=>{ window.__hpg&&(window.__hpg.dvTbl=0); draw(); };
+  draw();
+}
+function renderPredicted(){
+  const box=document.getElementById('prBody'), inv=INV;
+  if(!inv||inv.ok===false||!inv.run){ box.innerHTML='<p class="sub">'+(inv&&inv.error?'✗ '+esc(inv.error):'Press ▶ Run.')+'</p>'; return; }
+  const list=inv.predicted||[], n=(inv.status||{}).predicted||0, cf=inv.predicted_conf||{};
+  if(!n){ box.innerHTML='<p class="sub">Nothing predicted — every device found is confirmed by the registry or fingerprinted by a certificate.</p>'; return; }
+  const cchip=(k,sev)=>`<span class="chip" style="border-color:var(--${sev})">${esc(k)} <b>${fnum(cf[k]||0)}</b></span>`;
+  box.innerHTML=`<div class="toolbar" style="gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 6px"><span><b>${fnum(n)}</b> predicted asset${n===1?'':'s'} in <b>${fnum(inv.predicted_total)}</b> device group${inv.predicted_total===1?'':'s'}</span>`
+    +`<span class="sub">confidence</span>${cchip('High','ok')}${cchip('Medium','med')}${cchip('Low','high')}`
+    +`<span style="margin-left:auto;display:flex;gap:6px"><button type="button" class="btn sm" id="prAll">List all ${fnum(n)} ↓</button><a class="btn ghost sm" href="#secGate2" title="Make a plugin-term prediction a registry detection — future runs then CONFIRM it">Gate 2 · approve detections ↓</a></span></div>`
+    +'<div class="toolbar" style="margin:0 0 6px"><input id="prQ" class="fld" style="flex:1;margin:0" placeholder="filter predicted devices, evidence, vendor…"></div>'
+    +'<div class="tscroll"><table id="prTbl" class="nocsv"><thead><tr><th>Predicted device</th><th>Assets</th><th>Riskiest asset</th><th>Confidence</th><th>Evidence</th><th>Exposure</th><th>Vendors</th><th></th></tr></thead><tbody></tbody></table></div>'
+    +(inv.predicted_total>list.length?`<p class="sub">Top ${fnum(list.length)} of ${fnum(inv.predicted_total)} groups — List all ↓ shows every predicted asset.</p>`:'');
+  document.getElementById('prAll').onclick=()=>focusDevices({chip:'st:predicted'});
+  const conf=d=>['High','Medium','Low'].filter(k=>(d.conf||{})[k]).map(k=>`<span class="sub" style="font-size:11px;color:var(--${k==='High'?'ok':k==='Medium'?'med':'high'})">${esc(k)} ${fnum(d.conf[k])}</span>`).join('<br>')||'<span class="sub">—</span>';
+  const draw=()=>{ const q=(document.getElementById('prQ').value||'').toLowerCase();
+    const rows=list.map((d,i)=>[d,i]).filter(([d])=>!q||(d.name+' '+d.why+' '+(d.related||[]).join(' ')).toLowerCase().includes(q));
+    hPaginate('prTbl', rows, ([d,i])=>`<tr><td><a class="applink" href="#secDevices" data-pr="${i}" title="List these predicted assets ↓"><b>${esc(d.name)}</b></a>${d.types&&d.types.length?`<div class="sub" style="font-size:11px">${esc(d.types.join(', '))}</div>`:''}</td>`
+      +`<td class="mono"><b>${fnum(d.assets)}</b></td><td>${dossier(d.top)}</td><td>${conf(d)}</td><td class="sub" style="font-size:12px;max-width:260px" title="evidence on the riskiest asset">${esc(d.why||'')}</td>`
+      +`<td style="font-size:12px">${expoCell(d)}</td><td class="sub">${relCell(d)}</td>`
+      +`<td><button type="button" class="btn ghost sm" data-pr="${i}" title="List these assets ↓ — review, export or tag them">List &amp; tag ↓</button></td></tr>`,
+      {cols:8, empty:'<tr><td colspan="8" class="sub">Nothing matches.</td></tr>',
+       wire:tb=>tb.querySelectorAll('[data-pr]').forEach(el=>el.onclick=ev=>{ ev.preventDefault(); const d=list[+el.dataset.pr]; if(!d) return;
+         focusDevices({flag:'dev:'+d.name, label:'predicted · '+d.name, tlabel:d.type_label, name:d.name, chip:'st:predicted'}); })}); };
+  document.getElementById('prQ').oninput=()=>{ window.__hpg&&(window.__hpg.prTbl=0); draw(); };
+  draw();
 }
 function jump(id){ const t=document.getElementById(id); if(t) t.scrollIntoView({behavior:'smooth',block:'start'}); }
 
@@ -299,8 +359,10 @@ const devFilter=()=>[DFOCUS&&DFOCUS.flag, DEVF].filter(Boolean);
 const devTotal=()=>{ const t=DT&&DT.state&&DT.state.total; return t?Number(t.value||0):0; };
 function devChipCount(k){ const i=INV||{}, s=i.status||{}, e=i.exposed||{};
   return k===''?i.total:(k.indexOf('st:')===0?s[k.slice(3)]:({crit:e.crit,high:e.high,kev:e.kev,aes_high:e.aes_high})[k]); }
+// a glance click means "show me these": a new focus + chip, and any earlier search is cleared
 function focusDevices(f){ DFOCUS=f&&f.flag?f:null; DEVF=(f&&f.chip)||''; const v=document.getElementById('devTagVal'); if(v) v.dataset.auto='1';
-  renderDevices(); jump('secDevices'); }
+  const q=document.getElementById('devQ'); if(q) q.value=''; flashClear('devFlash');
+  renderDevices(true); jump('secDevices'); }
 function devTagDefault(){ const sc=document.getElementById('devScheme').value, f=DFOCUS||{};
   return sc==='iot'?(f.name||''):(f.tlabel||f.name||''); }
 function devRow(r){
@@ -309,7 +371,7 @@ function devRow(r){
   const also=(r.also&&r.also.length)?`<div class="sub" style="font-size:11px">also: ${esc(r.also.join(', '))}</div>`:'';
   return `<tr><td><a class="applink" href="${esc(argosHref(r.uuid))}" title="Asset Dossier — full asset deep-dive">${esc(lbl)}</a></td>`
     +`<td class="mono" style="font-size:11.5px">${esc(r.ip||'')}</td><td>${esc(r.device||'')}${also}</td>`
-    +`<td><span class="src st-${st}" title="${esc(ST_TIP[st]+' — '+(r.why||''))}">${esc(ST_LBL[st])}</span> <span class="sub" style="font-size:11px">${esc(r.confidence||'')}</span></td>`
+    +`<td><span class="src st-${st}" title="${esc(ST_TIP[st]+' — '+(r.why||''))}">${esc(ST_LBL[st])}</span> ${st==='confirmed'?'':'<span class="sub" style="font-size:11px">'+esc(r.confidence||'')+'</span>'}</td>`
     +`<td class="sub">${esc(r.device_type||'—')}<div style="font-size:11px">${esc(r.vendor||'')}</div></td>`
     +`<td>${n(r.critical,'var(--crit)')}</td><td>${n(r.high,'var(--high)')}</td>`
     +`<td>${r.kev?'<a class="applink" href="/agents/cisakev/page.html" title="CISA KEV tagging (Laelaps)" style="color:var(--crit)">KEV</a>':'<span class="sub">—</span>'}</td>`
@@ -320,7 +382,7 @@ function devCounts(){ const n=devTotal(), t=DT&&DT.state&&DT.state.total, more=t
   document.getElementById('devTag').disabled=!n;
   document.getElementById('devCsv').textContent='⬇ Export CSV ('+fnum(n)+more+')';
   document.getElementById('devCsv').disabled=!n; }
-function renderDevices(){
+function renderDevices(clearQ){
   const inv=INV, ok=!!(inv&&inv.ok!==false&&inv.run);
   document.getElementById('devTools').style.display=ok?'':'none';
   if(!ok){ const tb=document.querySelector('#sqDevs tbody');
@@ -329,12 +391,12 @@ function renderDevices(){
   document.querySelectorAll('#devFilt button[data-f]').forEach(b=>b.onclick=()=>{ DEVF=b.dataset.f; renderDevices(); });
   const fc=document.getElementById('devFocus');
   fc.innerHTML=DFOCUS?'Showing <b>'+esc(DFOCUS.label)+'</b> <button type="button" class="btn ghost sm" id="devFocusX" title="show every device">✕ all devices</button>':'<span class="sub">All devices — click a device, type or vendor in At a glance to narrow the list</span>';
-  const x=document.getElementById('devFocusX'); if(x) x.onclick=()=>{ DFOCUS=null; renderDevices(); };
+  const x=document.getElementById('devFocusX'); if(x) x.onclick=()=>{ DFOCUS=null; flashClear('devFlash'); renderDevices(); };
   const v=document.getElementById('devTagVal'); if(v.dataset.auto!=='0') { v.value=devTagDefault(); v.dataset.auto='1'; }
   if(!DT) DT=hDrill({api:API, table:'sqDevs', run:inv.run, section:'devices', cols:10, row:devRow, search:'devQ',
     filter:devFilter(), first:inv.first, onRender:devCounts,
     empty:'<tr><td colspan="10" class="sub">'+(inv.total?'No devices match this filter.':'No IoT devices found — see <a class="applink" href="#secQa">identity signals</a> for why.')+'</td></tr>'});
-  else DT.set({run:inv.run, filter:devFilter()});
+  else DT.set(Object.assign({run:inv.run, filter:devFilter()}, clearQ?{q:''}:{}));
 }
 async function devCsv(){
   if(!DT||!INV) return; const st=DT.state;
@@ -342,17 +404,24 @@ async function devCsv(){
   if(!o||!o.ok){ flash('devFlash','✗ '+esc((o&&o.error)||'export failed'),'crit'); return; }
   downloadText('iot-devices-'+String(DFOCUS?DFOCUS.label:'all').replace(/[^\w.-]+/g,'_')+'.csv', o.csv);
   flash('devFlash','⬇ exported '+fnum(o.rows)+' device asset(s) — every one in this list'+(st.q?' matching “'+esc(st.q)+'”':''),'ok'); }
+// predicted rows in the list being tagged — from the glance rollups (a search can only narrow it)
+function devPredicted(st){
+  if(st.filter.indexOf('st:predicted')>=0) return 1;
+  if(st.filter.some(f=>f.indexOf('st:')===0)) return 0;
+  if(DFOCUS&&DFOCUS.flag){ const i=DFOCUS.flag.indexOf(':'), k=DFOCUS.flag.slice(0,i), v=DFOCUS.flag.slice(i+1);
+    const g=(({dev:INV.devices,type:INV.types,vendor:INV.vendors})[k]||[]).find(x=>x.name===v); return g?g.predicted:1; }
+  return (INV.status||{}).predicted||0; }
 async function devTag(){
   if(!DT||!INV) return; const st=DT.state, n=devTotal();
   const scheme=document.getElementById('devScheme').value, val=document.getElementById('devTagVal').value.trim().replace(/\s+/g,' ');
   if(!val){ flash('devFlash','Enter the tag value first (e.g. Camera, or the device name).','warn'); document.getElementById('devTagVal').focus(); return; }
   if(/['"]/.test(val)){ flash('devFlash','Tag values can’t contain quotes.','warn'); return; }
   const tagTxt=scheme==='iot'?('IoT : '+val):('Asset Inventory : Device Type: '+val);
-  const hasPred=st.filter.indexOf('st:predicted')>=0 || (!st.filter.some(f=>f.indexOf('st:')===0) && ((INV.status||{}).predicted||0)>0);
+  const hasPred=devPredicted(st)>0;
   const msg='Tag '+fnum(n)+' asset(s) in this list as “'+tagTxt+'”?'
     +(hasPred?'\n\nThis list can include PREDICTED devices (not confirmed) — open a few in Asset Dossier first.':'')
     +(n>1999?'\n\nOver 1,999 assets: navi tags them as a background series of 1,999-asset jobs (Tagging log).':'')
-    +'\n\nAdd-only — removal is Tag Removal (Garmr).';
+    +'\n\nAdd-only — remove tags with Tag Removal.';
   if(!confirm(msg)) return;
   const b=document.getElementById('devTag'); b.disabled=true;
   let o; try{ o=await API.post('inventory_tag',{run:INV.run, filter:st.filter, q:st.q, scheme, value:val, confirm:true}); }catch(e){ o={ok:false,error:e.message}; }

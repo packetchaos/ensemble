@@ -51,11 +51,49 @@ Discovery (A1) ──hand off iot_name + plugins──▶ Expansion (A2)
    cosmetic `job_uuid` crash as applied-with-warning.
 2. **Detection approval** (A3): approve/reject proposals → writes the local registry.
 
+## 📟 Device inventory (builds 504–505)
+`core/iot_inventory.py`. ▶ Run publishes **one row per device asset** to the result store
+(core/payload.py), so the page pages, searches, exports and tags it on the server. Asset UUIDs never
+reach the browser, and a 200-camera list and a 149K-asset list behave the same.
+
+| Status | Means |
+|---|---|
+| **Confirmed** | a registry detection matched (Agent 1) |
+| **Identified** | fingerprinted by a certificate (signal fusion) |
+| **Predicted** | inferred, not confirmed: Device Type / OUI / mDNS signals only, named `<Device Type> · <vendor>` (e.g. *Camera · Hikvision*), or a carrier plugin that mentions a device term the registry doesn't match on that asset yet (Agent 3 `new` / `cross`, from the **full** asset set, not the 200 the payload keeps) |
+
+An asset found more than once keeps its strongest status; the other names go to `also`.
+Every row carries filter flags `st:` · `dev:` · `type:` · `vendor:` · `src:` · `crit` · `high` · `kev` · `aes_high`.
+
+**At a glance** (build 505) keeps four small cards: Device inventory (confirmed / identified / predicted),
+Gate 1, Exposure, Learning loop. The rollups have their own full-width sections:
+
+- **🧭 Devices & vendors** — tabs *Devices* / *Vendors (OUI)*, top 200 by asset count, filterable, paged:
+  assets, **riskiest asset → Asset Dossier** (AES · ACR · KEV), exposure (KEV / crit / high / AES ≥ 650),
+  max AES · avg ACR, how found (confirmed / identified / predicted mix), the vendors of a device (or the
+  devices of a vendor), Device Type, **List ↓**.
+- **🔮 Predicted — not confirmed** — predicted assets only, grouped by predicted device (top 200 groups;
+  *List all* shows every predicted asset): confidence mix (High / Medium / Low), the evidence on the riskiest
+  asset, its Dossier link, exposure, vendors, **List & tag ↓** — and a jump to Gate 2 to make a plugin-term
+  prediction a registry detection.
+
+Any **List ↓** narrows the **📟 Device inventory** table (and clears an old search), where each host opens Asset Dossier (Argos), **⬇ Export CSV** writes every row of the list,
+and **🏷️ Tag these N assets** writes either `Asset Inventory : Device Type: <value>` (pre-filled with the
+Classifier's label, e.g. `camera` → `Camera`) or `IoT : <device name>` — both schemes the Classifier reads.
+Gated + confirm; add-only; `navi_cli.tag_set` pages it at 1,999 assets per navi job.
+
+Build 504 also widened `core/signals._DEVTYPE` to every Nessus Device Type the Classifier maps
+(camera, wireless-access-point, scada, voip, storage, mobile, …), anchored on `Remote device type :` —
+those devices read `unknown` before.
+
 ## REST API
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/api/agents/iot_squad/run` | Run the whole pipeline; returns discovery/expansion/xref/qa + the two gates. |
 | POST | `/api/agents/iot_squad/tags/apply` | Apply approved `IoT:<name>` tags (`{values, confirm}`). |
+| POST | `/api/iot_squad/drill` | Device inventory page: `{run, section:"devices", filter:[flags], q, sort, next, limit}`. |
+| POST | `/api/iot_squad/inventory_export` | Every row of the list as CSV: `{run, filter, q}`. |
+| POST | `/api/iot_squad/inventory_tag` | Gated: tag the list — `{run, filter, q, scheme: device_type\|iot, value, confirm}`. |
 | GET | `/api/iot/registry` | Current default detections + rejected list. |
 | POST | `/api/iot/detections/decide` | Persist approve/reject decisions (`{decisions, confirm}`). |
 

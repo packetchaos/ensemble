@@ -24,7 +24,6 @@ the Ensemble recorded (ACR log) or an asset someone protected with NO : UPDATE; 
 is reported as "no recorded change" — Tenable-calculated as far as navi can tell.
 """
 import os
-import threading
 
 from . import db
 
@@ -33,8 +32,6 @@ ACR_BANDS = (("critical", "Critical", 9, 10), ("high", "High", 7, 8),
 AES_BANDS = (("high", "High", 650, 1000), ("medium", "Medium", 350, 649), ("low", "Low", 0, 349))
 TOP_N = 5
 
-_LOCK = threading.Lock()
-_CACHE = {}
 
 # One pass. r = whole ACR 1–10 (NULL = no ACR); e = AES (NULL = unscored).
 _SQL = """
@@ -96,6 +93,38 @@ def _edge(order, path, has_host, has_ip):
     return out
 
 
+_R = ("CASE WHEN CAST(TRIM(acr) AS REAL) BETWEEN 1 AND 10 "
+      "THEN CAST(ROUND(CAST(TRIM(acr) AS REAL)) AS INTEGER) END")
+
+
+def _riskiest_per_value(path, has_host, has_ip):
+    """{acr value: the highest-AES asset at that value} — one window-function pass over assets."""
+    host = "hostname" if has_host else "''"
+    ip = "ip_address" if has_ip else "''"
+    sql = ("SELECT r, uuid, hostname, ip, e FROM (SELECT %s AS r, uuid, %s AS hostname, %s AS ip, "
+           "CAST(aes AS INTEGER) AS e, ROW_NUMBER() OVER (PARTITION BY %s ORDER BY CAST(aes AS INTEGER) DESC) AS rn "
+           "FROM assets WHERE %s) WHERE rn = 1 AND r IS NOT NULL" % (_R, host, ip, _R, _AES_OK))
+    out = {}
+    try:
+        for r in db.query(sql, path=path, budget="run"):
+            out[int(r["r"])] = {"uuid": r["uuid"], "hostname": (r.get("hostname") or "").strip(),
+                                "ip": (r.get("ip") or "").strip(), "aes": r.get("e"), "acr": int(r["r"])}
+    except Exception:                 # an old SQLite without window functions: the cards just omit it
+        pass
+    return out
+
+
+def _protected_per_value(path):
+    """{acr value: assets tagged exactly NO : UPDATE} — the protection tag set is small; assets by PK."""
+    try:
+        return {int(r["r"]): r["n"] for r in db.query(
+            "SELECT %s AS r, COUNT(DISTINCT a.uuid) AS n FROM tags t JOIN assets a ON a.uuid = t.asset_uuid "
+            "WHERE t.tag_key = 'NO' AND t.tag_value = 'UPDATE' GROUP BY r" % _R.replace("acr", "a.acr"),
+            path=path, budget="run") if r["r"] is not None}
+    except Exception:
+        return {}
+
+
 def _changed(path=None):
     """Default vs changed: the Ensemble's applied changes (ACR log) ∪ NO : UPDATE, looked up in navi.db."""
     from . import acr_protect, acrlog
@@ -124,6 +153,18 @@ def _changed(path=None):
         drift_eligible += 1
         if have is None or int(round(have)) != int(round(want)):
             drift += 1
+    by_value = {}                                   # current navi.db ACR of the Ensemble-changed assets
+    for u in in_db:
+        v = _num(rows[u].get("acr"))
+        if v is not None and 1 <= v <= 10:
+            by_value[int(round(v))] = by_value.get(int(round(v)), 0) + 1
+    recent = []
+    try:
+        for r in acrlog.rows({"result": "applied"}, limit=10).get("rows", []):
+            recent.append({k: r.get(k) for k in ("ts", "agent", "category", "value", "mod", "score", "asset_uuid",
+                                                 "host", "ip", "acr_before", "acr_after", "reasons", "business_case")})
+    except Exception:
+        pass
     by_agent = {}
     for u in in_db:
         a = changed[u].get("agent") or "?"
@@ -144,35 +185,43 @@ def _changed(path=None):
     return {"ensemble": len(in_db), "ensemble_not_in_db": len(set(changed) - in_db),
             "protected": len(prot), "protected_only": len(prot - in_db),
             "either": len(in_db | prot), "drift": drift, "drift_checked": drift_eligible,
+            "by_value": by_value, "recent": recent,
             "by_agent": sorted(({"agent": k, "assets": v} for k, v in by_agent.items()), key=lambda x: -x["assets"]),
             "by_reason": sorted(({"reason": k, "assets": v} for k, v in reasons.items()), key=lambda x: -x["assets"])}
 
 
-def _key(path):
+_SNAP = None
+
+
+def _snaps():
+    global _SNAP
+    if _SNAP is None:
+        from . import snapcache
+        _SNAP = snapcache.Snapshots("acr_estate", version=2, keep=4)
+    return _SNAP
+
+
+def _hw():
+    """ACR-log high-water mark: a new ACR change / protection request invalidates the snapshot."""
     from . import acrlog
     try:
-        sig = db._sig(path or db.db_path())
+        return list(acrlog._q("SELECT (SELECT MAX(id) FROM acr_log) a, (SELECT MAX(id) FROM acr_protect) b")[0].values())
     except Exception:
-        sig = None
-    try:
-        hw = tuple(acrlog._q("SELECT (SELECT MAX(id) FROM acr_log) a, (SELECT MAX(id) FROM acr_protect) b")[0].values())
-    except Exception:
-        hw = None
-    return (path or "", sig, hw)
+        return None
 
 
 def estate(path=None, fresh=False) -> dict:
-    """The estate at a glance (see module doc). Cached until navi.db or the ACR log changes."""
-    k = _key(path)
+    """The estate at a glance (see module doc). A server-side snapshot (core/snapcache, on disk under
+    the cache dir) keyed by navi.db + the ACR-log high-water mark: it survives a restart and is
+    reused until navi.db is written or an ACR change / protection request is logged."""
+    sn, extra = _snaps(), {"hw": _hw()}
     if not fresh:
-        with _LOCK:
-            hit = _CACHE.get(k[0])
-            if hit and hit[0] == k:
-                return dict(hit[1], cached=True)
-    out = _compute(path)
-    with _LOCK:
-        _CACHE[k[0]] = (k, out)
-    return dict(out, cached=False)
+        st = sn.state(path, extra)
+        if st.get("snap"):
+            m = st["snap"]["meta"]
+            return dict(st["snap"]["result"], cached=True, built_at=m.get("built_at"), build_sec=m.get("build_sec"))
+    snap = sn.build(lambda: _compute(path), path, extra)
+    return dict(snap["result"], cached=False, built_at=snap["meta"]["built_at"], build_sec=snap["meta"]["build_sec"])
 
 
 def _compute(path=None) -> dict:
@@ -185,6 +234,8 @@ def _compute(path=None) -> dict:
 
     total = sum(r["n"] for r in rows)
     by_val = {v: 0 for v in range(1, 11)}
+    vd = {v: {"scored": 0, "aes_sum": 0, "max_aes": None, "aes": {"high": 0, "medium": 0, "low": 0, "u": 0}}
+          for v in range(1, 11)}
     acr_b = {k: {"assets": 0, "aes_sum": 0, "scored": 0, "aes": {"high": 0, "medium": 0, "low": 0, "u": 0}}
              for k, *_ in ACR_BANDS}
     acr_b["none"] = {"assets": 0, "aes_sum": 0, "scored": 0, "aes": {"high": 0, "medium": 0, "low": 0, "u": 0}}
@@ -199,6 +250,12 @@ def _compute(path=None) -> dict:
             by_val[int(v)] += n
             acr_sum += int(v) * n
             acr_n += n
+            d = vd[int(v)]
+            d["aes"][b] += n
+            if b != "u":
+                d["scored"] += n
+                d["aes_sum"] += s
+                d["max_aes"] = r["hi"] if d["max_aes"] is None else max(d["max_aes"], r["hi"])
         ab = acr_b[band]
         ab["assets"] += n
         ab["aes"][b] += n
@@ -216,20 +273,35 @@ def _compute(path=None) -> dict:
     top = _edge("DESC", path, has_host, has_ip) if scored else []
     bottom = _edge("ASC", path, has_host, has_ip) if scored else []
 
+    worst = _riskiest_per_value(path, has_host, has_ip) if scored else {}
+    prot_v = _protected_per_value(path)
+    ch = _changed(path)
+    values = []
+    for v in range(10, 0, -1):
+        d = vd[v]
+        values.append({"acr": v, "band": acr_band(v), "assets": by_val[v], "pct": _pct(by_val[v], total),
+                       "pct_rated": _pct(by_val[v], acr_n), "aes_share_pct": _pct(d["aes_sum"], aes_sum),
+                       "avg_aes": round(d["aes_sum"] / d["scored"]) if d["scored"] else None, "max_aes": d["max_aes"],
+                       "aes_high": d["aes"]["high"], "aes_medium": d["aes"]["medium"], "aes_low": d["aes"]["low"],
+                       "unscored": d["aes"]["u"], "riskiest": worst.get(v),
+                       "changed": ch["by_value"].get(v, 0), "protected": prot_v.get(v, 0)})
     bands = []
     for key, label, b_lo, b_hi in ACR_BANDS:
         b = acr_b[key]
         bands.append({"band": key, "label": label, "range": "%d–%d" % (b_lo, b_hi), "assets": b["assets"],
                       "pct": _pct(b["assets"], total), "avg_aes": round(b["aes_sum"] / b["scored"]) if b["scored"] else None,
                       "aes_share_pct": _pct(b["aes_sum"], aes_sum), "aes_high": b["aes"]["high"],
-                      "aes_medium": b["aes"]["medium"], "aes_low": b["aes"]["low"], "unscored": b["aes"]["u"]})
+                      "aes_medium": b["aes"]["medium"], "aes_low": b["aes"]["low"], "unscored": b["aes"]["u"],
+                      "riskiest": max((worst[v] for v in range(b_lo, b_hi + 1) if worst.get(v)),
+                                      key=lambda a: a["aes"] or 0, default=None),
+                      "changed": sum(ch["by_value"].get(v, 0) for v in range(b_lo, b_hi + 1)),
+                      "protected": sum(prot_v.get(v, 0) for v in range(b_lo, b_hi + 1))})
     mode_v = max(by_val, key=lambda x: by_val[x]) if acr_n else None
-    ch = _changed(path)
     with_acr = acr_n
     return {
         "ok": True, "total": total, "with_acr": with_acr, "no_acr": acr_b["none"]["assets"],
         "avg_acr": round(acr_sum / acr_n, 1) if acr_n else None,
-        "acr_values": [{"acr": v, "assets": by_val[v], "pct": _pct(by_val[v], total)} for v in range(10, 0, -1)],
+        "acr_values": values,
         "acr_bands": bands,
         "mode_acr": mode_v, "mode_pct": _pct(by_val[mode_v], with_acr) if mode_v else 0.0,
         "aes": {"scored": scored, "unscored": aes_b["u"], "avg": round(aes_sum / scored) if scored else None,

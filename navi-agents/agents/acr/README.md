@@ -12,3 +12,5 @@ LLM, validated and previewed before any gated write.
   exactly `NO : UPDATE` are skipped, and every change lands in the ACR log.
 - **At a glance:** ACR spread by Tenable band, average / top / bottom AES, default vs changed
   (ACR log ∪ `NO : UPDATE`), drift and the ACR × AES crossover — `core/acr_estate.py`, see [ACR_SPEC.md](../../ACR_SPEC.md).
+- **Ensemble (build 506):** pre-run by Run the Ensemble; Done so far panel; last ▶ Load restored from the server
+  page cache; sections ACR values · Where the exposure sits · Ensemble changes & protection · Who changed ACR.

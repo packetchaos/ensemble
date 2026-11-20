@@ -24,6 +24,7 @@ atexit.register(shutil.rmtree, TMP, True)
 DB = os.path.join(TMP, "navi.db")
 os.environ["NAVI_DB_PATH"] = DB
 os.environ["NAVI_TAGLOG_DB"] = os.path.join(TMP, "tag_jobs.db")
+os.environ["NAVI_CACHE_DIR"] = os.path.join(TMP, "cache")      # the estate snapshot
 
 FAILS = []
 
@@ -99,6 +100,18 @@ check(r2["cached"] is False, "a new ACR-log row invalidates the cache")
 check(ch["ensemble"] == 2 and ch["ensemble_not_in_db"] == 1, "changed: 2 in navi.db, 1 no longer in navi.db")
 check(ch["either"] == 3 and ch["default"] == 6, "changed ∪ protected = c1, h1, l1 → 6 default")
 check(ch["drift"] == 1 and ch["drift_checked"] == 2, "drift: h1 set to 9 but navi.db says 8")
+VV = {v["acr"]: v for v in r2["acr_values"]}
+check(VV[9]["assets"] == 2 and VV[9]["riskiest"]["uuid"] == "c2" and VV[10]["riskiest"]["uuid"] == "c1"
+      and VV[2]["riskiest"]["aes"] == 800, "ACR values: riskiest (highest-AES) asset per value")
+check(VV[10]["protected"] == 1 and VV[2]["protected"] == 1 and VV[8]["changed"] == 1 and VV[10]["changed"] == 1,
+      "ACR values: protected (NO : UPDATE) and Ensemble-changed counts land on the current value")
+check(VV[9]["aes_high"] == 1 and VV[9]["max_aes"] == 700 and VV[3]["assets"] == 0, "ACR values: AES mix + max per value")
+B2 = {b["band"]: b for b in r2["acr_bands"]}
+check(B2["critical"]["riskiest"]["uuid"] == "c1" and B2["critical"]["protected"] == 1, "bands: riskiest asset + protected")
+check(len(ch["recent"]) == 3 and ch["recent"][0]["asset_uuid"] == "gone", "Who changed: latest applied changes, newest first")
+from core import acr_estate as _E2  # noqa: E402
+_E2._SNAP = None                                                 # a server restart: no in-memory state
+check(_E2.estate(DB)["cached"] is True, "the estate snapshot survives a restart (on disk, core/snapcache)")
 check(ch["by_reason"] == [{"reason": "business", "assets": 3}] and ch["by_agent"][0] == {"agent": "acr", "assets": 2},
       "reasons / agents roll up")
 

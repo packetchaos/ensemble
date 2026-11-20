@@ -80,6 +80,28 @@ and is reported under *no recorded change*. "Changed" = an applied row in the En
 asset tagged exactly `NO : UPDATE`. Closing this gap needs navi to store the export's ACR source /
 drivers. Drift is judged only for changes older than navi.db's last write.
 
+## Build 506 — part of the Ensemble, Done so far, server-side caching, page layout
+- **Run the Ensemble** now runs Criticality Calibration (in sidebar order, after Ownership): its ▶ Load
+  reads — `run` (the tag list) and `metrics` (estate + protection) — are pre-run and saved as the page's
+  server-side page-cache entry, so opening the page shows the last load. Reads only, never a write.
+- **Server-side caching:** the page no longer opts out of the page cache (`data-page-cache="off"` removed) —
+  the last ▶ Load is restored on open ("↺ Restored your last run"). The estate itself is a `core/snapcache`
+  snapshot on disk (`acr_estate_*.json.gz`), keyed by navi.db + the ACR-log high-water mark: it survives a
+  restart and is rebuilt only when navi.db is written or an ACR change / protection request is logged.
+- **Done so far:** `status_panel: true` — last run, runs, ACR changes, and the `NO : UPDATE` protection tags
+  (`core/activity.DEFAULT_CATEGORIES["acr"] = ["NO"]`).
+- **Layout:** At a glance keeps five small cards (ACR spread · AES · Highest AES · Lowest AES · Default vs
+  changed). Own jump-nav sections:
+  - **🎚️ ACR values** — per value 10 → 1: assets, % of rated, riskiest asset → Asset Dossier, AES mix
+    (High / Medium / Low / unscored), avg · max AES, share of all AES, Ensemble-changed and protected counts,
+    plus insights (a dominant value = still on defaults, no 9–10 crown jewels, a value whose AES share is
+    ≥ 1.5× its asset share, low-rated assets with AES High, no-ACR assets) and Calibrate (Ask / Single) jumps.
+  - **🎯 Where the exposure sits** — the ACR band × AES band matrix (Critical × High and Low × High
+    outlined) and a per-band table: assets, share of all AES, avg AES, AES High, riskiest asset.
+  - **🛡️ Ensemble changes & protection** — unchanged cards, now their own section.
+  - **👤 Who changed ACR** — changed / drifted / out-of-window, by Change Reason, by specialist, and the
+    latest 10 applied changes (asset → Dossier, before → after, reason, business case, tag) → full ACR log.
+
 ## REST API
 | Method | Path | Purpose |
 |---|---|---|

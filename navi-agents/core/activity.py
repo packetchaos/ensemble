@@ -34,6 +34,7 @@ DEFAULT_CATEGORIES = {
     "compliance": ["Audit Owner"], "compliance_asset": ["Audit-Vuln Link"],
     "asset_ownership": ["Business Owner", "Asset Owner"], "ai": ["AI", "AI Role", "AI ACR Raise", "AI Exposed", "AI Priority", "AI Egress", "AI ATLAS", "AI Software"],
     "identity": ["Identity", "NHI", "Machine ID", "Owner", "Identity Risk", "Identity Coverage"], "software": ["Software", "Software EOL", "Software Outdated", "Software Risk", "Crown Jewel"], "iot_squad": ["IoT"],
+    "acr": ["NO"],                      # NO : UPDATE — the ACR protection tag
 }
 
 

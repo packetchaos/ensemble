@@ -20,12 +20,12 @@
     {"agent": "classify", "label": "Asset Classification", "kind": "page", "steps": ["run"], "requests": [{"agent": "classify", "action": "run", "body": {}}, {"agent": "classify", "action": "tree", "body": {"by": "class"}}, {"agent": "classify", "action": "os_breakdown", "body": {}}, {"agent": "classify", "action": "signals", "body": {}}], "rate_s_per_mrow": 26, "min_s": 1},
     {"agent": "exproute", "label": "Exposure Routes", "kind": "snapshot", "action": "snapshot", "body": {}, "rate_s_per_mrow": 6, "min_s": 1},
     {"agent": "asset_ownership", "label": "Ownership", "kind": "page", "steps": ["load"], "requests": [{"agent": "asset_ownership", "action": "overview", "body": {}}], "rate_s_per_mrow": 56, "min_s": 1},
+    {"agent": "acr", "label": "Criticality Calibration", "kind": "page", "steps": ["runAcr"], "requests": [{"agent": "acr", "action": "run", "body": {}}, {"agent": "acr", "action": "metrics", "body": {"show": "all"}}], "rate_s_per_mrow": 1, "min_s": 2},
     {"agent": "sla", "label": "SLA Tracker", "kind": "snapshot", "action": "snapshot", "body": {}, "rate_s_per_mrow": 10, "min_s": 1},
     {"agent": "fused_score", "label": "Exposure Score", "kind": "snapshot", "action": "snapshot", "body": {}, "rate_s_per_mrow": 3, "min_s": 1},
     {"agent": "insights", "label": "Ensemble Report", "kind": "snapshot", "action": "scent", "body": {}, "rate_s_per_mrow": 1, "min_s": 1}
   ],
   "excluded": {
-      "acr": "ACR Calibration — a live editor; changes happen by hand",
       "custom_audit": "Custom Audit — an authoring tool",
       "email": "Email · Gabriel — sends mail",
       "alert": "Alert Raven — its own scheduler",

@@ -4,9 +4,12 @@ Four cooperating agents: **Discovery** (detect known IoT, tag `IoT:<name>`),
 **Cross-Reference** (find more assets, propose new detections), and
 **Orchestrator/QA**. Detections persist to a learning-loop registry on approval.
 
-- **UI:** `page.html` · **API:** `/api/iot_squad/run`, `tags_apply`, `tag_candidate`, `detections_decide`,
+- **UI:** `page.html` · **API:** `/api/iot_squad/run`, `drill`, `inventory_export`, `inventory_tag`, `tags_apply`, `tag_candidate`, `detections_decide`,
   `detections_export`, `registry`
 - **Writes:** gated `navi enrich tag`. Detection approvals write a local registry file.
+- **Device inventory (build 504):** the glance lists devices, predicted device types, Device Types and vendors;
+  a click narrows a server-paged table (Argos per host, ⬇ CSV of the whole list, 🏷️ tag the whole list as
+  `Asset Inventory : Device Type: X` or `IoT : X`) — `core/iot_inventory.py`, see [IOT_SQUAD_SPEC.md](../../IOT_SQUAD_SPEC.md).
 - **Page:** sticky jump nav + **📊 At a glance** (devices found / registry vs signal-fusion,
   exposure on the devices — criticals, highs, CISA KEV, highest AES → Argos — learning-loop
   counts, identity-signal coverage) and a filterable **Discovered devices** list. The run result

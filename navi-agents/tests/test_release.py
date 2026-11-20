@@ -45,7 +45,7 @@ ins = pages[-1]
 check(ins["kind"] == "snapshot" and ins["action"] == "scent"
       and "scent" in importlib.import_module("agents.insights.api").ACTIONS,
       "On the Scent runs as a snapshot-like step: its `scent` digest action")
-for ex in ("acr", "contract", "argos", "email", "alert", "tagremoval", "c2", "custom_audit", "dashboard",
+for ex in ("contract", "argos", "email", "alert", "tagremoval", "c2", "custom_audit", "dashboard",
            "was_asset", "compliance_asset"):
     check(ex not in order, f"{ex} is left out of the release")
 check(not any(a.startswith("ex_") for a in order), "search hounds are left out of the release")

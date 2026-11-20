@@ -20,5 +20,6 @@
   ],
   "codename": "",
   "hero": false,
-  "mission": "Ownership & SLA"
+  "mission": "Ownership & SLA",
+  "status_panel": true
 }

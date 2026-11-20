@@ -16,8 +16,13 @@
 .gatebar{background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--cx-e7c66b);border-radius:8px;padding:9px 12px;font-size:12.5px;color:var(--ink-2);margin:8px 0}
 .g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:12px}
 .bcl{font-size:12px;white-space:normal}
+.acrk-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin:4px 0 0}
+.acrk{border:1px solid var(--line);border-top:3px solid var(--k);border-radius:10px;padding:10px 12px;background:var(--panel-2)}
+.acrk-go{cursor:pointer}.acrk-go:hover{border-color:var(--accent)}
+.acrk-v{font-size:22px;font-weight:700;line-height:1.1;color:var(--ink);white-space:nowrap}
+.acrk-l{font-size:12px;font-weight:600;color:var(--ink);margin-top:3px}.acrk-s{font-size:11px;color:var(--mut);margin-top:2px}
 </style>
-</head><body data-page-cache="off">
+</head><body>
 <div class="wrap">
   <header class="top" id="app-header"></header>
 
@@ -33,8 +38,31 @@
 
   <section class="card" id="secGlance" data-nav="At a glance" data-nav-icon="📊">
     <h2 style="margin:0 0 2px;font-size:17px">📊 At a glance</h2>
-    <p class="sub" style="margin:2px 0 0">How the estate is rated and exposed (ACR spread, AES, default vs changed — Tenable bands), then ACR protection from navi.db (<span class="mono">NO : UPDATE</span>) against what the Ensemble changed (the ACR log). Every card opens the matching list.</p>
+    <p class="sub" style="margin:2px 0 0">How the estate is rated and exposed — ACR spread, AES, highest / lowest AES, default vs changed (Tenable bands). The detail is in the sections below.</p>
     <div id="glance"><p class="sub">loading…</p></div>
+  </section>
+
+  <section class="card" id="secValues" data-nav="ACR values" data-nav-icon="🎚️">
+    <h2 style="margin:0 0 2px;font-size:17px">🎚️ ACR values</h2>
+    <p class="sub" style="margin:2px 0 8px">Every ACR value 10 → 1: how many assets sit there, how exposed they are (AES mix, share of all AES), what the Ensemble changed or protected, and the riskiest asset at each value → Asset Dossier.</p>
+    <div id="valuesBody"><p class="sub">Click ▶ Load.</p></div>
+  </section>
+
+  <section class="card" id="secExposure" data-nav="Where the exposure sits" data-nav-icon="🎯">
+    <h2 style="margin:0 0 2px;font-size:17px">🎯 Where the exposure sits</h2>
+    <p class="sub" style="margin:2px 0 8px">ACR band against AES band — are the business-critical assets the exposed ones? Tenable bands: ACR Critical 9–10 · High 7–8 · Medium 4–6 · Low 1–3; AES High 650+ · Medium 350–649 · Low 0–349.</p>
+    <div id="exposureBody"><p class="sub">Click ▶ Load.</p></div>
+  </section>
+
+  <section class="card" id="secChanges" data-nav="Ensemble changes &amp; protection" data-nav-icon="🛡️">
+    <h2 style="margin:0 0 2px;font-size:17px">🛡️ Ensemble changes &amp; protection</h2>
+    <p class="sub" style="margin:2px 0 8px">ACR protection from navi.db (<span class="mono">NO : UPDATE</span>) against what the Ensemble changed (the ACR log). Every card opens the matching list.</p>
+    <div id="changesBody"><p class="sub">Click ▶ Load.</p></div>
+  </section>
+
+  <section class="card" id="secWho" data-nav="Who changed ACR" data-nav-icon="👤">
+    <h2 style="margin:0 0 2px;font-size:17px">👤 Who changed ACR</h2>
+    <div id="whoBody"><p class="sub">Click ▶ Load.</p></div>
   </section>
 
   <section class="card" id="secProtect" data-nav="Protection" data-nav-icon="🛡️">
@@ -114,7 +142,8 @@ async function runAcr(){
 async function loadMetrics(){
   let o; try{ o=await API.post('metrics',{show:PSHOW}); }catch(e){ o={ok:false,error:e.message}; }
   MET=(o&&o.ok)?o:null;
-  if(!MET){ document.getElementById('glance').innerHTML='<p class="sub" style="color:var(--crit)">✗ '+esc((o&&o.error)||'metrics unavailable')+'</p>'; renderProtect(); return; }
+  if(!MET){ const err='<p class="sub" style="color:var(--crit)">✗ '+esc((o&&o.error)||'metrics unavailable')+'</p>';
+    ['glance','valuesBody','exposureBody','changesBody','whoBody'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=err; }); renderProtect(); return; }
   if(typeof o.writes_enabled==='boolean') WRITES=o.writes_enabled;
   renderMetrics(); renderProtect();
 }
@@ -140,16 +169,13 @@ function renderEstate(e){
   const bands=e.acr_bands||[];
   const top=A.top&&A.top[0], bot=A.bottom&&A.bottom[0];
   renderGlance('glxEstate', [
-    {title:'ACR spread · how much of the estate sits in each band', t:'Tenable ACR bands — '+((e.bands_ref||{}).acr||'')+'. Percent of all '+N(e.total)+' assets in navi.db.',
+    {title:'ACR spread', t:'How much of the estate sits in each band. Tenable ACR bands — '+((e.bands_ref||{}).acr||'')+'. Percent of all '+N(e.total)+' assets in navi.db.',
      hero:mk(e.avg_acr==null?'—':String(e.avg_acr),'average ACR across '+N(e.with_acr)+' rated assets','none',
         'Mean ACR of the assets navi.db holds (navi pulls assets seen in its sync window — default 90 days)'),
      bar:bands.map(b=>({label:b.label+' '+b.range,value:b.assets,color:ACR_SEV[b.band]})).concat([{label:'No ACR',value:e.no_acr||0,color:'var(--muted)'}]),
      chips:bands.map(b=>mk(b.assets,b.label+' ('+b.range+')',ACR_SEV[b.band],
         b.label+' ACR '+b.range+': '+N(b.assets)+' assets, '+pctT(b.pct)+' of the estate · avg AES '+(b.avg_aes==null?'—':N(b.avg_aes)),null,pctT(b.pct)))
         .concat([mk(e.no_acr,'no ACR — navi enrich acr skips these','none','Assets with an empty ACR in navi.db',null,pctT(e.total?100*e.no_acr/e.total:0))])},
-    {title:'ACR values 10 → 1',
-     ranked:{items:(e.acr_values||[]).map(v=>({label:'ACR '+v.acr, value:v.assets, vt:N(v.assets)+' · '+pctT(v.pct), sev:ACR_SEV[({10:'critical',9:'critical',8:'high',7:'high',6:'medium',5:'medium',4:'medium'})[v.acr]||'low'],
-       t:'ACR '+v.acr+': '+N(v.assets)+' assets ('+pctT(v.pct)+')'})), empty:'No ACR values in navi.db.'}},
     {title:'AES · Asset Exposure Score (0–1000)', t:'Tenable AES bands — '+((e.bands_ref||{}).aes||'')+'. Tenable does not calculate AES for unlicensed assets: those are unscored, not 0.',
      hero:mk(A.avg==null?'—':A.avg,'average AES · '+N(A.scored)+' scored assets',aesSev(A.avg),'Mean AES of scored assets'),
      bar:(A.bands||[]).map(b=>({label:'AES '+b.label+' '+b.range,value:b.assets,color:b.band==='high'?'crit':(b.band==='medium'?'med':'low')})).concat([{label:'Unscored',value:A.unscored||0,color:'var(--muted)'}]),
@@ -160,35 +186,120 @@ function renderEstate(e){
     {title:'Highest AES · fix-first list',
      ranked:{items:(A.top||[]).map(a=>({label:hostOf(a)+' · ACR '+(a.acr==null?'—':a.acr), value:a.aes, sev:aesSev(a.aes), href:argosHref(a), t:hostOf(a)+' — AES '+a.aes+', ACR '+(a.acr==null?'—':a.acr)+' → Argos'})),
        max:1000, empty:'No scored assets.'}},
-    {title:'Lowest AES',
-     ranked:{items:(A.bottom||[]).map(a=>({label:hostOf(a)+' · ACR '+(a.acr==null?'—':a.acr), value:a.aes, sev:aesSev(a.aes), href:argosHref(a), t:hostOf(a)+' — AES '+a.aes+', ACR '+(a.acr==null?'—':a.acr)+' → Argos'})),
-       max:1000, empty:'No scored assets.'}},
     {title:'Default vs changed', t:'navi.db holds only the current ACR — no Tenable override flag. "Changed" = an applied change in the Ensemble ACR log, or an asset protected with NO : UPDATE. A change made directly in the Tenable UI is invisible to navi and counts as "no recorded change".',
      hero:mk(C.default,'rated assets with no recorded ACR change (Tenable-calculated)','none',null,null,pctT(C.default_pct)),
      bar:[{label:'Changed by the Ensemble',value:C.ensemble||0,color:'info'},{label:'Protected only (NO : UPDATE)',value:C.protected_only||0,color:'ok'},{label:'No recorded change',value:C.default||0,color:'var(--muted)'}],
      chips:[mk(C.either,'changed or protected',C.either?'info':'none','Ensemble-changed ∪ NO : UPDATE, of '+N(e.with_acr)+' rated assets','/web/acr-log.html?result=applied',pctT(C.changed_pct)),
             mk(C.drift,'drifted since the Ensemble set them',C.drift?'high':'ok','Ensemble-changed assets whose current ACR no longer matches what was set (checked '+N(C.drift_checked)+' synced since their change) — someone or something moved them; protect with NO : UPDATE','#secProtect'),
             mk(e.mode_acr==null?'—':'ACR '+e.mode_acr,'most common value',e.mode_pct>=60?'med':'none',
-               pctT(e.mode_pct)+' of rated assets share ACR '+e.mode_acr+(e.mode_pct>=60?' — a single dominant value usually means the estate is still on defaults':''),null,pctT(e.mode_pct))]},
-    {title:'Where the exposure sits', t:'Share of total AES held by each ACR band, and the two calibration checks a VM lead asks first.',
-     ranked:{items:bands.map(b=>({label:b.label+' ACR · avg AES '+(b.avg_aes==null?'—':N(b.avg_aes)), value:b.aes_share_pct, vt:pctT(b.aes_share_pct), sev:ACR_SEV[b.band],
-       t:b.label+' ACR holds '+pctT(b.aes_share_pct)+' of all AES; '+N(b.aes_high)+' of its assets are AES High'})), max:100},
-     chips:[mk(e.crown_exposed,'ACR 9–10 with AES High — fix first',e.crown_exposed?'crit':'ok','Business-critical assets with high exposure'),
-            mk(e.low_but_exposed,'ACR 1–3 with AES High — rated right?',e.low_but_exposed?'med':'ok','Low-criticality assets carrying high exposure: confirm the low rating (lab gear?) or raise it')]},
-    {title:'Who changed ACR · Change Reason',
-     ranked:{items:(C.by_reason||[]).map(r=>({label:r.reason, value:r.assets, sev:'info', href:'/web/acr-log.html?result=applied', t:r.reason+': '+N(r.assets)+' asset(s) → ACR log'}))
-       .concat((C.by_agent||[]).map(a=>({label:'by '+a.agent, value:a.assets, sev:'none', href:logHref({result:'applied',agent:a.agent}), t:N(a.assets)+' asset(s) changed by '+a.agent+' → ACR log'}))),
-       empty:'No ACR changes recorded by the Ensemble yet.'}}
+               pctT(e.mode_pct)+' of rated assets share ACR '+e.mode_acr+(e.mode_pct>=60?' — a single dominant value usually means the estate is still on defaults':''),'#secValues',pctT(e.mode_pct))]}
   ]);
 }
+/* ===== build 506 — the large ACR widgets: 🎚️ ACR values · 🎯 Where the exposure sits · 👤 Who changed ACR ===== */
+const BAND_OF=v=>v>=9?'critical':v>=7?'high':v>=4?'medium':'low';
+const dossierCell=a=>a&&a.uuid?`<a class="applink" href="${esc(argosHref(a))}" title="Asset Dossier — the highest-AES asset here">${esc(hostOf(a))}</a><div class="sub" style="font-size:11px">AES ${a.aes==null?'—':esc(a.aes)}${a.acr==null?'':' · ACR '+esc(a.acr)}</div>`:'<span class="sub">—</span>';
+function aesMix(d){ const tot=(d.aes_high||0)+(d.aes_medium||0)+(d.aes_low||0)+(d.unscored||0); if(!tot) return '<span class="sub">—</span>';
+  const seg=(n,c,l)=>n?`<i style="display:inline-block;height:9px;width:${(100*n/tot).toFixed(1)}%;background:${c}" title="${esc(l)}: ${N(n)}"></i>`:'';
+  return `<div style="display:flex;width:120px;border-radius:3px;overflow:hidden;background:var(--line)">${seg(d.aes_high,'var(--crit)','AES High')}${seg(d.aes_medium,'var(--med)','AES Medium')}${seg(d.aes_low,'var(--low)','AES Low')}${seg(d.unscored,'var(--muted,#888)','Unscored')}</div>`
+    +`<div class="sub" style="font-size:11px">${d.aes_high?'<b style="color:var(--crit)">'+N(d.aes_high)+' high</b> · ':''}${N(d.aes_medium||0)} med · ${N(d.aes_low||0)} low${d.unscored?' · '+N(d.unscored)+' unscored':''}</div>`; }
+const pbar=(p,c)=>`<div style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:70px;height:7px;border-radius:3px;background:var(--line);overflow:hidden"><i style="display:block;height:100%;width:${Math.min(100,+p||0)}%;background:${c}"></i></span><span class="mono" style="font-size:12px">${pctT(p)}</span></div>`;
+const acrBadge=v=>`<span class="mono" style="display:inline-block;min-width:26px;text-align:center;font-weight:700;padding:1px 6px;border-radius:6px;border:1px solid var(--${ACR_SEV[BAND_OF(v)]});color:var(--${ACR_SEV[BAND_OF(v)]})">${esc(v)}</span>`;
+function jumpTo(id){ const s=document.getElementById(id); if(s){ s.scrollIntoView({behavior:'smooth',block:'start'}); s.classList.add('glx-flash'); setTimeout(()=>s.classList.remove('glx-flash'),1200); } }
+
+function renderValues(e){
+  const box=document.getElementById('valuesBody'); if(!box) return;
+  if(!e||!e.ok){ box.innerHTML='<p class="sub">'+esc((e&&e.error)||'Click ▶ Load.')+'</p>'; return; }
+  const vals=e.acr_values||[], C=e.changed||{}, rated=e.with_acr||0;
+  // build 507: the headline numbers as a full-width tile row (number first, one short line under it)
+  const crit=vals.filter(v=>v.acr>=9).reduce((s,v)=>s+v.assets,0);
+  const lowHot=vals.filter(v=>v.acr<=3&&v.aes_high).reduce((s,v)=>s+v.aes_high,0);
+  const hot=vals.filter(v=>v.assets).reduce((m,v)=>(!m||(v.aes_share_pct-v.pct_rated)>(m.aes_share_pct-m.pct_rated))?v:m,null);
+  const tile=(v,l,sub,sev,jump,title)=>`<div class="acrk${jump?' acrk-go':''}"${jump?` data-jump="${jump}" role="button" tabindex="0"`:''}${title?` title="${esc(title)}"`:''} style="--k:var(--${sev||'line'})">`
+    +`<div class="acrk-v">${v}</div><div class="acrk-l">${esc(l)}</div>${sub?`<div class="acrk-s">${sub}</div>`:''}</div>`;
+  const tiles=[
+    tile(N(rated),'rated assets', e.no_acr?esc(N(e.no_acr))+' with no ACR — navi skips them':'every asset has an ACR', e.no_acr?'med':'info'),
+    tile(e.avg_acr==null?'—':esc(e.avg_acr),'average ACR','across rated assets','info'),
+    tile(e.mode_acr==null?'—':'ACR '+esc(e.mode_acr),'most common value', esc(pctT(e.mode_pct))+' of rated'+(e.mode_pct>=40?' — likely still defaults':''), e.mode_pct>=40?'med':'ok',
+      null, 'One dominant value usually means the estate is still on Tenable\'s calculated defaults'),
+    tile(N(crit),'crown jewels (ACR 9–10)', crit?esc(pctT(rated?100*crit/rated:0))+' of rated':'none marked — AES can\'t put them first', crit?'ok':'crit', crit?null:'secAsk',
+      crit?'Assets rated 9–10':'Tag crown jewels by business tier, then set ACR 9–10 (Ask)'),
+    tile(hot?'ACR '+esc(hot.acr):'—','exposure concentrates at', hot?esc(pctT(hot.pct_rated))+' of assets → '+esc(pctT(hot.aes_share_pct))+' of AES':'no scored assets',
+      hot&&hot.aes_share_pct>=hot.pct_rated*1.5?'high':'info', 'secExposure', 'The ACR value whose share of all AES most exceeds its share of assets'),
+    tile(N(lowHot),'rated 1–3 with AES High', lowHot?'rated right? confirm or raise':'none', lowHot?'med':'ok', lowHot?'secExposure':null),
+    tile(N(C.ensemble||0),'changed by the Ensemble', (C.ensemble?esc(N(C.drift||0))+' drifted since':'all values Tenable-calculated'), C.ensemble?'info':'line', 'secWho'),
+  ];
+  box.innerHTML=`<div class="acrk-row">${tiles.join('')}</div>`
+    +`<div class="toolbar" style="gap:6px;justify-content:flex-end;margin:10px 0 8px"><button type="button" class="btn sm" data-jump="secAsk" title="Calibrate ACR by tag in plain English">✨ Calibrate (Ask) ↓</button><button type="button" class="btn ghost sm" data-jump="secSingle">⚖ Single change ↓</button></div>`
+    +`<div class="tscroll"><table id="valTbl" class="nocsv"><thead><tr><th>ACR</th><th>Assets</th><th>% of rated</th><th>Riskiest asset</th><th>AES mix</th><th>Avg · max AES</th><th>Share of all AES</th><th title="Assets the Ensemble changed that sit at this value now">Changed</th><th title="Assets tagged NO : UPDATE at this value">Protected</th></tr></thead><tbody>`
+    +vals.map(v=>`<tr${v.assets?'':' style="opacity:.55"'}><td>${acrBadge(v.acr)}<div class="sub" style="font-size:11px">${esc((e.acr_bands||[]).find(b=>b.band===v.band)?.label||'')}</div></td>`
+      +`<td class="mono"><b>${N(v.assets)}</b></td><td>${pbar(v.pct_rated,'var(--'+ACR_SEV[v.band]+')')}</td><td>${dossierCell(v.riskiest)}</td><td>${aesMix(v)}</td>`
+      +`<td class="mono"${(v.max_aes||0)>=650?' style="color:var(--crit)"':''}>${v.avg_aes==null?'—':N(v.avg_aes)}<div class="sub" style="font-size:11px">max ${v.max_aes==null?'—':N(v.max_aes)}</div></td>`
+      +`<td>${pbar(v.aes_share_pct,'var(--accent)')}</td>`
+      +`<td class="mono">${v.changed?`<a class="applink" href="${esc(logHref({result:'applied'}))}" title="ACR log">${N(v.changed)}</a>`:'<span class="sub">0</span>'}</td>`
+      +`<td class="mono">${v.protected?`<a class="applink" href="/agents/ex_tags/page.html?key=NO&value=UPDATE" title="Tag Explorer · NO : UPDATE">${N(v.protected)}</a>`:'<span class="sub">0</span>'}</td></tr>`).join('')
+    +`</tbody></table></div>`;
+}
+
+function renderExposure(e){
+  const box=document.getElementById('exposureBody'); if(!box) return;
+  if(!e||!e.ok){ box.innerHTML='<p class="sub">'+esc((e&&e.error)||'Click ▶ Load.')+'</p>'; return; }
+  const bands=e.acr_bands||[], A=e.aes||{};
+  const cols=[['aes_high','High','crit','650–1000'],['aes_medium','Medium','med','350–649'],['aes_low','Low','low','0–349'],['unscored','Unscored','none','no AES']];
+  const mx=Math.max(1,...bands.flatMap(b=>cols.map(c=>b[c[0]]||0)));
+  const cell=(b,c)=>{ const n=b[c[0]]||0, hot=(b.band==='critical'&&c[0]==='aes_high')?'crit':(b.band==='low'&&c[0]==='aes_high')?'med':'';
+    const bg=c[2]==='none'?'transparent':`color-mix(in srgb, var(--${c[2]}) ${Math.round(8+60*n/mx)}%, transparent)`;
+    const tip=b.label+' ACR × AES '+c[1]+': '+N(n)+(hot==='crit'?' — business-critical AND highly exposed: fix first':hot==='med'?' — low criticality but highly exposed: rated right?':'');
+    return `<td class="mono" style="text-align:center;background:${n?bg:'transparent'};${hot&&n?'outline:2px solid var(--'+hot+');outline-offset:-2px;':''}font-weight:${hot&&n?700:400}" title="${esc(tip)}">${n?N(n):'<span class="sub">·</span>'}</td>`; };
+  const heavy=bands.filter(b=>b.assets&&b.aes_share_pct>=b.pct*1.3).map(b=>`<b>${esc(b.label)}</b> (${pctT(b.pct)} of assets → ${pctT(b.aes_share_pct)} of AES)`);
+  box.innerHTML=`<div class="toolbar" style="gap:8px;flex-wrap:wrap;margin:0 0 8px">`
+    +`<span class="chip" style="border-color:var(--crit)" title="ACR 9–10 with AES High">🔥 <b>${N(e.crown_exposed)}</b> crown jewels highly exposed — fix first</span>`
+    +`<span class="chip" style="border-color:var(--med)" title="ACR 1–3 with AES High">❓ <b>${N(e.low_but_exposed)}</b> low-rated but highly exposed — rated right?</span>`
+    +`<span class="chip">avg AES <b>${A.avg==null?'—':N(A.avg)}</b> · ${N(A.scored)} scored</span></div>`
+    +(heavy.length?`<p class="sub" style="margin:0 0 8px">Exposure is heavier than the asset count in ${heavy.join(', ')}.</p>`:'')
+    +`<div class="sub" style="margin:0 0 4px;font-weight:600">ACR band × AES band (assets)</div><div class="tscroll"><table class="nocsv" style="width:100%;table-layout:fixed"><thead><tr><th style="width:22%">ACR \\ AES</th>${cols.map(c=>`<th style="text-align:center">${esc(c[1])}<div class="sub" style="font-size:10px;font-weight:400;letter-spacing:0">${esc(c[3])}</div></th>`).join('')}</tr></thead><tbody>`
+    +bands.map(b=>`<tr><td><b style="color:var(--${ACR_SEV[b.band]})">${esc(b.label)}</b> <span class="sub">${esc(b.range)}</span></td>${cols.map(c=>cell(b,c)).join('')}</tr>`).join('')
+    +`</tbody></table></div><p class="sub" style="font-size:11px;margin:4px 0 14px">Outlined: Critical × High (fix first) and Low × High (rated right?). Bands are Tenable's.</p>`
+    +`<div class="sub" style="margin:0 0 4px;font-weight:600">Per band</div><div class="tscroll"><table class="nocsv" style="width:100%"><thead><tr><th>Band</th><th>Assets</th><th>Share of all AES</th><th>Avg AES</th><th>AES High</th><th>Riskiest asset</th></tr></thead><tbody>`
+    +bands.map(b=>`<tr><td><b style="color:var(--${ACR_SEV[b.band]})">${esc(b.label)}</b></td><td class="mono">${N(b.assets)} <span class="sub">${pctT(b.pct)}</span></td>`
+      +`<td>${pbar(b.aes_share_pct,'var(--'+ACR_SEV[b.band]+')')}</td><td class="mono">${b.avg_aes==null?'—':N(b.avg_aes)}</td>`
+      +`<td class="mono"${b.aes_high?' style="color:var(--crit);font-weight:700"':''}>${N(b.aes_high)}</td><td>${dossierCell(b.riskiest)}</td></tr>`).join('')
+    +`</tbody></table></div>`;
+}
+
+function renderWho(e){
+  const box=document.getElementById('whoBody'); if(!box) return;
+  if(!e||!e.ok){ box.innerHTML='<p class="sub">'+esc((e&&e.error)||'Click ▶ Load.')+'</p>'; return; }
+  const C=e.changed||{}, rec=C.recent||[];
+  box.innerHTML=`<p class="sub" style="margin:0 0 8px">Every ACR change the Ensemble applied — by Change Reason and by specialist. A change made in the Tenable UI or with plain navi isn't in navi.db's history, so it doesn't show here.</p>`
+    +'<div id="glxWho"></div>'
+    +`<div class="toolbar" style="margin:12px 0 4px"><b style="font-size:13px">Latest ACR changes</b><a class="applink" style="margin-left:auto" href="${esc(logHref({result:'applied'}))}">Full ACR log →</a></div>`
+    +(rec.length?`<div class="tscroll"><table class="nocsv"><thead><tr><th>When</th><th>Asset</th><th>ACR</th><th>By</th><th>Reason</th><th>Business case</th><th>Tag</th></tr></thead><tbody>`
+      +rec.map(r=>`<tr><td class="sub">${r.ts?esc(new Date(r.ts*1000).toLocaleString()):'—'}</td>`
+        +`<td>${r.asset_uuid?`<a class="applink" href="${esc(argosHref({uuid:r.asset_uuid,ip:r.ip,hostname:r.host}))}" title="Asset Dossier">${esc((r.host||'').trim()||(r.ip||'').trim()||String(r.asset_uuid).slice(0,8))}</a>`:'—'}</td>`
+        +`<td class="mono">${esc(r.acr_before==null||r.acr_before===''?'—':r.acr_before)} → <b>${esc(r.acr_after==null?'—':r.acr_after)}</b></td>`
+        +`<td>${esc(r.agent||'')}</td><td class="sub">${esc((r.reasons||[]).join(', '))}</td><td class="sub">${esc(r.business_case||'')}</td>`
+        +`<td class="sub mono" style="font-size:11px">${esc((r.category||'')+' : '+(r.value||''))}</td></tr>`).join('')+'</tbody></table></div>'
+      :'<p class="sub">No ACR changes recorded by the Ensemble yet.</p>');
+  renderGlance('glxWho', [
+    {title:'Changed assets', hero:{v:N(C.ensemble||0), l:'assets the Ensemble changed (in navi.db)', sev:C.ensemble?'info':'none', href:logHref({result:'applied'}), u:'→ ACR log'},
+     chips:[{v:N(C.drift||0), l:'drifted since', sev:C.drift?'high':'ok', href:'#secProtect', t:'Current ACR no longer matches what the Ensemble set — protect with NO : UPDATE'},
+            {v:N(C.ensemble_not_in_db||0), l:'no longer in navi.db', sev:'none', t:'In the ACR log but outside navi’s asset sync window'}]},
+    {title:'By Change Reason', ranked:{items:(C.by_reason||[]).map(r=>({label:r.reason, value:r.assets, sev:'info', href:logHref({result:'applied'}), t:r.reason+': '+N(r.assets)+' asset(s) → ACR log'})), empty:'No changes yet.'}},
+    {title:'By specialist', ranked:{items:(C.by_agent||[]).map(a=>({label:a.agent, value:a.assets, sev:'none', href:logHref({result:'applied',agent:a.agent}), t:N(a.assets)+' asset(s) changed by '+a.agent+' → ACR log'})), empty:'No changes yet.'}}
+  ]);
+}
+document.addEventListener('click', ev=>{ const b=ev.target.closest&&ev.target.closest('[data-jump]'); if(!b) return; ev.preventDefault(); jumpTo(b.dataset.jump); });
+document.addEventListener('keydown', ev=>{ if(ev.key!=='Enter'&&ev.key!==' ') return; const b=ev.target.closest&&ev.target.closest('.acrk[data-jump]'); if(!b) return; ev.preventDefault(); jumpTo(b.dataset.jump); });
 function renderMetrics(){
   const m=MET, lc=m.last_change?new Date(m.last_change*1000).toLocaleString():'never', mk=acrMetric;
   const pendCh=Math.max(0,(m.changed_unprotected||0)-(m.changed_unprotected_waiting||0));
   const bc=m.by_business_case||[];
-  document.getElementById('glance').innerHTML='<div class="sub" style="margin:2px 0 6px;font-weight:600">Estate · navi.db'+(m.estate&&m.estate.cached?' <span style="font-weight:400">(cached until navi.db or the ACR log changes)</span>':'')+'</div><div id="glxEstate"></div>'
-    +'<div class="sub" style="margin:14px 0 6px;font-weight:600">Ensemble changes &amp; protection</div><div id="glxAcr"></div>'
+  const es=m.estate||{};
+  document.getElementById('glance').innerHTML='<div class="sub" style="margin:2px 0 6px;font-weight:600">Estate · navi.db'
+    +(es.built_at?' <span style="font-weight:400">· '+(es.cached?'server snapshot':'built')+' '+esc(new Date(es.built_at).toLocaleString())+(es.build_sec!=null?' in '+esc(es.build_sec)+' s':'')+' — reused until navi.db or the ACR log changes</span>':'')+'</div><div id="glxEstate"></div>';
+  document.getElementById('changesBody').innerHTML='<div id="glxAcr"></div>'
     +(bc.length>12?'<p class="sub" style="margin:6px 0 0">+ '+(bc.length-12)+' more business case(s) in the <a class="applink" href="/web/acr-log.html">ACR log</a>.</p>':'');
-  renderEstate(m.estate);
+  renderEstate(m.estate); renderValues(m.estate); renderExposure(m.estate); renderWho(m.estate);
   renderGlance('glxAcr', [
     {title:'Protection · navi.db',
      hero:mk(m.protected,'assets ACR-protected (NO : UPDATE)','/agents/ex_tags/page.html?key=NO&value=UPDATE','ok','Tag Explorer · NO : UPDATE','Assets navi.db shows tagged exactly NO : UPDATE — navi enrich acr never changes them'),
@@ -410,9 +521,10 @@ document.getElementById('acrCollapseAll').onclick=()=>{ ACR_OPEN={}; renderAcr()
 mountAgentHeader({id:'acr',icon:'🎯',name:'ACR Calibration Agent',sub:'set / +N / −N per tag · NL bulk · NO : UPDATE protection'});
 try{ hMailAuto(); }catch(e){}
 mountSectionNav();
-/* explicit-run: nothing loads on open (the tag list calls Tenable via navi, the metrics read
-   navi.db). ▶ Load fetches both; the page cache restores the last load. */
-flash('acrFlash','Nothing loads automatically — click <b>▶ Load</b> (it reads live, so the list is always current).','idle');
+/* explicit-run: nothing runs on open (the tag list calls Tenable via navi, the metrics read navi.db).
+   ▶ Load fetches both; the server-side page cache (build 506 — this page no longer opts out) restores the
+   last load on open, and Run the Ensemble pre-loads it. */
+flash('acrFlash','Nothing runs on open — your last <b>▶ Load</b> (or Run the Ensemble) is restored from the server; click <b>▶ Load</b> for a live read.','idle');
 // Settings → Test run: ACR targets the tag exactly as listed; say what specialist-created tags are called now
 testRunStatus().then(t=>{ const el=document.getElementById('acrTrHint'); if(!el||!t||!t.enabled) return; el.style.display='';
   el.innerHTML='🧪 Test run is on — tags the Ensemble creates now read <span class="mono">'+esc(t.prefix)+'&lt;category&gt;</span>. ACR applies to the category exactly as listed; pick the <span class="mono">'+esc(t.prefix)+'…</span> one to target a test-run tag. The protection tag is always exactly <span class="mono">NO : UPDATE</span>.'; });

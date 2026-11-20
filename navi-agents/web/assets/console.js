@@ -1796,8 +1796,15 @@ function hWidget(section, opts){
             columns:opts.columns||null, rows, png:snap.png, html:snap.png?'':snap.html};
   }, {mode:'widget', label:'📧'});
 }
+// build 508: pages a user acts IN rather than reports FROM get no email buttons at all (no "📧 Email
+// dashboard", no per-table 📧) — tools, editors and executors. Keyed by the page URL (/agents/<id>/),
+// not window.__AGENT_ID, which a page's second agentApi('explore') can overwrite.
+const _HM_NO_EMAIL = new Set(['tagremoval', 'alert', 'custom_audit', 'c2', 'mcpcmp', 'contract']);
+function _hmPageAgent(){ const m=/^\/agents\/([a-z0-9_]+)\//.exec(location.pathname||''); return m?m[1]:(window.__AGENT_ID||''); }
 function hMailAuto(opts){
-  opts=opts||{}; _hmailStyle();
+  opts=opts||{};
+  if(_HM_NO_EMAIL.has(_hmPageAgent()) && !opts.force) return;
+  _hmailStyle();
   const base=_hmAutoTitle(opts.title);
   // dashboard button on the header
   let host=opts.header;

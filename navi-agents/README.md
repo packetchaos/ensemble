@@ -46,7 +46,7 @@ assets or reach the `/api` backend. Always use `http://localhost:8000`.
 run, uses FastAPI/uvicorn if they're installed, else Flask, and otherwise falls back to a
 zero-dependency stdlib server.
 
-The header shows the version, e.g. **v2.43.503** — `MAJOR.<specialists>.<build>`, where the middle
+The header shows the version, e.g. **v2.43.508** — `MAJOR.<specialists>.<build>`, where the middle
 number is the count of specialists the server discovered (`core/version.py`).
 
 **Point at your real tenant** (live data + tagging):

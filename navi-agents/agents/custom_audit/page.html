@@ -144,7 +144,10 @@ function setPlatformSelect(pid, wrapper){
 
 /* ---------- init ---------- */
 async function init(){
-  try{ hMailAuto(); }catch(e){}
+  // build 508: the standard header — logo, title, the indicator chips (version · data · AI · assets · db ·
+  // writes), Next agent and the ⚙ gear. This page never mounted it, so the top strip was missing.
+  try{ await mountAgentHeader({id:'custom_audit',icon:'📜',name:'Audit Authoring',sub:'.audit authoring · describe it or build it'}); }catch(e){}
+  try{ hMailAuto(); }catch(e){}       // a no-op here: Audit Authoring is a no-email tool page (console.js _HM_NO_EMAIL)
   let o; try{ o=await API.post('platforms'); }catch(e){ o={ok:false,error:e.message}; }
   const res=(o.result||o);
   if(!res||!res.platforms){ flash('flash','✗ could not load the audit catalog: '+esc((o&&o.error)||'unknown'),'crit'); return; }

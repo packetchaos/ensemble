@@ -57,8 +57,11 @@ def _name_assets(like, path):
 
 
 # ----------------------------------------------------------------- 01 IoT
-_DEVTYPE = re.compile(r"\b(embedded|hypervisor|switch|router|firewall|printer|"
-                      r"webcam|general-purpose|unknown)\b", re.I)
+# every Nessus Device Type (plugin 54615) the Classifier maps (core/classify._NESSUS_DEVTYPE) — build 503
+# added camera / wireless-access-point / scada / voip / storage / mobile / … (they read "unknown" before)
+_DEVTYPE = re.compile(r"Remote device type\s*:\s*(wireless-access-point|load-balancer|packet-shaper|"
+                      r"general-purpose|embedded|hypervisor|switch|router|firewall|printer|webcam|camera|"
+                      r"scada|voip|storage|mobile|proxy|unknown)\b", re.I)
 _VIRTUAL = ("vmware", "virtual", "qemu", "xen", "microsoft corporation")
 _VENDOR_CLASS = [
     ("network", ("ubiquiti", "netgear", "cisco", "tp-link", "mikrotik", "aruba")),
