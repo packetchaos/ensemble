@@ -45,7 +45,7 @@ GATED = "Writes are gated (NAVI_ALLOW_WRITES not set) — the job queues but is 
 PAGES = {
     "agents/compliance/page.html": ["tagCat('Audit Owner')"],
     "agents/compliance_asset/page.html": ["tagCat('Audit-Vuln Link')"],
-    "agents/was/page.html": ["tagCat(c.category", "Email the WAS Overview"],
+    "agents/was/page.html": ["tagCat(c.category"],   # build 513: the email confirm is the shared ✉ tile (console.js hMail),
     "agents/ex_paths/page.html": ["tagCat('Path')", "API.post('count'"],
     "agents/ex_routes/page.html": ["tagCat('Route')", "API.post('count'"],
     "agents/software/page.html": ["tagCat(category)"],

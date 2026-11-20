@@ -55,7 +55,7 @@ details.defs ul{margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--ink-
         <select class="fld" id="tagsel" style="min-width:120px"></select>
         <label class="sub" for="valsel" style="margin:0">Filter</label>
         <select class="fld" id="valsel" style="min-width:130px" title="Scope every number to one value, or All for the whole estate"></select>
-        <button class="btn run sm" id="refresh" data-run>▶ Run</button><span id="dashMail" style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap"></span></span></div>
+        <button class="btn run sm" id="refresh" data-run>▶ Run</button></span></div>
     <div id="flash" class="flash"></div>
     <div id="scope"></div>
     <div id="defs"></div>
@@ -72,7 +72,7 @@ details.defs ul{margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--ink-
 <script src="/static/brand.js"></script>
 <script src="/static/console.js"></script>
 <script>
-const API=agentApi('sla'), EMAIL=agentApi('email');
+const API=agentApi('sla');
 let DASH=null, META=null, HIST=[], TAGKEY=null, TAGVAL='', SEVF=null, SEQ=0, CACHED=false, STALE=false;
 const SEV=[['critical','Critical','var(--crit)'],['high','High','var(--high)'],['medium','Medium','var(--med)'],['low','Low','var(--low)']];
 const SEVC={critical:'var(--crit)',high:'var(--high)',medium:'var(--med)',low:'var(--low)'};
@@ -453,16 +453,18 @@ function emailComponents(){
   }
   return comps;
 }
-hMail(document.getElementById('dashMail'), ()=>{
-  if(!DASH||!(DASH.readiness||{}).sla_set) return null;
-  const scope=DASH.tag_value?(' — '+DASH.tag_key+': '+DASH.tag_value):'';
-  return {title:'SLA Tracker'+scope, subject:'[Tenable] SLA Tracker'+scope, components:emailComponents()};
-}, {mode:'dashboard'});
+
 
 document.getElementById('refresh').onclick=()=>run();
 document.getElementById('tagsel').onchange=e=>{ TAGKEY=e.target.value; TAGVAL=''; run(); };
 document.getElementById('valsel').onchange=e=>{ TAGVAL=e.target.value; run(); };
 mountAgentHeader({id:'sla',icon:'⏱',name:'SLA Tracker',sub:'SLA Tracker · remediation + open-aging vs the SLA clock'});
+// build 513: the page email is the header ✉ tile (pictures of At a glance + every chart, numbers inline)
+try{ hMailAuto({noWidgets:true, payload:()=>{
+  if(!DASH||!(DASH.readiness||{}).sla_set) return null;
+  const scope=DASH.tag_value?(' — '+DASH.tag_key+': '+DASH.tag_value):'';
+  return {title:'SLA Tracker'+scope, subject:'[Tenable] SLA Tracker'+scope, components:emailComponents()};
+}}); }catch(e){}
 /* NO auto-run — the SLA crunch only happens on ▶ Run. Opening the page PEEKS: the cached
    snapshot for your last view renders at once, or a build still running from before is
    re-attached. Peek never computes anything. */

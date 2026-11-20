@@ -1259,31 +1259,106 @@ def dashboard(p):
     to = (p.get("to") or "").strip()
     if not to:
         return {"ok": False, "error": "recipient (to) required"}, 400
-    comps = p.get("components") or []
-    if not comps:
+    comps = [c for c in (p.get("components") or []) if isinstance(c, dict)]
+    title = str(p.get("title") or "Custom Dashboard")[:160]
+    subject = str(p.get("subject") or f"[Tenable] {title}")[:200]
+    pics, err = _dash_pictures(p.get("pictures"), title)
+    if err:
+        return {"ok": False, "error": err}, 400
+    if not comps and not pics:
         return {"ok": False, "error": "no dashboard components to send"}, 400
-    title = p.get("title") or "Custom Dashboard"
-    subject = p.get("subject") or f"[Tenable] {title}"
-    intro = (f"<p style='margin:0 0 12px;color:#475569'>{len(comps)} component(s) from the navi Ensemble "
-             f"Custom Dashboard — a point-in-time navi.db snapshot.</p>")
-    body_inner = intro + "".join(_dash_component(c) for c in comps[:30]) + _sign_html()
+    att_name = ""
+    if len(pics) == 1:
+        att_name = pics[0][0]
+    elif pics:
+        att_name = (re.sub(r"[^A-Za-z0-9]+", "-", title).strip("-")[:60] or "dashboard") + "-charts.zip"
+    pic_line = ""
+    if pics:
+        what = str(p.get("visuals") or "the page's charts")[:120]
+        pic_line = (f"<p style='margin:0 0 12px;color:#475569'><b>{_esc(what[:1].upper() + what[1:])}</b> — as they look on "
+                    f"the page — {'is' if len(pics) == 1 else 'are'} attached as <b>{_esc(att_name)}</b> (mail clients "
+                    f"strip embedded images, so the picture rides as an attachment).</p>")
+    intro = (f"<p style='margin:0 0 12px;color:#475569'>{len(comps)} section(s) of numbers and tables from "
+             f"<b>{_esc(title)}</b> — a point-in-time navi.db snapshot.</p>") if comps else ""
+    body_inner = pic_line + intro + "".join(_dash_component(c) for c in comps[:30]) + _sign_html()
     body = _html_wrap(subject, body_inner)
-    bpath = ""
+    tmpdir = tempfile.mkdtemp(prefix="hounds_dash_")
+    bpath = os.path.join(tmpdir, "body.html")
+    apath = os.path.join(tmpdir, att_name) if att_name else ""
     try:
-        bfd, bpath = tempfile.mkstemp(prefix="hounds_dash_", suffix=".html")
-        with os.fdopen(bfd, "w", encoding="utf-8") as fh:
+        with open(bpath, "w", encoding="utf-8") as fh:
             fh.write(body)
+        if len(pics) == 1:
+            with open(apath, "wb") as fh:
+                fh.write(pics[0][1])
+        elif pics:
+            import zipfile
+            with zipfile.ZipFile(apath, "w", zipfile.ZIP_DEFLATED) as z:
+                for name, blob in pics:
+                    z.writestr(name, blob)
         r = navi_cli.mail(to=to, subject=subject,
-                          message=f"{title} — {len(comps)} component(s). Open in an HTML mail client.",
-                          html=bpath, agent="email")
+                          message=f"{title} — {len(comps)} section(s)"
+                                  + (f"; the charts are attached ({att_name})" if att_name else "")
+                                  + ". Open in an HTML mail client.",
+                          html=bpath, file=apath, agent="email")
     finally:
-        if bpath:
+        for pth in (bpath, apath):
+            if pth:
+                try:
+                    os.unlink(pth)
+                except Exception:
+                    pass
+        try:
+            os.rmdir(tmpdir)
+        except Exception:
+            pass
+    return {"ok": bool(r.get("ok")), "message": r.get("message"), "to": to, "attached": att_name,
+            "pictures": len(pics), "components": len(comps), "cmd": r.get("cmd"), **_gate()}, 200
+
+
+DASH_PICTURES_MAX = 12
+DASH_PICTURES_BYTES = 40 * 1024 * 1024
+
+
+def _dash_pictures(raw, title):
+    """[(file name, bytes)] from the page's rendered pictures — PNG data-URIs (the At a glance
+    widget + every chart, stacked by console.js hDashPictures) or, where the browser can't
+    rasterise HTML (Safari), one self-contained HTML snapshot. (list, error)."""
+    import base64
+    if not raw:
+        return [], ""
+    if not isinstance(raw, list):
+        return [], "pictures must be a list"
+    out, total, seen = [], 0, set()
+    for i, pic in enumerate(raw[:DASH_PICTURES_MAX]):
+        if not isinstance(pic, dict):
+            continue
+        stem = re.sub(r"[^A-Za-z0-9]+", "-", str(pic.get("name") or "").rsplit(".", 1)[0]).strip("-")[:60] \
+            or (re.sub(r"[^A-Za-z0-9]+", "-", title).strip("-")[:50] or "dashboard")
+        png = str(pic.get("png") or "").strip()
+        if png:
+            m = re.match(r"^data:image/png;base64,(.+)$", png, re.S)
+            if not m:
+                return [], "a picture must be a base64 PNG data-URI"
             try:
-                os.unlink(bpath)
+                blob = base64.b64decode(m.group(1), validate=False)
             except Exception:
-                pass
-    return {"ok": bool(r.get("ok")), "message": r.get("message"), "to": to,
-            "components": len(comps), "cmd": r.get("cmd"), **_gate()}, 200
+                return [], "could not decode a picture"
+            if blob[:8] != b"\x89PNG\r\n\x1a\n":
+                return [], "a picture is not a PNG"
+            name = stem + ".png"
+        elif str(pic.get("html") or "").strip():
+            blob, name = str(pic["html"]).encode("utf-8"), stem + ".html"
+        else:
+            continue
+        while name in seen:
+            name = f"{i}-{name}"
+        seen.add(name)
+        total += len(blob)
+        if total > DASH_PICTURES_BYTES:
+            return [], "the pictures are too large to email (over 40 MB) — narrow the page first"
+        out.append((name, blob))
+    return out, ""
 
 
 def widget(p):

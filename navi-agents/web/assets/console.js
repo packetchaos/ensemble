@@ -751,7 +751,8 @@ function _gearStyle(){ if(document.getElementById('hGearCss')) return; const s=d
   document.head.appendChild(s); }
 function _gearLast(){ const g=document.getElementById('hGear'); if(g&&g.parentNode&&g.parentNode.lastElementChild!==g) g.parentNode.appendChild(g);
   const s=document.getElementById('hSearch'); if(s&&g&&g.parentNode&&s.nextElementSibling!==g) g.parentNode.insertBefore(s,g);
-  const d=document.getElementById('hDash'); if(d&&s&&s.parentNode&&d.nextElementSibling!==s) s.parentNode.insertBefore(d,s); }
+  const d=document.getElementById('hDash'); if(d&&s&&s.parentNode&&d.nextElementSibling!==s) s.parentNode.insertBefore(d,s);
+  const m=document.getElementById('hEmailDash'); if(m&&d&&d.parentNode&&m.nextElementSibling!==d) d.parentNode.insertBefore(m,d); }
 /* 📊 Dashboards icon (build 512) — left of the search icon: one click to the Dashboards app. */
 function _onDashPage(){ const p=location.pathname; try{ return DASH_PAGES.some(x=>p===x[1]||p.endsWith(x[1])); }catch(e){ return /\/web\/dashboards\.html$/.test(p); } }
 function mountDashIcon(hdr){
@@ -1616,12 +1617,24 @@ function _hmailTo(v){ try{ if(v!==undefined)localStorage.setItem('naviMailTo',v)
 function hMail(container, getPayload, opts){
   opts=opts||{}; const mode=opts.mode==='dashboard'?'dashboard':opts.mode==='widget'?'widget':'data';
   if(!container)return null; _hmailStyle();
-  const EM=agentApi('email');
+  const EM={post:(a,b)=>jpost('/api/email/'+a,b)};   // not agentApi(): that renames the page header to Notify & Report
   const btn=document.createElement('button'); btn.className='btn ghost sm hmbtn';
   btn.textContent=opts.label||(mode==='dashboard'?'\ud83d\udce7 Email dashboard':'\ud83d\udce7');
   btn.title=mode==='dashboard'?'Email the whole dashboard via Notify & Report (gated)':mode==='widget'?"Email this widget via Notify & Report — the picture (attached) and the list (gated)":"Email this widget's data via Notify & Report (gated)";
+  // build 513: the page-level email is a purple icon tile (like Dashboards · Explorer · Settings);
+  // hovering says exactly what goes out — the At a glance widget + every chart as a picture, the numbers inline
+  if(mode==='dashboard' && opts.tile!==false){ _gearStyle(); btn.id=btn.id||'hEmailDash'; btn.type='button';
+    btn.className='hgear tile hmbtn hmdash'; btn.innerHTML='<img src="/static/icons/email.png?v=1" alt="" draggable="false">';
+    btn.setAttribute('aria-label','Email this page');
+    const tip=()=>{ const v=hDashVisuals(), g=v.filter(x=>x.glance).length, c=v.length-g;
+      btn.title='Email this page via Notify & Report (gated)\n'
+        +'• Attached picture: '+(v.length?(g?(g===1?'the At a glance widget':g+' At a glance panels'):'')+(g&&c?' + ':'')+(c?c+' chart'+(c===1?'':'s'):''):'nothing yet — run the page first')+'\n'
+        +'• In the email body: the key numbers and the tables on this page\n'
+        +'Click to enter a recipient — you confirm before anything is sent.'; };
+    tip(); btn.addEventListener('mouseenter', tip); btn.addEventListener('focus', tip); }
   const row=document.createElement('div'); row.className='hmrow';
   row.innerHTML='<input type="email" placeholder="recipient@company.com"><button class="btn run sm">\u25b6 Send</button><button class="btn ghost sm">\u2715</button><span class="res sub"></span>';
+  if(btn.id==='hEmailDash') row.id='hEmailRow';
   container.appendChild(btn); container.appendChild(row);
   if(mode==='dashboard') _gearLast();            // the ⚙ settings gear stays right of "Email dashboard"
   const inp=row.querySelector('input'), send=row.querySelectorAll('button')[0], cancel=row.querySelectorAll('button')[1], res=row.querySelector('.res');
@@ -1632,10 +1645,17 @@ function hMail(container, getPayload, opts){
     if(mode==='widget') res.innerHTML='<span class="spin"></span> rendering the widget\u2026';
     let payload=null; try{ payload=await getPayload(); }catch(e){ payload=null; }
     if(mode==='widget') res.innerHTML='';
-    const empty=!payload||(mode==='dashboard'?!(payload.components&&payload.components.length)
+    if(mode==='dashboard' && opts.pictures!==false){       // build 513: At a glance + every chart → pictures
+      res.innerHTML='<span class="spin"></span> rendering the page\u2019s charts\u2026';
+      let pics=[]; try{ pics=await hDashPictures(payload&&payload.title); }catch(e){ pics=[]; }
+      res.innerHTML='';
+      const gl=_hmGlanceComponents();
+      if(pics.length||gl.length){ payload=payload||{title:_hmAutoTitle()+' — dashboard', subject:'[Tenable] '+_hmAutoTitle(), components:[]};
+        payload.components=gl.concat((payload.components||[]).filter(c=>!c._glance)); payload.pictures=pics; payload.visuals=_HM_LAST_VIS; } }
+    const empty=!payload||(mode==='dashboard'?!((payload.components&&payload.components.length)||(payload.pictures&&payload.pictures.length))
       :mode==='widget'?!((payload.rows&&payload.rows.length)||payload.png||payload.html):!(payload.rows&&payload.rows.length));
     if(empty){ res.innerHTML='<span style="color:var(--crit)">no data on this '+(mode==='dashboard'?'dashboard':'widget')+' yet \u2014 run the agent first</span>'; return; }
-    if(!confirm('Email '+(mode==='dashboard'?'this dashboard ('+payload.components.length+' component(s))'
+    if(!confirm('Email '+(mode==='dashboard'?'this page \u2014 '+(payload.pictures&&payload.pictures.length?(payload.visuals||'its charts')+' as '+(payload.pictures.length===1?'one attached picture':payload.pictures.length+' pictures (zipped)')+', plus ':'')+payload.components.length+' section(s) of numbers and tables in the body'
         :mode==='widget'?'this widget \u2014 the picture ('+(payload.png?'PNG':'HTML')+' attached) and the list ('+(payload.rows||[]).length+' row(s))'
         :'this widget ('+payload.rows.length+' row(s))')+' to '+to+'? This is a real send.')) return;
     if(mode!=='dashboard'&&!payload.columns&&payload.rows&&payload.rows[0]&&typeof payload.rows[0]==='object') payload.columns=Object.keys(payload.rows[0]);
@@ -1643,7 +1663,7 @@ function hMail(container, getPayload, opts){
     send.disabled=true; res.innerHTML='<span class="spin"></span> sending\u2026';
     let o; try{ o=await EM.post(mode, Object.assign({}, payload, {to:to, confirm:true})); }catch(e){ o={ok:false,error:e.message}; }
     send.disabled=false;
-    if(o&&o.ok){ res.innerHTML='<span style="color:var(--ok)">\u2713 sent to '+esc(to)+(mode==='widget'?(' \u2014 '+esc(o.attached||'picture')+' attached \u00b7 '+(o.rows_inline||0)+' row(s) inline'):mode==='data'?(' \u2014 '+(o.mode==='attachment'?('CSV attached ('+esc(o.attached||'data.csv')+')'):((o.rows||payload.rows.length)+' row(s) inline'))):(' \u2014 '+(o.components||payload.components.length)+' component(s)'))+'</span>'; }
+    if(o&&o.ok){ res.innerHTML='<span style="color:var(--ok)">\u2713 sent to '+esc(to)+(mode==='widget'?(' \u2014 '+esc(o.attached||'picture')+' attached \u00b7 '+(o.rows_inline||0)+' row(s) inline'):mode==='data'?(' \u2014 '+(o.mode==='attachment'?('CSV attached ('+esc(o.attached||'data.csv')+')'):((o.rows||payload.rows.length)+' row(s) inline'))):(' \u2014 '+(o.components||payload.components.length)+' section(s)'+(o.attached?' \u00b7 '+esc(o.attached)+' attached':'')))+'</span>'; }
     else if(o&&o.blocked){ res.innerHTML='<span style="color:var(--cx-e7c66b,#e7c66b)">email disabled \u2014 '+esc(o.reason||'set NAVI_ALLOW_WRITES=1 and NAVI_EMAIL=1')+'</span>'; }
     else { res.innerHTML='<span style="color:var(--crit)">\u2717 '+esc((o&&(o.error||o.message))||'failed')+'</span>'; }
   };
@@ -1769,6 +1789,89 @@ function hSnapshot(el, opts){
     }catch(e){ resolve({png:null, html:''}); }
   });
 }
+/* ===== Page email pictures (build 513): what the header ✉ tile attaches =====
+   hDashVisuals() → [{el, title, glance}] in page order: every At a glance widget (renderGlance → .glx),
+   every hWidget's picture, every element a page marks data-email-visual, and any other chart on the
+   page (svg / canvas / role="img" of chart size) — never the header, sidebar, menus or icons.
+   hDashPictures() snapshots them (hSnapshot) and stacks them, titled, into one tall PNG per ~11,000 px
+   (a page with many charts gets a few, zipped by Notify & Report). */
+const _HW_REG=[];
+let _HM_LAST_VIS='';
+const _HM_VIS_SKIP='header, nav, #app-header, #secNav, .secnav, .hmrow, .hw-acts, .wmenu, .pop, .modal-bg, .tray, .side-collapse, button, .btn';
+function _hmVisible(el){ if(!el||!el.isConnected) return false; if(el.offsetParent===null && getComputedStyle(el).position!=='fixed') return false;
+  const r=el.getBoundingClientRect(); return r.width>=40 && r.height>=20 && getComputedStyle(el).visibility!=='hidden'; }
+function _hmTitleFor(el){
+  let n=el; for(let i=0;i<7&&n&&n!==document.body;i++){
+    const h=n.querySelector&&n.querySelector(':scope > h2, :scope > h3, :scope > .ct, :scope > .toolbar h2, :scope > .toolbar h3, :scope > div > h2');
+    if(h&&h.innerText.trim()){ const c=h.cloneNode(true); c.querySelectorAll('.sn-back, button, .hw-acts').forEach(x=>x.remove());
+      return c.innerText.replace(/\s+/g,' ').replace(/↑\s*Sections/g,'').replace(/(?:⛶|📧|✕)/g,'').trim(); }
+    n=n.parentElement; }
+  return 'Chart'; }
+function hDashVisuals(){
+  const out=[], taken=[];
+  const add=(el,title,glance)=>{ if(!el||!_hmVisible(el)) return;
+    if(taken.some(t=>t===el||t.contains(el)||el.contains(t))) return;
+    taken.push(el); out.push({el, title:(title||_hmTitleFor(el)).slice(0,120), glance:!!glance}); };
+  document.querySelectorAll('.glx').forEach(g=>{ if(g.closest(_HM_VIS_SKIP)) return;
+    const t=_hmTitleFor(g); add(g, (t&&t!=='Chart')?t:'At a glance', true); });
+  _HW_REG.forEach(r=>{ let el=null; try{ el=r.visual?r.visual():null; }catch(e){ el=null; } add(el||r.section, r.title); });
+  document.querySelectorAll('[data-email-visual], svg, canvas, [role="img"]').forEach(el=>{
+    if(el.closest(_HM_VIS_SKIP) || el.closest('.glx')) return;
+    const marked=el.hasAttribute('data-email-visual'); const r=el.getBoundingClientRect();
+    if(!marked && (r.width<140 || r.height<60)) return;
+    if(!marked && el.tagName.toLowerCase()==='svg' && el.parentElement && el.parentElement.closest('svg')) return;
+    const box=marked?el:(el.closest('[data-email-visual], .panel, figure, .chart, .chartwrap')||el.parentElement);
+    add(box, marked?(el.getAttribute('data-email-visual')||''):''); });
+  out.sort((a,b)=>(a.el.compareDocumentPosition(b.el)&Node.DOCUMENT_POSITION_FOLLOWING)?-1:1);
+  return out.slice(0,24);
+}
+function _hmGlanceComponents(){
+  const comps=[];
+  document.querySelectorAll('.glx').forEach(g=>{ if(g.closest(_HM_VIS_SKIP)) return;
+    g.querySelectorAll(':scope > .glx-p').forEach(p=>{
+      const k=p.querySelector(':scope > .glx-k'); const title='At a glance — '+(k?k.innerText.replace(/\s+/g,' ').trim():'');
+      const row={};
+      p.querySelectorAll(':scope > .glx-h, :scope > .glx-cs > .glx-c').forEach(x=>{ const b=x.querySelector('b'), l=x.querySelector('.glx-l');
+        const lab=(l?l.innerText:'').replace(/\s+/g,' ').trim(); if(lab&&b) row[lab]=b.innerText.replace(/\s+/g,' ').trim(); });
+      if(Object.keys(row).length) comps.push({title, viz:'kpi', columns:Object.keys(row), rows:[row], _glance:true});
+      const rk=p.querySelectorAll(':scope > .glx-rk .glx-r');
+      if(rk.length){ const rows=[...rk].map(r=>({item:((r.querySelector('.glx-l')||{}).innerText||'').trim(), value:((r.querySelector('b')||{}).innerText||'').trim()}));
+        const rt=p.querySelector(':scope > .glx-rk .glx-rt');
+        comps.push({title:title+(rt?' · '+rt.innerText.trim():''), viz:'table', columns:['item','value'], rows, _glance:true}); }
+    }); });
+  return comps.map(c=>{ const o=Object.assign({},c); delete o._glance; o._glance=true; return o; });
+}
+function _hmLoad(src){ return new Promise(res=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src; }); }
+async function hDashPictures(title){
+  const vis=hDashVisuals(); _HM_LAST_VIS='';
+  if(!vis.length) return [];
+  const g=vis.filter(v=>v.glance).length, c=vis.length-g;
+  _HM_LAST_VIS=(g?(g===1?'the At a glance widget':g+' At a glance panels'):'')+(g&&c?' + ':'')+(c?c+' chart'+(c===1?'':'s'):'');
+  const snaps=[]; for(const v of vis){ const s=await hSnapshot(v.el,{}); snaps.push({title:v.title, png:s.png, html:s.html}); }
+  const pngs=snaps.filter(s=>s.png);
+  const safe=String(title||_hmAutoTitle()||'dashboard').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,50)||'dashboard';
+  if(!pngs.length){                                       // Safari: no canvas from HTML → one self-contained HTML page
+    const body=snaps.map(s=>'<h2 style="font:700 18px system-ui;margin:22px 0 8px">'+esc(s.title)+'</h2>'+((/<body[^>]*>([\s\S]*)<\/body>/i.exec(s.html)||[])[1]||'')).join('');
+    return body?[{name:safe+'.html', html:'<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+esc(title||'')+'</title></head><body style="margin:0;padding:20px;background:'+(getComputedStyle(document.body).backgroundColor||'#fff')+'">'+body+'</body></html>'}]:[]; }
+  const imgs=[]; for(const s of pngs){ const i=await _hmLoad(s.png); if(i&&i.naturalWidth) imgs.push({t:s.title, i}); }
+  const W=1600, PAD=36, TH=46, HEAD=86, MAXH=11000;
+  const bg=getComputedStyle(document.body).backgroundColor||'#ffffff', fg=getComputedStyle(document.body).color||'#111111';
+  const pages=[]; let cur=[], h=HEAD;
+  imgs.forEach(x=>{ let dw=Math.min(W-2*PAD, x.i.naturalWidth), dh=x.i.naturalHeight*dw/x.i.naturalWidth;
+    if(dh>MAXH-HEAD-TH-PAD){ dh=MAXH-HEAD-TH-PAD; dw=x.i.naturalWidth*dh/x.i.naturalHeight; }
+    const blk=TH+dh+PAD; if(cur.length && h+blk>MAXH){ pages.push({items:cur,h}); cur=[]; h=HEAD; }
+    cur.push({t:x.t, i:x.i, dw, dh}); h+=blk; });
+  if(cur.length) pages.push({items:cur,h});
+  const stamp=new Date().toLocaleString(), head=String(title||document.title||'');
+  return pages.map((pg,pi)=>{ const cv=document.createElement('canvas'); cv.width=W; cv.height=Math.ceil(pg.h);
+    const ctx=cv.getContext('2d'); ctx.fillStyle=bg; ctx.fillRect(0,0,cv.width,cv.height); ctx.fillStyle=fg; ctx.textBaseline='top';
+    ctx.font='800 28px system-ui, Segoe UI, Arial, sans-serif'; ctx.fillText(head.slice(0,90), PAD, 24);
+    ctx.globalAlpha=.65; ctx.font='14px system-ui, Segoe UI, Arial, sans-serif';
+    ctx.fillText('navi Ensemble · '+stamp+(pages.length>1?' · part '+(pi+1)+' of '+pages.length:''), PAD, 58); ctx.globalAlpha=1;
+    let y=HEAD; pg.items.forEach(it=>{ ctx.fillStyle=fg; ctx.font='700 19px system-ui, Segoe UI, Arial, sans-serif'; ctx.fillText(it.t.slice(0,110), PAD, y+12);
+      ctx.drawImage(it.i, PAD, y+TH, it.dw, it.dh); y+=TH+it.dh+PAD; });
+    return {name:safe+(pages.length>1?'-'+(pi+1):'')+'.png', png:cv.toDataURL('image/png')}; });
+}
 function _hwStyle(){ if(document.getElementById('hwStyle')) return;
   const st=document.createElement('style'); st.id='hwStyle';
   st.textContent='.hw-acts{float:right;display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end;margin:0 0 6px 10px;max-width:100%;position:relative;z-index:2}'
@@ -1802,6 +1905,7 @@ function hWidget(section, opts){
   if(!section || section.querySelector(':scope > .hw-acts')) return;
   opts=opts||{}; _hwStyle(); _hmailStyle();
   const box=document.createElement('div'); box.className='hw-acts';
+  _HW_REG.push({section, title:opts.title, visual:opts.visual});
   box.appendChild(hFull(section, opts));
   section.insertBefore(box, section.firstChild);
   hMail(box, async()=>{
@@ -1826,12 +1930,14 @@ function hMailAuto(opts){
   let host=opts.header;
   if(!host){ const hdr=document.querySelector('#app-header, header.top, header');
     if(hdr){ host=hdr.querySelector('.toolbar')||hdr; } }
-  if(host && !opts.noDash && !host.querySelector('.hmbtn')){
+  if(host && !opts.noDash && !host.querySelector('.hmdash')){
     hMail(host, ()=>{
+      if(typeof opts.payload==='function'){ const pl=opts.payload(); if(pl) return pl; }
       const comps=_hmKpiComponents().concat(_hmTableComponents(opts.tableSel,opts.skip));
-      return comps.length?{title:base+' — dashboard',subject:'[Tenable] '+base,components:comps}:null;
-    }, {mode:'dashboard', label:'📧 Email dashboard'});
+      return {title:base+' — dashboard',subject:'[Tenable] '+base,components:comps};
+    }, {mode:'dashboard'});
   }
+  if(opts.noWidgets) return;
   // per-widget buttons — attach to each table's nearest heading container
   const attach=()=>{
     document.querySelectorAll(opts.tableSel||'table').forEach(t=>{

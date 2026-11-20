@@ -42,12 +42,7 @@ a.tchip{text-decoration:none;cursor:pointer} a.tchip:hover{border-color:var(--ac
       <p class="sub" style="margin:2px 0 0">Every web app navi has scanned, consolidated: severity, the OWASP Top-10 profile, technology inventory, and scan coverage. Click an app for its full <b>App Report</b>.</p></div>
       <span style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <a class="btn ghost sm" href="/agents/was/report.html" title="Per-app deep-dive">🔬 App Report →</a>
-        <button class="btn run sm" id="refresh" data-run>▶ Run</button>
-        <button class="btn sm" id="emailBtn" title="Email this dashboard (gated)">📧 Email</button></span></div>
-    <div id="emailForm" style="display:none;margin-top:8px;gap:6px;align-items:center;flex-wrap:wrap">
-      <input id="emailTo" class="fld" style="min-width:240px;padding:8px 10px" placeholder="recipient email">
-      <button class="btn run sm" id="emailSend">📧 Send (gated)</button>
-      <button class="btn ghost sm" id="emailCancel">cancel</button><span id="emailRes" class="sub"></span></div>
+        <button class="btn run sm" id="refresh" data-run>▶ Run</button></span></div>
     <div id="flash" class="flash"></div>
   </section>
   <div id="body"></div>
@@ -56,7 +51,7 @@ a.tchip{text-decoration:none;cursor:pointer} a.tchip:hover{border-color:var(--ac
 <script src="/static/brand.js"></script>
 <script src="/static/console.js"></script>
 <script>
-const API=agentApi('was'), EMAIL=agentApi('email');
+const API=agentApi('was');
 let OV=null, TAGS=null, TAGW=null, TAGDIM='owasp';
 const SEV=[['critical','Critical','var(--crit)'],['high','High','var(--high)'],['medium','Medium','var(--med)'],['low','Low','var(--low)'],['info','Info','var(--info)']];
 const fnum=n=>(n==null?'—':Number(n).toLocaleString());
@@ -234,25 +229,10 @@ function emailComponents(){
      rows:rows.slice(0,25).map(a=>({app:a.name,target:a.target,crit:a.critical,high:a.high,med:a.medium,low:a.low,info:a.info,findings:a.findings_total}))},
   ];
 }
-document.getElementById('emailBtn').onclick=()=>{ const f=document.getElementById('emailForm'); const s=f.style.display==='none'; f.style.display=s?'flex':'none'; if(s)document.getElementById('emailTo').focus(); };
-document.getElementById('emailCancel').onclick=()=>{ document.getElementById('emailForm').style.display='none'; document.getElementById('emailRes').innerHTML=''; };
-async function sendEmail(){
-  const to=(document.getElementById('emailTo').value||'').trim(), res=document.getElementById('emailRes');
-  if(!to){ res.innerHTML='<span style="color:var(--crit)">enter a recipient</span>'; return; }
-  if(!OV||!OV.available){ res.innerHTML='<span style="color:var(--crit)">no data to send</span>'; return; }
-  if(!confirm('Email the WAS Overview (4 components) to '+to+'? This is a real send.'
-    +((TAGW&&TAGW.enabled)?'':'\n\nEmail is gated (NAVI_ALLOW_WRITES / NAVI_EMAIL not set) — the send will be refused.'))) return;
-  res.innerHTML='<span class="spin"></span> sending…';
-  let o; try{ o=await EMAIL.post('dashboard',{to,title:'WAS Overview — Arachne',subject:'[Tenable] WAS Overview (Arachne)',components:emailComponents(),confirm:true}); }catch(e){ o={ok:false,error:e.message}; }
-  if(o&&o.ok) res.innerHTML='<span style="color:var(--ok)">✓ sent to '+esc(to)+'</span>';
-  else if(o&&o.blocked) res.innerHTML='<span style="color:var(--cx-e7c66b)">email disabled — '+esc(o.reason||'set NAVI_ALLOW_WRITES=1 and NAVI_EMAIL=1')+'</span>';
-  else res.innerHTML='<span style="color:var(--crit)">✗ '+esc((o&&(o.error||o.message))||'failed')+'</span>';
-}
-document.getElementById('emailSend').onclick=sendEmail;
-document.getElementById('emailTo').addEventListener('keydown',e=>{ if(e.key==='Enter')sendEmail(); });
 document.getElementById('refresh').onclick=run;
 mountAgentHeader({id:'was',icon:'🕸',name:'WAS Overview',sub:'Arachne · web-app scanning, consolidated'});
-try{ hMailAuto({noDash:true}); }catch(e){}
+// build 513: the page email is the header ✉ tile — At a glance + every chart as pictures, these numbers inline
+try{ hMailAuto({payload:()=>(OV&&OV.available)?{title:'WAS Overview — Arachne',subject:'[Tenable] WAS Overview (Arachne)',components:emailComponents()}:null}); }catch(e){}
 /* explicit-run like every specialist — returning visits are restored by the shared page cache */
 document.getElementById('body').innerHTML='<section class="card"><div class="setupcard"><div class="big">Press ▶ Run</div><p class="sub">Summarises Tenable WAS findings in navi.db — apps, severities, OWASP categories and taggable assets. Your last run is kept on the server, so coming back restores it instantly (and Run the Ensemble can run it for you).</p></div></section>';
 </script>

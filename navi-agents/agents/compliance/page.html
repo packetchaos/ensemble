@@ -116,7 +116,7 @@ function render(){
   // status distribution — each bar opens the assets behind it
   const smax=Math.max(1,...STAT.map(([k])=>bs[k]||0));
   const SLINK={failed:['st:failed',nFail],warning:['st:warning',nWarn]};   // passed/unknown cover every asset — no narrower group
-  h+='<section class="card" id="secStatus" data-nav="Results by status" data-nav-icon="🚦"><h2 style="margin:0 0 2px;font-size:17px">🚦 Results by status</h2><p class="seclbl">every check × asset'+esc(OFTAG())+' · click a bar to open those assets in the Deep-Dive'+(SC?' (whole estate)':'')+'</p>';
+  h+='<section class="card" id="secStatus" data-email-visual="Results by status" data-nav="Results by status" data-nav-icon="🚦"><h2 style="margin:0 0 2px;font-size:17px">🚦 Results by status</h2><p class="seclbl">every check × asset'+esc(OFTAG())+' · click a bar to open those assets in the Deep-Dive'+(SC?' (whole estate)':'')+'</p>';
   STAT.forEach(([k,lbl,c])=>{ const L=SLINK[k];
     const line=bar(lbl,bs[k]||0,smax,c,fnum(bs[k]||0)+(L?' · '+nTxt(L[1]):''));
     h+=L?`<a class="barlink" href="${esc(deepFor(L[0]))}" title="${esc('Open the '+nTxt(L[1])+' with '+lbl.toLowerCase()+' checks in the Deep-Dive')}">${line}</a>`:line; });
@@ -131,7 +131,7 @@ function render(){
         +`<td class="mono" style="color:var(--crit);font-weight:700">${fnum(c.failed)}</td><td class="mono">${fnum(c.passed)}</td><td class="mono">${fnum(c.warning)}</td></tr>`).join('')
       +'</tbody></table></div>':'<p class="sub">No failing controls.</p>')+'</section>';
   const fw=OV.frameworks||[]; const fmax=Math.max(1,...fw.map(f=>f.failed||0));
-  h+='<section class="card" id="secFw" data-nav="Frameworks" data-nav-icon="🏛" style="margin:0"><h2 style="margin:0 0 2px;font-size:17px">🏛 Framework exposure'+esc(OFTAG())+'</h2><p class="seclbl">failed control-instances per framework'+esc(OFTAG())+' · click for the failing assets · ↗ for its dashboard'+(SC?' (both: whole estate)':'')+'</p>'
+  h+='<section class="card" id="secFw" data-email-visual="Framework exposure" data-nav="Frameworks" data-nav-icon="🏛" style="margin:0"><h2 style="margin:0 0 2px;font-size:17px">🏛 Framework exposure'+esc(OFTAG())+'</h2><p class="seclbl">failed control-instances per framework'+esc(OFTAG())+' · click for the failing assets · ↗ for its dashboard'+(SC?' (both: whole estate)':'')+'</p>'
     +(fw.length?fw.slice(0,12).map(f=>
       `<div class="fwline"><a class="barlink" href="${esc(deepFor('fw:'+f.framework))}" title="Open the assets failing a ${esc(f.framework)} control in the Deep-Dive">${bar(f.framework,f.failed,fmax,'var(--accent)',fnum(f.failed))}</a>`
       +`<a class="rlink" href="/web/compliancedash.html?framework=${encodeURIComponent(f.framework)}" title="Open the Compliance Dashboard focused on ${esc(f.framework)}">↗</a></div>`).join('')

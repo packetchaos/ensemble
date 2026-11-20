@@ -320,6 +320,9 @@ function render(){
   $('board').innerHTML=boardHtml();
   renderScentGlance(); renderNext(); renderClock(); renderRed(); renderExposure(); renderWhere(); renderConverge(); renderBlind(); renderPack();
   mountSectionNav();
+  // build 513: the header ✉ tile pictures every chart here — the div-drawn ones (waffle, treemap,
+  // footprint, expiry wall, reduction) are marked so the page email can find them
+  document.querySelectorAll('#board .panel, #certtl, #red').forEach(e=>e.setAttribute('data-email-visual',''));
   setNavCount('secConverge',(D.convergence||[]).length); setNavCount('secNext',(D.next||[]).length);
   const C=(D.coverage||[]).filter(c=>c.kind!=='live'); setNavCount('secPack',C.filter(c=>c.status==='fresh').length+'/'+C.length);
   Object.keys(SECT).forEach(id=>{ const box=$('act_'+id); if(box&&!box.querySelector('.hmbtn'))
@@ -464,6 +467,10 @@ document.addEventListener('click',e=>{
 });
 let _rz=null; window.addEventListener('resize',()=>{ clearTimeout(_rz); _rz=setTimeout(treemap,150); });
 mountAgentHeader({id:'insights',icon:'🐝',name:'Ensemble Report',sub:'Ensemble Report · the estate brain'});
+// build 513: header ✉ tile — At a glance + every chart as pictures; each section's numbers inline
+try{ hMailAuto({noWidgets:true, payload:()=>D&&D.glance?{title:'Ensemble Report', subject:'[Tenable] Ensemble Report',
+  components:Object.keys(SECT).filter(id=>id!=='secGlance').map(id=>{ let rows=[]; try{ rows=SECT[id].rows()||[]; }catch(e){}
+    return {title:SECT[id].title, viz:'table', columns:COLS, rows}; }).filter(c=>c.rows.length)}:null}); }catch(e){}
 peek();
 </script>
 </body></html>

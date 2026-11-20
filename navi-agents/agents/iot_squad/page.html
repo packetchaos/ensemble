@@ -8,6 +8,15 @@
 .agent{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel)}
 .agent{min-width:0}.agent .ah{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.agent .ico{width:30px;height:30px;border-radius:8px;background:var(--panel-2);display:flex;align-items:center;justify-content:center;border:1px solid var(--line)}
 .agent .nm{font-weight:700;font-size:13px}.agent .ds{color:var(--mut);font-size:11px;margin-top:6px}
+/* build 513: the pipeline is one compact line of steps (was four tall cards) — same facts: step, status, count */
+.pipe{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-top:8px;font-size:12px}
+.pstep{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border:1px solid var(--line);border-radius:999px;background:var(--panel-2);white-space:nowrap}
+.pstep b{font-weight:700}.pstep .pv{color:var(--ink-2)}
+.pstep .pd{width:8px;height:8px;border-radius:50%;background:var(--ink-3);flex:0 0 auto}
+.pstep.complete .pd{background:var(--ok)}.pstep.error .pd{background:var(--crit)}.pstep.error{border-color:var(--crit)}
+.pstep.running .pd{background:transparent;border:2px solid var(--line);border-top-color:var(--accent);animation:pspin 1s linear infinite;width:6px;height:6px}
+@keyframes pspin{to{transform:rotate(360deg)}}
+.parr{color:var(--ink-3)}
 .plink,.applink{color:var(--accent);text-decoration:none}.plink:hover,.applink:hover{text-decoration:underline}.applink{font-weight:600}
 .kind{font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.3px}
 .k-confirm{background:rgba(52,211,153,.16);color:var(--ok)}.k-cross{background:rgba(62,166,255,.15);color:var(--accent)}.k-new{background:rgba(231,198,107,.16);color:var(--cx-e7c66b)}
@@ -37,14 +46,14 @@
 
   <section class="card">
     <div class="toolbar"><div><h2 style="margin:0"><img class="bicon" src="/static/icons/iot_squad.png?v=1" alt="" aria-hidden="true" draggable="false"> IoT Discovery <span class="sub" style="font-weight:400">· Argos watches the unmanageable</span></h2>
-      <p class="sub" style="margin:2px 0 0">Discovery → Carrier harvest → Cross-term hunt → QA. Two human gates: IoT tag approval, new-detection approval.</p></div>
+      <p class="sub" style="margin:2px 0 0">Four steps, shown live below. Two human gates: IoT tag approval, new-detection approval.</p></div>
       <button class="btn run sm" id="runIot" data-run style="margin-left:auto">▶ Run</button></div>
     <div class="toolbar" style="margin:8px 0 2px;gap:16px;flex-wrap:wrap">
       <label class="switch"><input type="checkbox" id="usePack"> Use known-IoT term pack <span id="packMeta" class="sub"></span></label>
       <span id="optMeta" class="sub mono"></span>
     </div>
     <div class="note" id="packNote" style="display:none">The term pack is an optional, curated vocabulary of known IoT/OT vendors (Sonos, Hikvision, Siemens, Synology…). Off = hunt only your registry's own terms. On = also sweep carrier plugins for the whole pack, so a device you never defined (e.g. Sonos) can surface for the first time. A bigger authoritative list can replace it via <span class="mono">IOT_TERM_PACK_PATH</span>. Everything it surfaces is still gated below.</div>
-    <div class="agrid" id="pipeline" style="margin-top:10px"></div>
+    <div class="pipe" id="pipeline" role="list" aria-label="Pipeline status"></div>
     <div id="flash" class="flash"></div>
   </section>
 
@@ -162,7 +171,6 @@ const fnum=n=>(n==null?'—':Number(n).toLocaleString());
 const KINDS=new Set(['confirm','cross','new']);
 const argosHref=u=>'/agents/argos/page.html?target='+encodeURIComponent(u||'');
 
-function badge(s){return s==='running'?'<span class="badge b-running"><span class="spin"></span>Running</span>':s==='complete'?'<span class="badge b-applied">Done</span>':s==='error'?'<span class="badge b-pending" style="color:var(--crit)">Error</span>':'<span class="badge b-pending">Ready</span>';}
 function renderPipeline(running){
   const ag=(IOT&&IOT.qa&&IOT.qa.agents)||{}, cov=(IOT&&IOT.qa&&IOT.qa.coverage)||{};
   const nDev=IOT?devRows().length:null;
@@ -170,7 +178,9 @@ function renderPipeline(running){
     ['🔎','2 · Carrier harvest',ag.carrier,IOT?fnum(cov.carriers)+' carrier plugin'+(cov.carriers===1?'':'s'):''],
     ['🕸️','3 · Cross-term hunt',ag.xterm,IOT?fnum(cov.proposals)+' proposal'+(cov.proposals===1?'':'s')+' · '+fnum(cov.combinations_tested)+' tested':''],
     ['🤖','4 · QA + coverage',IOT?'complete':'',IOT?fnum(((IOT.qa||{}).flags||[]).length)+' QA flag'+(((IOT.qa||{}).flags||[]).length===1?'':'s'):'']];
-  document.getElementById('pipeline').innerHTML=steps.map(s=>`<div class="agent"><div class="ah"><div class="ico">${s[0]}</div><div class="nm">${esc(s[1])}</div><span style="margin-left:auto">${badge(running?'running':(s[2]||(IOT?'complete':'ready')))}</span></div>${s[3]?`<div class="ds">${esc(s[3])}</div>`:''}</div>`).join('');}
+  const lbl={running:'running',complete:'done',error:'error',ready:'ready'};
+  document.getElementById('pipeline').innerHTML=steps.map(s=>{ const st=running?'running':(s[2]||(IOT?'complete':'ready'));
+    return `<span class="pstep ${esc(st)}" role="listitem" title="${esc(s[1])} — ${esc(lbl[st]||st)}${s[3]?' · '+esc(s[3]):''}"><span class="pd" aria-hidden="true"></span><span aria-hidden="true">${s[0]}</span><b>${esc(s[1].replace(/^\d · /,''))}</b>${s[3]?`<span class="pv">${esc(s[3])}</span>`:''}<span class="sr-only" style="position:absolute;left:-9999px">${esc(lbl[st]||st)}</span></span>`; }).join('<span class="parr" aria-hidden="true">›</span>');}
 
 async function runIot(){
   const rb=document.getElementById('runIot'); rb.disabled=true; renderPipeline(true);
