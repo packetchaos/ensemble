@@ -204,7 +204,7 @@ function renderCves(){
   hPaginate('cveTbl', rows, v=>`<tr><td class="mono"><a class="plink" href="https://nvd.nist.gov/vuln/detail/${esc(v.cve)}" target="_blank" rel="noopener">${esc(v.cve)}</a></td>`+
     `<td>${esc(v.vendor)} · ${esc(v.product)}</td><td style="max-width:320px">${esc(v.name)}</td><td class="mono">${esc(v.date_added||'')}</td><td class="mono">${esc(v.due_date||'')}</td>`+
     `<td>${stBadge(v.bucket,v.days_left)}</td><td><b>${N(v.assets)}</b></td><td>${v.crown_assets?`<b style="color:var(--crit)">${N(v.crown_assets)}</b>`:'0'}</td>`+
-    `<td>${c2Link('remediate',{cve:v.cve,source:'CISA KEV'},'🛠')} ${v.ransomware?'<span title="CISA: known ransomware campaign use">🔒</span>':''}${v.xref_findings===0?' <span class="flag" title="no CISA-KNOWN-EXPLOITED xref on the finding">not xref\'d</span>':''}</td></tr>`,
+    `<td>${c2Link('remediate',{cve:v.cve,source:'CISA KEV'},'🛠')} <a href="/agents/scan_confirm/page.html?cve=${encodeURIComponent(v.cve)}" title="Confirm the fix with a targeted scan (Scan Confirmation — opens pre-filled, runs nothing)" style="text-decoration:none">📡</a> ${v.ransomware?'<span title="CISA: known ransomware campaign use">🔒</span>':''}${v.xref_findings===0?' <span class="flag" title="no CISA-KNOWN-EXPLOITED xref on the finding">not xref\'d</span>':''}</td></tr>`,
     {cols:9, empty:'<tr><td colspan="9" class="sub">'+((K.cves||[]).length?'Nothing matches the filter.':(tagScope()?'No CISA KEV CVEs on the assets tagged '+esc(tagScopeLabel())+'.':'No CISA KEV CVEs on assets in navi.db.'))+'</td></tr>'});
   setNavCount('secCves', N((K.cves||[]).length));
 }

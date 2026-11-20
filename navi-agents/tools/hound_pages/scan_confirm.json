@@ -5,11 +5,15 @@
  "tagline": "Prove the fix — with Tenable's own scan of exactly what you changed.",
  "lore": "",
  "problem": "After a patch, the finding stays open until the next scheduled scan reaches that host — days, sometimes weeks. Building a one-off verification scan by hand means picking plugins, targets, a scanner and a credential in the UI, waiting, syncing navi.db and then comparing before and after yourself.",
- "does": "Scan Confirmation takes plugin IDs and assets (IPs, asset UUIDs or a tag), plans the smallest set of `navi scan create` scans, checks everything that could go wrong before anything runs, and — after one confirm — launches them, streams every navi command into a live CLI window, waits for the scans, runs a scoped navi.db sync and gives one verdict per asset × plugin: confirmed fixed, still vulnerable, not vulnerable, newly found, inconclusive (no login), not assessed or pending.",
+ "does": "Scan Confirmation starts from what you're doing: confirm a fix, scan new hosts, scan new hosts with an existing scan's settings, or re-run a scan. To confirm a fix it searches navi.db for what's open (by CVE, plugin or tag), plans the smallest set of `navi scan create` scans, checks everything that could go wrong, and — after one confirm — launches them, streams every navi command into a live window, waits, syncs navi.db and gives a result per host × plugin with the next step for anything undecided.",
  "glance": {
   "caption": "Scan Confirmation's At a glance: scans to launch, targets and plugins, assets excluded, open findings in the baseline, local-check plugins and whether a credential is set — then the verdicts once the scans finish."
  },
  "capabilities": [
+  [
+   "Start from what's open",
+   "search navi.db by CVE, plugin or tag, see how many hosts have each finding open, pick the plugins — the hosts fill in for you. CISA KEV hands a CVE straight over."
+  ],
   [
    "A plan you can read",
    "one row per scan with its exact (masked) navi command — one plugin per scan, targets chunked, reuse of an identical earlier scan when there is one."

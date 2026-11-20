@@ -27,10 +27,10 @@ c.executescript("""
 CREATE TABLE assets(uuid TEXT, ip_address TEXT, hostname TEXT, fqdn TEXT, agent_uuid TEXT, acr TEXT, last_found TEXT);
 CREATE TABLE vulns(asset_uuid TEXT, plugin_id TEXT, plugin_name TEXT, plugin_family TEXT, state TEXT, last_found TEXT,
   scan_uuid TEXT, output TEXT, severity TEXT);
-CREATE TABLE plugins(plugin_id TEXT, name TEXT);
+CREATE TABLE plugins(plugin_id TEXT, name TEXT, cves TEXT);
 CREATE TABLE fixed(asset_uuid TEXT, plugin_id TEXT, last_fixed TEXT, state TEXT);
 CREATE TABLE tags(asset_uuid TEXT, tag_key TEXT, tag_value TEXT);
-INSERT INTO plugins VALUES ('1001','Apache httpd < 2.4.60'),('2002','Ubuntu USN-7000-1 openssl');
+INSERT INTO plugins VALUES ('1001','Apache httpd < 2.4.60','CVE-2024-38475'),('2002','Ubuntu USN-7000-1 openssl','CVE-2024-5535');
 """)
 A = {i: "aaaaaaaa-0000-0000-0000-00000000000%d" % i for i in range(1, 8)}
 for i in range(1, 7):
@@ -223,6 +223,42 @@ check("scan_confirm" in rec["excluded"] and not any(x.get("agent") == "scan_conf
       "Run the Ensemble excludes Scan Confirmation")
 check("['📡','Scan Confirmation','/agents/scan_confirm/page.html']" in js
       and js.index("'Scan Confirmation'") < js.index("['📜','Automation Station'"), "sidebar: Operationalize, before Automation Station")
+
+# ── build 518: start from open findings ─────────────────────────────────────────────────────
+o_, _ = api.open_findings({"by": "cve", "q": "cve-2024-38475"})
+check(o_["ok"] and [p_["id"] for p_ in o_["plugins"]] == [1001] and o_["plugins"][0]["open_assets"] == 2,
+      "518: a CVE finds its plugin and how many hosts have it open")
+o_, _ = api.open_findings({"by": "plugin", "q": "openssl"})
+check(o_["ok"] and [p_["id"] for p_ in o_["plugins"]] == [2002] and o_["plugins"][0]["local"], "518: plugin name search; local checks flagged")
+o_, _ = api.open_findings({"by": "tag", "tag": {"category": "Patch Wave", "value": "Tuesday"}})
+check(o_["ok"] and {p_["id"] for p_ in o_["plugins"]} == {1001, 2002} and o_["scoped"], "518: what's open on a tag")
+o_, _ = api.open_findings({"by": "cve", "q": "not-a-cve"})
+check(not o_["ok"], "518: a malformed CVE is refused")
+a_, _ = api.open_assets({"plugins": [1001], "tag": {"category": "Patch Wave", "value": "Tuesday"}})
+check(a_["ok"] and a_["uuids"] == sorted([A[1], A[2]]) and not a_["capped"], "518: the hosts with it open fill the UUID box")
+_cap2 = sc.OPEN_ASSETS_CAP
+sc.OPEN_ASSETS_CAP = 1
+a_, _ = api.open_assets({"plugins": [1001]})
+check(len(a_["uuids"]) == 1 and a_["capped"], "518: the host list is capped (≤ 5,000 to the page)")
+sc.OPEN_ASSETS_CAP = _cap2
+check(sc.auth_fact([{"plugin_id": "117887", "t": T + 5, "cred_yes": False, "state": "open"}], T, False) == (True, "this_run")
+      and sc.auth_fact([{"plugin_id": "21745", "t": T + 5, "cred_yes": False, "state": "open"}], T, False) == (False, "this_run"),
+      "517: 117887 proves the local checks ran; 21745 says they failed")
+check({int(x) for x in sc.LOCAL_OK_PLUGINS + sc.LOCAL_FAIL_PLUGINS} <= set(sc.PROOF_PLUGINS), "517: the patch-assessment plugins are proof plugins")
+sg = sc.cred_suggestion({"assets": {A[1]: {}}}, [{"uuid": CRED, "name": "lab ssh", "type": "SSH"}])
+check(sg and sg["uuid"] == CRED, "517: a credential is suggested for local checks")
+os.environ["NAVI_SCAN_MULTI_PLUGIN"] = "1"
+fm = sc.features(lambda a, t: {"text": "--plugin TEXT  Plugin ID"})
+check(fm["multi_plugin"] and fm.get("multi_source") == "NAVI_SCAN_MULTI_PLUGIN", "517: NAVI_SCAN_MULTI_PLUGIN=1 vouches for repeated --plugin")
+os.environ.pop("NAVI_SCAN_MULTI_PLUGIN")
+check(sc.features(lambda a, t: {"text": "--plugin TEXT  Plugin ID (repeat for several)"})["multi_plugin"], "517: detected from the help text")
+pg = open(os.path.join(ROOT, "agents/scan_confirm/page.html"), encoding="utf-8").read()
+check(all(x in pg for x in ('data-i="confirm"', 'data-i="new"', 'data-i="via"', 'data-i="rerun"', "Review plan →", "Find what's open",
+                            "No verdict yet", "Same settings as one of your latest enabled scans")), "517: four intents, review step, finder, no-verdict banner")
+check(pg.index('id="plan"') > pg.index('id="fields"'), "517: the review button sits under the form it acts on")
+check("tag_jobs.db" not in pg and "NAVI_SCAN_LAUNCH" not in pg, "517: no internals on the page")
+check("scan_confirm/page.html?cve=" in open(os.path.join(ROOT, "agents/cisakev/page.html"), encoding="utf-8").read(),
+      "518: CISA KEV hands a CVE over (pre-filled, runs nothing)")
 
 # ── end to end with the fake navi ─────────────────────────────────────────────────────────
 os.environ["NAVI_SCAN_LAUNCH"] = "1"

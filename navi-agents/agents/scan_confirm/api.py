@@ -67,6 +67,31 @@ def lookups(p):
     return {"ok": True, **lk, "features": {k: v for k, v in sc.features().items() if k != "help"}}, 200
 
 
+def _tag_of(p):
+    t = (p or {}).get("tag")
+    if isinstance(t, dict) and str(t.get("category") or "").strip() and str(t.get("value") or "").strip():
+        return {"category": str(t["category"]).strip(), "value": str(t["value"]).strip()}
+    return None
+
+
+def open_findings(p):
+    """Start from what's open: plugins with open findings by CVE, plugin (id or name) or tag (read)."""
+    by = str((p or {}).get("by") or "")
+    try:
+        out = sc.open_findings(by, (p or {}).get("q"), _tag_of(p))
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}, 200
+    return {"ok": True, **out}, 200
+
+
+def open_assets(p):
+    """The assets with an open finding for the chosen plugins (optionally only tagged ones) — capped (read)."""
+    ids = [x for x in ((p or {}).get("plugins") or []) if re.match(r"^\d{1,7}$", str(x).strip())]
+    if not ids:
+        return {"ok": False, "error": "pick at least one plugin"}, 200
+    return {"ok": True, **sc.open_assets(ids, _tag_of(p))}, 200
+
+
 def scan_lookup(p):
     """One scan by id (read) — for a scan the picker doesn't list. Adds its policy_id when the list has it."""
     sid = str((p or {}).get("scan_id") or "").strip()
@@ -171,8 +196,19 @@ def plan(p):
     pname = next((x.get("name") for x in (lk.get("policies") or []) if x.get("id") == pol), None) if pol else None
     rr = norm.get("rerun_scan_id")
     rname = next((x.get("name") for x in (lk.get("scans") or []) if x.get("id") == rr), None) if rr else None
+    sugg = sc.cred_suggestion(resolved, lk.get("credentials")) if (local and not norm.get("credential_uuid")) else None
+    per_host = len({tuple(x["plugins"]) for x in pl["scans"]}) if not pl.get("multi_plugin") else 1
+    notes = []
+    if norm.get("plugins") and per_host > 1:
+        notes.append("%d plugins → %d scans per host%s. This navi takes one --plugin per scan; when it takes several "
+                     "(or NAVI_SCAN_MULTI_PLUGIN=1) they combine into one scan." % (
+                         len(norm["plugins"]), per_host,
+                         (" — %d separate logins per host with the credential" % per_host) if norm.get("credential_uuid") else ""))
+    if via:
+        notes.append("Credentials attached to scan #%s itself aren't carried over — only its policy and scanner. "
+                     "Pick the credential here if the scan needs one." % via["scan"].get("id"))
     return {"ok": True, **_view(run_), "ready": sc.preflight_ok(checks), **_gates(),
-            "policy_name": pname, "rerun_name": rname, "via": via,
+            "policy_name": pname, "rerun_name": rname, "via": via, "cred_suggestion": sugg, "notes": notes,
             "plugin_names": {str(k): v for k, v in names.items()}, "families": {str(k): v for k, v in fams.items()},
             "scanner_name": sname, "credential_name": cname, "features": {k: v for k, v in feats.items() if k != "help"},
             "glance": {"targets": len(resolved["targets"]), "excluded": len(resolved["excluded"]),
@@ -442,7 +478,7 @@ def scan_delete_old(p):
 
 
 ACTIONS = {"run": run, "status": status, "lookups": lookups, "plugin_info": plugin_info, "plan": plan, "runs": runs,
-           "run_get": run_get, "scan_lookup": scan_lookup, "verdicts": verdicts, "export": export, "events": events, "job_poll": job_poll,
+           "run_get": run_get, "scan_lookup": scan_lookup, "open_findings": open_findings, "open_assets": open_assets, "verdicts": verdicts, "export": export, "events": events, "job_poll": job_poll,
            "deletable": deletable, "scan_launch": scan_launch, "scan_stop": scan_stop, "scan_pause": scan_pause,
            "scan_resume": scan_resume, "scan_resume_watch": scan_resume_watch, "scan_reverify": scan_reverify,
            "scan_delete_old": scan_delete_old}

@@ -63,8 +63,13 @@ TERMINAL = frozenset({"completed", "canceled", "cancelled", "aborted", "stopped"
 OK_TERMINAL = frozenset({"completed"})
 # plugin families that are LOCAL checks — they need credentials to mean anything (P4)
 LOCAL_FAMILIES = ("Local Security Checks", "Windows : Microsoft Bulletins", "Windows", "Misc.")
+# local-check login proof (build 517): 117887 OS Security Patch Assessment Available = the local checks ran;
+# 21745 Patch Assessment Failed / 117886 Not Available = they didn't
+LOCAL_OK_PLUGINS = ("117887",)
+LOCAL_FAIL_PLUGINS = ("21745", "117886")
 PROOF_PLUGINS = tuple(sorted({int(credstate.SCAN_INFO)} | {int(p) for p in credstate.FAIL_PLUGINS}
-                             | {int(p) for p in credstate.CRED_OK_PLUGINS}))
+                             | {int(p) for p in credstate.CRED_OK_PLUGINS}
+                             | {int(p) for p in LOCAL_OK_PLUGINS + LOCAL_FAIL_PLUGINS}))
 
 STATES = ("PLANNED", "PREFLIGHT", "REFUSED", "LAUNCHING", "LAUNCH_FAILED", "RUNNING", "SCANS_DONE",
           "SYNCING", "VERIFIED", "ABORTED")
@@ -496,11 +501,14 @@ def plugin_families(plugins, path=None):
         return out
     try:
         from core import hx_summary
-        if hx_summary.usable(path) and "plugin_family" in _cols("hx_plugin", path):
-            for r in db.query(f"SELECT plugin_id, plugin_family FROM hx_plugin WHERE plugin_id IN "
+        hc = _cols("hx_plugin", path)
+        fcol = "family" if "family" in hc else ("plugin_family" if "plugin_family" in hc else None)
+        if hx_summary.usable(path) and fcol:
+            for r in db.query(f"SELECT plugin_id, {fcol} AS fam FROM hx_plugin WHERE plugin_id IN "
                               f"({','.join('?' * len(plugins))})", tuple(str(p) for p in plugins), path=path):
-                out[int(r["plugin_id"])] = r.get("plugin_family")
-            return out
+                out[int(r["plugin_id"])] = r.get("fam")
+            if all(v is not None for v in out.values()):
+                return out
     except Exception:
         pass
     if "plugin_family" in _cols("vulns", path):
@@ -1006,7 +1014,7 @@ def features(runner=None):
     except OSError:
         key = (navi, 0)
     if runner is None and key in _FEAT:
-        return _FEAT[key]
+        return _feat_override(_FEAT[key])
     f = {"multi_plugin": False, "name": False, "no_launch": False, "help": ""}
     try:
         run = runner or _run_capture
@@ -1022,7 +1030,16 @@ def features(runner=None):
         pass
     if runner is None:
         _FEAT[key] = f                        # an injected runner (tests) never fills the cache
-    return f
+    return _feat_override(f)
+
+
+def _feat_override(f):
+    """NAVI_SCAN_MULTI_PLUGIN=1: the operator vouches that this navi takes repeated --plugin flags into ONE
+    scan (detection reads `--plugin`'s help for 'multiple' / 'repeat' / 'one or more'). =0 forces one plugin per scan."""
+    v = os.environ.get("NAVI_SCAN_MULTI_PLUGIN")
+    if v is None or str(v).strip() == "":
+        return f
+    return dict(f, multi_plugin=navi_cli._truthy(v), multi_source="NAVI_SCAN_MULTI_PLUGIN")
 
 
 def _run_capture(sub_argv, timeout):
@@ -1112,7 +1129,7 @@ def _proof_rows(assets, path=None):
     vcols = _cols("vulns", path)
     if not vcols or not assets:
         return {}
-    pids = ",".join("'%s'" % p for p in credstate.SCANNED_PLUGINS)
+    pids = ",".join("'%s'" % p for p in credstate.SCANNED_PLUGINS + LOCAL_OK_PLUGINS + LOCAL_FAIL_PLUGINS)
     st = "state" if "state" in vcols else "'open' AS state"
     yes = ("(plugin_id='19506' AND output LIKE '%Credentialed checks : yes%')" if "output" in vcols else "0")
     out = {}
@@ -1147,12 +1164,12 @@ def auth_fact(proof, t0, row_changed):
     if row_changed:
         return True, "this_run"
     now = [x for x in proof if x["t"] is not None and t0 is not None and x["t"] >= t0 - 1]
-    if any(x["plugin_id"] in credstate.CRED_OK_PLUGINS or x["cred_yes"] for x in now):
+    if any(x["plugin_id"] in credstate.CRED_OK_PLUGINS + LOCAL_OK_PLUGINS or x["cred_yes"] for x in now):
         return True, "this_run"
     if any(x["plugin_id"] in credstate.FAIL_PLUGINS or x["plugin_id"] in credstate.NOCRED_PLUGINS
-           or x["plugin_id"] == credstate.SCAN_INFO for x in now):
+           or x["plugin_id"] in LOCAL_FAIL_PLUGINS or x["plugin_id"] == credstate.SCAN_INFO for x in now):
         return False, "this_run"                  # scanned this run, and nothing says it logged in
-    if any(x["plugin_id"] in credstate.CRED_OK_PLUGINS or x["cred_yes"] for x in proof):
+    if any(x["plugin_id"] in credstate.CRED_OK_PLUGINS + LOCAL_OK_PLUGINS or x["cred_yes"] for x in proof):
         return True, "prior_scan"
     if any(x["plugin_id"] == credstate.SCAN_INFO for x in proof):
         return False, "prior_scan"
@@ -1521,8 +1538,10 @@ def sync_and_verify(run_id, emit, live, ev, nv=None, read=None, n_steps=4):
     done = [s for s in run["scans"] if s.get("status") in OK_TERMINAL and s.get("time_start")]
     since = int(min(float(s["time_start"]) for s in done)) if done else int(time.time() - 86400)
     plugins = [int(p) for p in norm.get("plugins") or []]
-    proof = [int(credstate.SCAN_INFO)] + ([p for p in PROOF_PLUGINS if p != int(credstate.SCAN_INFO)]
-                                          if (run.get("plan") or {}).get("multi_plugin") else [])
+    multi = (run.get("plan") or {}).get("multi_plugin")
+    local = any(is_local(f) for f in plugin_families(plugins).values())
+    proof = [int(credstate.SCAN_INFO)] + ([p for p in PROOF_PLUGINS if p != int(credstate.SCAN_INFO)] if multi
+                                          else ([int(p) for p in LOCAL_OK_PLUGINS + LOCAL_FAIL_PLUGINS] if local else []))
     attempts = int(norm.get("sync_attempts") or SYNC_ATTEMPTS_DEFAULT)
     set_state(run_id, "SYNCING")
     summ = None
@@ -1541,14 +1560,22 @@ def sync_and_verify(run_id, emit, live, ev, nv=None, read=None, n_steps=4):
         _hdr(emit, n_steps, n_steps, "VERIFY (%d/%d)" % (a, attempts))
         rows, summ = _finish_verdicts(run_id, read, emit, "SYNCING")
         pend = summ["counts"].get("PENDING_INGESTION", 0)
+        unk = summ["counts"].get("UNCHANGED_UNKNOWN", 0)
         emit("  " + " · ".join("%s %d" % (k.replace("_", " ").lower(), v) for k, v in summ["counts"].items() if v))
-        if not pend or a == attempts:
+        if not (pend or unk) or a == attempts:
             break
-        emit("… %d pair(s) not in navi.db yet — next sync in %ds" % (pend, int(norm.get("sync_interval_s") or 300)))
+        # Tenable can take a while to flip a finding to fixed — keep checking while results are unknown
+        emit("… %s — next sync in %ds" % (" · ".join(x for x in (
+            ("%d pair(s) not in navi.db yet" % pend) if pend else "",
+            ("%d pair(s) without a decision yet (Tenable may still be updating the findings)" % unk) if unk else "") if x),
+            int(norm.get("sync_interval_s") or 300)))
         if ev.wait(int(norm.get("sync_interval_s") or SYNC_INTERVAL_DEFAULT)):
             raise _Abort()
     set_state(run_id, "VERIFIED", summary_json=summ)
-    emit("✓ verified — %d pair(s)" % (summ or {}).get("pairs", 0))
+    c = (summ or {}).get("counts") or {}
+    decided = sum(v for k, v in c.items() if k in ("CONFIRMED_FIXED", "STILL_VULNERABLE", "NOT_VULNERABLE", "NEWLY_FOUND"))
+    emit(("✓ done — %d of %d pair(s) decided" % (decided, (summ or {}).get("pairs", 0))) if decided
+         else "⚠ done — no verdict yet for %d pair(s); ↻ Re-verify later" % (summ or {}).get("pairs", 0))
     return {"ok": True}
 
 
@@ -1691,3 +1718,144 @@ def via_scan(scan_id, lk, runner=None):
     sc_ = next((x for x in (lk.get("scanners") or []) if sname and x.get("name") == sname), None)
     return {"scan": dict(info, **(row or {})), "policy_id": pol, "scanner_id": (sc_ or {}).get("id"),
             "scanner_name": sname}
+
+
+
+# ══ open findings (build 518) — start a confirmation from what is open, not typed plugin IDs ═════════
+_OPEN = "lower(COALESCE(state,'open')) IN ('open','reopened')"
+FINDINGS_LIMIT = 100
+OPEN_ASSETS_CAP = 5000                  # never more than ~5,000 asset UUIDs to the page
+
+
+def _tag_cats(tag):
+    from core import tagname
+    return tagname.names(tag["category"]) or [tag["category"]]
+
+
+def _tag_sub(tag):
+    """(SQL subquery of the tagged assets, params) — hx_tags_kv covers (tag_key, tag_value, asset_uuid)."""
+    cats = _tag_cats(tag)
+    return ("SELECT asset_uuid FROM tags WHERE tag_key IN (%s) AND tag_value=?" % ",".join("?" * len(cats)),
+            tuple(cats) + (tag["value"],))
+
+
+def open_findings(by, q, tag=None, path=None):
+    """Plugins with OPEN findings, for the 'start from open findings' search:
+       by='cve'    q='CVE-2024-3400'      → plugins whose CVE list has it
+       by='plugin' q='10863' or 'openssl' → that plugin id, or a name match
+       by='tag'    (q empty) + tag         → the plugins open on the tagged assets
+       tag (optional) scopes every search to the tagged assets.
+    Reads the summary (hx_plugin) and the covering vulns indexes only — never a full scan of vulns.
+    → {plugins: [{id, name, family, local, sev, open_assets}], scoped, truncated}"""
+    q = str(q or "").strip()
+    tag = tag if isinstance(tag, dict) and tag.get("category") and tag.get("value") else None
+    hc = _cols("hx_plugin", path)
+    use_hx = bool(hc)
+    try:
+        from core import hx_summary
+        use_hx = use_hx and hx_summary.usable(path)
+    except Exception:
+        use_hx = False
+    cand = []                                   # candidate plugin ids (strings)
+    if by == "cve":
+        m = re.match(r"^(?i:cve)-\d{4}-\d{4,7}$", q)
+        if not m:
+            raise ValueError("a CVE looks like CVE-2024-3400")
+        pat = "%" + q.upper() + "%"
+        if use_hx and "cves" in hc:
+            cand = [str(r["plugin_id"]) for r in db.query("SELECT plugin_id FROM hx_plugin WHERE upper(cves) LIKE ? LIMIT 500",
+                                                          (pat,), path=path)]
+        elif "cves" in _cols("plugins", path):
+            cand = [str(r["plugin_id"]) for r in db.query("SELECT plugin_id FROM plugins WHERE upper(cves) LIKE ? LIMIT 500",
+                                                          (pat,), path=path)]
+    elif by == "plugin":
+        if re.match(r"^\d{1,7}$", q):
+            cand = [q]
+        elif len(q) >= 3:
+            pat = "%" + q.lower() + "%"
+            if use_hx and "lname" in hc:
+                cand = [str(r["plugin_id"]) for r in db.query(
+                    "SELECT plugin_id FROM hx_plugin WHERE lname LIKE ? ORDER BY open_assets DESC LIMIT 500", (pat,), path=path)]
+            elif "name" in _cols("plugins", path):
+                cand = [str(r["plugin_id"]) for r in db.query(
+                    "SELECT plugin_id FROM plugins WHERE lower(name) LIKE ? LIMIT 500", (pat,), path=path)]
+        else:
+            raise ValueError("type a plugin ID, or at least 3 letters of its name")
+    elif by == "tag":
+        if not tag:
+            raise ValueError("pick a tag category and value")
+    else:
+        raise ValueError("search by cve, plugin or tag")
+    sev = "severity" if "severity" in _cols("vulns", path) else "''"
+    counts = {}
+    if by == "tag" and not cand:
+        sub, sp = _tag_sub(tag)
+        for r in db.query(f"SELECT plugin_id, COUNT(DISTINCT asset_uuid) AS n FROM vulns{db.indexed_by('hx_v_asset', path)} "
+                          f"WHERE asset_uuid IN ({sub}) AND {_OPEN} AND lower(COALESCE({sev},'')) NOT IN ('info','0','none') "
+                          f"GROUP BY plugin_id ORDER BY n DESC LIMIT {FINDINGS_LIMIT * 3}", sp, path=path):
+            counts[str(r["plugin_id"])] = r["n"]
+    elif cand:
+        cand = cand[:500]
+        args = tuple(cand)
+        w = f"plugin_id IN ({','.join('?' * len(cand))}) AND {_OPEN}"
+        if tag:
+            sub, sp = _tag_sub(tag)
+            w += f" AND asset_uuid IN ({sub})"
+            args += sp
+        for r in db.query(f"SELECT plugin_id, COUNT(DISTINCT asset_uuid) AS n FROM vulns{db.indexed_by('hx_v_plugin', path)} "
+                          f"WHERE {w} GROUP BY plugin_id", args, path=path):
+            counts[str(r["plugin_id"])] = r["n"]
+    ids = sorted(counts, key=lambda k: -counts[k])
+    names = plugin_names([int(i) for i in ids[:FINDINGS_LIMIT]], path)
+    fams = plugin_families([int(i) for i in ids[:FINDINGS_LIMIT]], path)
+    sevs = {}
+    if use_hx and "sevn" in hc and ids:
+        top = ids[:FINDINGS_LIMIT]
+        for r in db.query(f"SELECT plugin_id, sevn FROM hx_plugin WHERE plugin_id IN ({','.join('?' * len(top))})",
+                          tuple(top), path=path):
+            sevs[str(r["plugin_id"])] = r.get("sevn")
+    out = [{"id": int(i), "name": names.get(int(i)), "family": fams.get(int(i)), "local": is_local(fams.get(int(i))),
+            "sev": sevs.get(i), "open_assets": counts[i]} for i in ids[:FINDINGS_LIMIT]]
+    out.sort(key=lambda x: (-(x["sev"] or 0), -x["open_assets"]))
+    return {"plugins": out, "scoped": bool(tag), "truncated": len(ids) > FINDINGS_LIMIT}
+
+
+def open_assets(plugins, tag=None, path=None):
+    """Asset UUIDs with an OPEN finding for any of `plugins` (optionally only tagged ones), capped."""
+    plugins = [str(int(p)) for p in plugins or []][:MAX_PLUGINS]
+    if not plugins:
+        return {"uuids": [], "total": 0, "capped": False}
+    tag = tag if isinstance(tag, dict) and tag.get("category") and tag.get("value") else None
+    w = f"plugin_id IN ({','.join('?' * len(plugins))}) AND {_OPEN}"
+    args = tuple(plugins)
+    if tag:
+        sub, sp = _tag_sub(tag)
+        w += f" AND asset_uuid IN ({sub})"
+        args += sp
+    rows = db.query(f"SELECT DISTINCT asset_uuid FROM vulns{db.indexed_by('hx_v_plugin', path)} WHERE {w} "
+                    f"LIMIT {OPEN_ASSETS_CAP + 1}", args, path=path)
+    uu = sorted({str(r["asset_uuid"]).lower() for r in rows if r.get("asset_uuid")})
+    return {"uuids": uu[:OPEN_ASSETS_CAP], "total": len(uu), "capped": len(uu) > OPEN_ASSETS_CAP}
+
+
+def cred_suggestion(resolved, creds, path=None):
+    """For local checks without a credential: the managed credential that fits most of the assets'
+    OS family (Windows → a Windows credential, everything else → SSH). None when nothing fits."""
+    if not creds:
+        return None
+    uu = list((resolved.get("assets") or {}).keys())[:5000]
+    win = other = 0
+    if uu and "operating_system" in _cols("assets", path):
+        for r in _in_chunks(path, "SELECT operating_system AS os FROM assets", "uuid", uu):
+            if "windows" in str(r.get("os") or "").lower():
+                win += 1
+            elif r.get("os"):
+                other += 1
+    want = "windows" if win > other else "ssh"
+    fit = [c for c in creds if want in str(c.get("type") or "").lower()]
+    pick = fit[0] if len(fit) >= 1 else (creds[0] if len(creds) == 1 else None)
+    if not pick:
+        return None
+    return {"uuid": pick["uuid"], "name": pick.get("name"), "type": pick.get("type"),
+            "why": ("%d of %d assets run Windows" % (win, win + other)) if want == "windows" and (win + other)
+            else ("%d of %d assets aren't Windows" % (other, win + other)) if (win + other) else "the only managed credential"}
