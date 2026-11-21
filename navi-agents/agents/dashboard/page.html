@@ -571,7 +571,10 @@ function openMenu(btn,i){
   m.style.left=left+'px'; m.style.top=top+'px';
   m.querySelectorAll('[data-mz]').forEach(b=>b.onclick=()=>{ DASHBOARD[i].size=b.dataset.mz; saveDash(); closeMenu(); renderDashGrid(); });
   const vs=m.querySelector('[data-mvz]'); if(vs) vs.onchange=()=>{ DASHBOARD[i].r=DASHBOARD[i].r||{}; DASHBOARD[i].r.viz=vs.value==='auto'?'':vs.value; saveDash(); closeMenu(); renderDashGrid(); };
-  const cb=m.querySelector('[data-mcsv]'); if(cb) cb.onclick=()=>{ const x=DASHBOARD[i]; downloadCSV((x.title||'component')+'.csv',(x.r&&x.r.columns)||[],(x.r&&x.r.rows)||[]); closeMenu(); };
+  const cb=m.querySelector('[data-mcsv]'); if(cb) cb.onclick=()=>{ const x=DASHBOARD[i]; closeMenu();
+    // build 525: the component's own SQL, every row (the card holds ≤ 500) — a background job past 5,000
+    if(x.sql&&String(x.sql).trim()) hExport({source:'sql', sql:x.sql, name:(x.title||'component')}, x.title||'component');
+    else downloadCSV((x.title||'component')+'.csv',(x.r&&x.r.columns)||[],(x.r&&x.r.rows)||[]); };
   const sb=m.querySelector('[data-msql]'); if(sb) sb.onclick=()=>{ _toggleSql(i); closeMenu(); };
   const rb=m.querySelector('[data-mrm]'); if(rb) rb.onclick=()=>{ if(confirm('Remove “'+((d.title)||'this widget')+'” from the board?')){ DASHBOARD.splice(i,1); saveDash(); closeMenu(); renderDashGrid(); } };
 }

@@ -117,10 +117,8 @@ document.querySelectorAll('#tbl th[data-k]').forEach(th=>th.onclick=()=>{ const 
 let qt=null; fQ.oninput=()=>{ clearTimeout(qt); qt=setTimeout(load,300); };
 document.getElementById('refresh').onclick=load;
 document.getElementById('reset').onclick=()=>{ ['fAgent','fResult','fBc','fFrom','fTo','fQ'].forEach(id=>document.getElementById(id).value=''); history.replaceState(null,'',location.pathname); P.delete('batch'); load(); };
-document.getElementById('exportCsv').onclick=async()=>{ let o; try{ o=await API.post('log_export',Object.assign({refresh:true},filters())); }catch(e){ o=null; }
-  if(!o||!o.ok){ flash('flash','✗ export failed','crit'); return; }
-  if(!o.count){ flash('flash','Nothing to export — no rows match the filters.','warn'); return; }
-  downloadText(o.filename||'hounds-acr-log.csv',o.csv,'text/csv'); flash('flash','✓ exported '+N(o.count)+' row(s) → '+esc(o.filename),'ok'); };
+// build 525: every row (no cap) — ≤ 5,000 at once, more as a background export job (Exports tray)
+document.getElementById('exportCsv').onclick=()=>hExport(()=>API.post('log_export',Object.assign({refresh:true},filters())),'hounds-acr-log');
 /* deep links from the ACR agent's metric cards: ?result=…&business_case=…&agent=…&q=…&batch=… */
 (function(){ const pre=(sel,k)=>{ const v=P.get(k); if(v!=null){ sel.innerHTML='<option value="">(any)</option><option value="'+esc(v)+'">'+esc(v||'(none)')+'</option>'; sel.value=v; } };
   pre(fAgent,'agent'); pre(fResult,'result'); pre(fBc,'business_case'); if(P.get('q')) fQ.value=P.get('q'); })();

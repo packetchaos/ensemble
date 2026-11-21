@@ -129,10 +129,8 @@ document.querySelectorAll('#tbl th[data-k]').forEach(th=>th.onclick=()=>{ const 
 let qt=null; fQ.oninput=()=>{ clearTimeout(qt); qt=setTimeout(load,300); };
 document.getElementById('refresh').onclick=load;
 document.getElementById('reset').onclick=()=>{ [fStatus,fSource,fMode,fInv,fFrom,fTo,fQ].forEach(el=>el.value=''); Object.keys(LINK).forEach(k=>delete LINK[k]); history.replaceState(null,'',location.pathname); load(); };
-document.getElementById('exportCsv').onclick=async()=>{ let o; try{ o=await API.post('c2log_export',filters()); }catch(e){ o=null; }
-  if(!o||!o.ok){ flash('flash','✗ export failed','crit'); return; }
-  if(!o.count){ flash('flash','Nothing to export — no rows match the filters.','warn'); return; }
-  downloadText(o.filename||'hounds-c2-log.csv',o.csv,'text/csv'); flash('flash','✓ exported '+N(o.count)+' row(s) → '+esc(o.filename),'ok'); };
+// build 525: every row (no cap) — ≤ 5,000 at once, more as a background export job (Exports tray)
+document.getElementById('exportCsv').onclick=()=>hExport(()=>API.post('c2log_export',filters()),'hounds-c2-log');
 /* deep links from the C2 page's cards: ?status=…&source=…&mode=…&in_inventory=…&q=… (+ since/target/run_id above) */
 (function(){ const pre=(sel,k)=>{ const v=P.get(k); if(v!=null&&v!==''){ sel.innerHTML='<option value="">(any)</option><option value="'+esc(v)+'">'+esc(v)+'</option>'; sel.value=v; } };
   pre(fStatus,'status'); pre(fSource,'source'); pre(fMode,'mode'); if(P.get('in_inventory')) fInv.value=P.get('in_inventory'); if(P.get('q')) fQ.value=P.get('q'); })();

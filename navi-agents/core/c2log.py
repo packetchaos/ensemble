@@ -379,23 +379,41 @@ def csv_safe(v):
     return v
 
 
-def export_csv(filters=None) -> dict:
-    w, p = _where(filters)
-    data = _q("SELECT " + _COLS + ", prev_hash FROM c2_log" + w + " ORDER BY id ASC", p)
-    buf = io.StringIO()
-    wr = csv.writer(buf)
-    hdr = ["id", "ts_utc", "run_id", "source", "agent", "operator", "target", "in_inventory", "asset_uuid", "hostname",
-           "mode", "catalog_id", "status", "exit_code", "duration_ms", "hostkey_policy", "attempts", "command",
-           "command_sha256", "plan_sha256", "prev_hash", "row_hash"]
-    wr.writerow(hdr)
-    for r in data:
-        wr.writerow([csv_safe(x) for x in (
-            r.get("id"), time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(r.get("ts") or 0)), r.get("run_id"),
+_EXPORT_HDR = ["id", "ts_utc", "run_id", "source", "agent", "operator", "target", "in_inventory", "asset_uuid", "hostname",
+               "mode", "catalog_id", "status", "exit_code", "duration_ms", "hostkey_policy", "attempts", "command",
+               "command_sha256", "plan_sha256", "prev_hash", "row_hash"]
+
+
+def _export_row(r):
+    return [r.get("id"), time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(r.get("ts") or 0)), r.get("run_id"),
             r.get("source"), r.get("agent"), r.get("operator"), r.get("target"), r.get("in_inventory"),
             r.get("asset_uuid"), r.get("hostname"), r.get("mode"), r.get("catalog_id"), r.get("status"),
             r.get("exit_code"), r.get("duration_ms"), r.get("hostkey_policy"), r.get("attempts"), r.get("command"),
-            r.get("command_sha256"), r.get("plan_sha256"), r.get("prev_hash"), r.get("row_hash"))])
-    return {"count": len(data), "csv": buf.getvalue(), "filename": "hounds-c2-log.csv"}
+            r.get("command_sha256"), r.get("plan_sha256"), r.get("prev_hash"), r.get("row_hash")]
+
+
+def export_source(filters=None):
+    """(header, rows(), count) — build 525: every matching row, no cap (core.exports)."""
+    w, p = _where(filters)
+    n = _q("SELECT COUNT(*) AS n FROM c2_log" + w, p)
+    count = int((n[0] if n else {}).get("n") or 0)
+
+    def rows():
+        for r in _q("SELECT " + _COLS + ", prev_hash FROM c2_log" + w + " ORDER BY id ASC", p):
+            yield _export_row(r)
+    return list(_EXPORT_HDR), rows, count
+
+
+def export_csv(filters=None) -> dict:
+    hdr, rows, _n = export_source(filters)
+    buf = io.StringIO()
+    wr = csv.writer(buf)
+    wr.writerow(hdr)
+    k = 0
+    for r in rows():
+        wr.writerow([csv_safe(x) for x in r])
+        k += 1
+    return {"count": k, "csv": buf.getvalue(), "filename": "hounds-c2-log.csv"}
 
 
 # ---- remediation plan registry --------------------------------------------------------------

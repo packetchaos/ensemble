@@ -807,6 +807,27 @@ def data(board, iid, page=0, size=50):
             "sql": disp, "scope_label": info["scope_label"]}
 
 
+def export_widget(board, iid):
+    """Build 525: EVERY row of a widget's data (its drill SQL, else its own) as CSV — no 5,000 cap.
+    ≤ 5,000 rows come back at once; more run as a background export job (core/exports.py). Widget
+    SQL is a person's or a model's: it stays on the guarded engine (navi's credential tables are
+    unreadable), never `navi export query`."""
+    from core import exports
+    w, d, scope, pinned = resolve(board, iid)
+    if d.get("review"):
+        raise PermissionError("approve this widget's SQL before exporting its data")
+    if d.get("snapshot"):
+        raise LookupError("this number comes from the specialist's page — export it there")
+    full, _disp, _info = prepare(d, scope, drill=True)
+    sql = f"SELECT * FROM ({full}\n)"                   # \n: a trailing -- comment must not swallow the wrapper
+    lim = exports.INLINE_MAX + 1
+    n = int(db.user_query(f"SELECT COUNT(*) AS n FROM (SELECT 1 FROM ({full}\n) LIMIT {lim})")[0]["n"])
+    title = w.get("title") or d.get("title") or "widget"
+    if n <= exports.INLINE_MAX:
+        return exports.start(title, sql=sql, total=n, agent="dashboard")
+    return exports.start(title, sql=sql, total=None, agent="dashboard", force_job=True)
+
+
 # ── import / export (definitions only) ──────────────────────────────────────────────────────
 def export(bid):
     b = get(bid)

@@ -1,0 +1,1112 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:979e6341-6d5f-5947-abec-31460e2d4fa5",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-11-21T16:23:42Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "tools/sbom.py",
+          "version": "2.44.525"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "navi-ensemble",
+      "name": "navi Ensemble",
+      "version": "2.44.525",
+      "description": "Local web console of exposure-management specialists over navi.db (Tenable VM / Tenable One)",
+      "supplier": {
+        "name": "Casey Reid (packetchaos)"
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:github/packetchaos/ensemble@2.44.525",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/packetchaos/ensemble"
+        }
+      ]
+    },
+    "properties": [
+      {
+        "name": "ensemble:sbom-kind",
+        "value": "declared (version ranges from requirements and navi's setup.py)"
+      },
+      {
+        "name": "ensemble:vendored-js",
+        "value": "none — all web assets are first-party"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "application",
+      "bom-ref": "pypi:navi-pro",
+      "name": "navi-pro",
+      "description": "navi — the Tenable CLI the Ensemble drives for every Tenable read and write (`navi …`)",
+      "scope": "required",
+      "purl": "pkg:pypi/navi-pro",
+      "licenses": [
+        {
+          "license": {
+            "id": "GPL-3.0-only",
+            "acknowledgement": "declared"
+          }
+        },
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/packetchaos/Navi"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=8.8"
+        },
+        {
+          "name": "ensemble:license-note",
+          "value": "navi's setup.py declares GPLv3 (license='GNUv3' and the GPLv3 classifier) but its LICENSE file is MIT — the two disagree"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "navi-dep:click",
+      "name": "click",
+      "scope": "required",
+      "purl": "pkg:pypi/click",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=7.0"
+        },
+        {
+          "name": "ensemble:via",
+          "value": "navi-pro"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "navi-dep:restfly",
+      "name": "restfly",
+      "scope": "required",
+      "purl": "pkg:pypi/restfly",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": "<=1.5.1"
+        },
+        {
+          "name": "ensemble:via",
+          "value": "navi-pro"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "navi-dep:requests",
+      "name": "requests",
+      "scope": "required",
+      "purl": "pkg:pypi/requests",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=2.31"
+        },
+        {
+          "name": "ensemble:via",
+          "value": "navi-pro"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "navi-dep:flask",
+      "name": "flask",
+      "scope": "required",
+      "purl": "pkg:pypi/flask",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=2.3.2"
+        },
+        {
+          "name": "ensemble:via",
+          "value": "navi-pro"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "navi-dep:ipy",
+      "name": "IPy",
+      "scope": "required",
+      "purl": "pkg:pypi/ipy",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=1.0"
+        },
+        {
+          "name": "ensemble:via",
+          "value": "navi-pro"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "navi-dep:pytenable",
+      "name": "pytenable",
+      "scope": "required",
+      "purl": "pkg:pypi/pytenable",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=1.4.3"
+        },
+        {
+          "name": "ensemble:via",
+          "value": "navi-pro"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "navi-dep:arrow",
+      "name": "arrow",
+      "scope": "required",
+      "purl": "pkg:pypi/arrow",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=0.17.0"
+        },
+        {
+          "name": "ensemble:via",
+          "value": "navi-pro"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "navi-dep:boto3",
+      "name": "boto3",
+      "scope": "required",
+      "purl": "pkg:pypi/boto3",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=1.17.48"
+        },
+        {
+          "name": "ensemble:via",
+          "value": "navi-pro"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "navi-dep:pexpect",
+      "name": "pexpect",
+      "scope": "required",
+      "purl": "pkg:pypi/pexpect",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=4.8.0"
+        },
+        {
+          "name": "ensemble:via",
+          "value": "navi-pro"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "navi-dep:typing-extensions",
+      "name": "typing-extensions",
+      "scope": "required",
+      "purl": "pkg:pypi/typing-extensions",
+      "licenses": [
+        {
+          "license": {
+            "id": "PSF-2.0",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=4.0.1"
+        },
+        {
+          "name": "ensemble:via",
+          "value": "navi-pro"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "navi-dep:pandas",
+      "name": "pandas",
+      "scope": "required",
+      "purl": "pkg:pypi/pandas",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=1.1.5"
+        },
+        {
+          "name": "ensemble:via",
+          "value": "navi-pro"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "navi-dep:numpy",
+      "name": "numpy",
+      "scope": "required",
+      "purl": "pkg:pypi/numpy",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=1.19.5"
+        },
+        {
+          "name": "ensemble:via",
+          "value": "navi-pro"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "navi-dep:xlrd",
+      "name": "xlrd",
+      "scope": "required",
+      "purl": "pkg:pypi/xlrd",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=2.0.1"
+        },
+        {
+          "name": "ensemble:via",
+          "value": "navi-pro"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:fastapi",
+      "name": "fastapi",
+      "scope": "optional",
+      "purl": "pkg:pypi/fastapi",
+      "description": "web server option (app_fastapi.py) — run one of FastAPI, Flask or the stdlib server",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=0.110"
+        },
+        {
+          "name": "ensemble:declared-in",
+          "value": "requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:uvicorn",
+      "name": "uvicorn",
+      "scope": "optional",
+      "purl": "pkg:pypi/uvicorn",
+      "description": "ASGI server for the FastAPI option",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=0.27"
+        },
+        {
+          "name": "ensemble:declared-in",
+          "value": "requirements.txt"
+        },
+        {
+          "name": "ensemble:extras",
+          "value": "standard"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:starlette",
+      "name": "starlette",
+      "scope": "optional",
+      "purl": "pkg:pypi/starlette",
+      "description": "FastAPI's foundation (imported directly by app_fastapi.py)",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": "unpinned"
+        },
+        {
+          "name": "ensemble:declared-in",
+          "value": "pulled in by fastapi"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:flask",
+      "name": "flask",
+      "scope": "optional",
+      "purl": "pkg:pypi/flask",
+      "description": "web server option (app_flask.py)",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=3.0"
+        },
+        {
+          "name": "ensemble:declared-in",
+          "value": "requirements.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:werkzeug",
+      "name": "werkzeug",
+      "scope": "optional",
+      "purl": "pkg:pypi/werkzeug",
+      "description": "Flask's WSGI toolkit (imported directly by app_flask.py)",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": "unpinned"
+        },
+        {
+          "name": "ensemble:declared-in",
+          "value": "pulled in by flask"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:boto3",
+      "name": "boto3",
+      "scope": "optional",
+      "purl": "pkg:pypi/boto3",
+      "description": "only when NAVI_LLM_PROVIDER=bedrock (AWS credentials + SigV4)",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=1.34"
+        },
+        {
+          "name": "ensemble:declared-in",
+          "value": "imported when present (not in requirements)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:certifi",
+      "name": "certifi",
+      "scope": "optional",
+      "purl": "pkg:pypi/certifi",
+      "description": "CA bundle for model-provider TLS when present; falls back to the system store",
+      "licenses": [
+        {
+          "license": {
+            "id": "MPL-2.0",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": "unpinned"
+        },
+        {
+          "name": "ensemble:declared-in",
+          "value": "imported when present (not in requirements)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:fastmcp",
+      "name": "fastmcp",
+      "scope": "optional",
+      "purl": "pkg:pypi/fastmcp",
+      "description": "the optional MCP server (hounds_mcp.py)",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=2.0"
+        },
+        {
+          "name": "ensemble:declared-in",
+          "value": "requirements-mcp.txt"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:mcp",
+      "name": "mcp",
+      "scope": "optional",
+      "purl": "pkg:pypi/mcp",
+      "description": "alternative to fastmcp for hounds_mcp.py (the official SDK ships FastMCP)",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": "unpinned"
+        },
+        {
+          "name": "ensemble:declared-in",
+          "value": "imported when present (not in requirements)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:anyio",
+      "name": "anyio",
+      "scope": "excluded",
+      "purl": "pkg:pypi/anyio",
+      "description": "MCP self-test only (hounds_mcp_selftest.py)",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": "unpinned"
+        },
+        {
+          "name": "ensemble:declared-in",
+          "value": "imported when present (not in requirements)"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pypi:playwright",
+      "name": "playwright",
+      "scope": "excluded",
+      "purl": "pkg:pypi/playwright",
+      "description": "browser tests only",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": "unpinned"
+        },
+        {
+          "name": "ensemble:declared-in",
+          "value": "imported when present (not in requirements)"
+        }
+      ]
+    },
+    {
+      "type": "platform",
+      "bom-ref": "platform:cpython",
+      "name": "CPython",
+      "scope": "required",
+      "description": "Python 3.10+ — the core runs on the standard library only (sqlite3, subprocess, urllib, ssl)",
+      "licenses": [
+        {
+          "license": {
+            "id": "PSF-2.0",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:requires",
+          "value": ">=3.10"
+        }
+      ]
+    },
+    {
+      "type": "data",
+      "bom-ref": "font:inter",
+      "name": "Inter (web font)",
+      "scope": "required",
+      "description": "loaded by the browser from Google Fonts (console.css); the UI falls back to system fonts",
+      "licenses": [
+        {
+          "license": {
+            "id": "OFL-1.1",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://fonts.google.com/specimen/Inter"
+        }
+      ]
+    },
+    {
+      "type": "data",
+      "bom-ref": "font:space-grotesk",
+      "name": "Space Grotesk (web font)",
+      "scope": "required",
+      "description": "loaded by the browser from Google Fonts (console.css); the UI falls back to system fonts",
+      "licenses": [
+        {
+          "license": {
+            "id": "OFL-1.1",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://fonts.google.com/specimen/Space+Grotesk"
+        }
+      ]
+    },
+    {
+      "type": "data",
+      "bom-ref": "font:jetbrains-mono",
+      "name": "JetBrains Mono (web font)",
+      "scope": "required",
+      "description": "loaded by the browser from Google Fonts (console.css); the UI falls back to system fonts",
+      "licenses": [
+        {
+          "license": {
+            "id": "OFL-1.1",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://fonts.google.com/specimen/JetBrains+Mono"
+        }
+      ]
+    }
+  ],
+  "services": [
+    {
+      "bom-ref": "svc:tenable-vulnerability-management-tenable-one-api",
+      "name": "Tenable Vulnerability Management / Tenable One API",
+      "endpoints": [
+        "https://cloud.tenable.com"
+      ],
+      "authenticated": true,
+      "x-trust-boundary": true,
+      "description": "always — every Tenable read and write goes through the navi CLI with its own API keys",
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "asset, finding, tag, scan and ACR data both ways (writes only through the write gates)"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:used-by",
+          "value": "navi CLI"
+        }
+      ]
+    },
+    {
+      "bom-ref": "svc:anthropic-api",
+      "name": "Anthropic API",
+      "endpoints": [
+        "https://api.anthropic.com"
+      ],
+      "authenticated": true,
+      "x-trust-boundary": true,
+      "description": "optional — when an AI provider is configured (BYO_MODEL.md)",
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "prompts built from navi.db findings / asset facts go out; text comes back"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:used-by",
+          "value": "core/llm.py"
+        }
+      ]
+    },
+    {
+      "bom-ref": "svc:openai-compatible-endpoint",
+      "name": "OpenAI-compatible endpoint",
+      "endpoints": [
+        "https://api.openai.com/v1"
+      ],
+      "authenticated": true,
+      "x-trust-boundary": true,
+      "description": "optional — NAVI_LLM_PROVIDER=openai or a custom base URL",
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "same as above"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:used-by",
+          "value": "core/llm.py"
+        }
+      ]
+    },
+    {
+      "bom-ref": "svc:aws-bedrock",
+      "name": "AWS Bedrock",
+      "endpoints": [
+        "https://bedrock-runtime.us-east-1.amazonaws.com"
+      ],
+      "authenticated": true,
+      "x-trust-boundary": true,
+      "description": "optional — NAVI_LLM_PROVIDER=bedrock (endpoint follows the configured AWS region; us-east-1 shown)",
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "same as above"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:used-by",
+          "value": "core/llm.py"
+        }
+      ]
+    },
+    {
+      "bom-ref": "svc:ollama-local-model",
+      "name": "Ollama (local model)",
+      "endpoints": [
+        "http://localhost:11434"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "description": "optional — OLLAMA_HOST / NAVI_LLM_PROVIDER=ollama",
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "same as above, to a local or self-hosted model"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:used-by",
+          "value": "core/llm.py"
+        }
+      ]
+    },
+    {
+      "bom-ref": "svc:cisa-known-exploited-vulnerabilities-feed",
+      "name": "CISA Known Exploited Vulnerabilities feed",
+      "endpoints": [
+        "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+        "https://raw.githubusercontent.com/cisagov/kev-data/main/known_exploited_vulnerabilities.json"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "description": "CISA KEV refresh",
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public catalog downloaded; nothing sent"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:used-by",
+          "value": "core/kev.py"
+        }
+      ]
+    },
+    {
+      "bom-ref": "svc:nvd-cve-api-2-0",
+      "name": "NVD CVE API 2.0",
+      "endpoints": [
+        "https://services.nvd.nist.gov/rest/json/cves/2.0"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "description": "advisory lookups",
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "CVE ids go out; public advisory data comes back"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:used-by",
+          "value": "core/advisory.py"
+        }
+      ]
+    },
+    {
+      "bom-ref": "svc:osv-dev",
+      "name": "OSV.dev",
+      "endpoints": [
+        "https://api.osv.dev/v1/vulns/"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "description": "advisory lookups",
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "CVE / advisory ids go out"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:used-by",
+          "value": "core/advisory.py"
+        }
+      ]
+    },
+    {
+      "bom-ref": "svc:mitre-cve-services",
+      "name": "MITRE CVE Services",
+      "endpoints": [
+        "https://cveawg.mitre.org/api/cve/"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "description": "advisory lookups",
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "CVE ids go out"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:used-by",
+          "value": "core/advisory.py"
+        }
+      ]
+    },
+    {
+      "bom-ref": "svc:endoflife-date",
+      "name": "endoflife.date",
+      "endpoints": [
+        "https://endoflife.date/api/all.json"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "description": "Software / End of Life lifecycle data",
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public lifecycle catalog downloaded; nothing sent"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:used-by",
+          "value": "core/software.py, core/software_eol.py"
+        }
+      ]
+    },
+    {
+      "bom-ref": "svc:ctid-mappings-explorer-att-ck",
+      "name": "CTID Mappings Explorer (ATT&CK)",
+      "endpoints": [
+        "https://raw.githubusercontent.com/center-for-threat-informed-defense/"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "description": "MITRE ATT&CK mapping refresh",
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "public mapping data downloaded; nothing sent"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:used-by",
+          "value": "core/mitre.py"
+        }
+      ]
+    },
+    {
+      "bom-ref": "svc:google-fonts",
+      "name": "Google Fonts",
+      "endpoints": [
+        "https://fonts.googleapis.com",
+        "https://fonts.gstatic.com"
+      ],
+      "authenticated": false,
+      "x-trust-boundary": true,
+      "description": "every page load — by the BROWSER",
+      "data": [
+        {
+          "flow": "bi-directional",
+          "classification": "the viewer's IP / user agent reach Google; no app data"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ensemble:used-by",
+          "value": "web/assets/console.css"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "navi-ensemble",
+      "dependsOn": [
+        "pypi:navi-pro",
+        "pypi:fastapi",
+        "pypi:uvicorn",
+        "pypi:starlette",
+        "pypi:flask",
+        "pypi:werkzeug",
+        "pypi:boto3",
+        "pypi:certifi",
+        "pypi:fastmcp",
+        "pypi:mcp",
+        "pypi:anyio",
+        "pypi:playwright",
+        "platform:cpython",
+        "font:inter",
+        "font:space-grotesk",
+        "font:jetbrains-mono"
+      ]
+    },
+    {
+      "ref": "pypi:navi-pro",
+      "dependsOn": [
+        "navi-dep:click",
+        "navi-dep:restfly",
+        "navi-dep:requests",
+        "navi-dep:flask",
+        "navi-dep:ipy",
+        "navi-dep:pytenable",
+        "navi-dep:arrow",
+        "navi-dep:boto3",
+        "navi-dep:pexpect",
+        "navi-dep:typing-extensions",
+        "navi-dep:pandas",
+        "navi-dep:numpy",
+        "navi-dep:xlrd"
+      ]
+    },
+    {
+      "ref": "pypi:fastapi",
+      "dependsOn": [
+        "pypi:starlette"
+      ]
+    },
+    {
+      "ref": "pypi:flask",
+      "dependsOn": [
+        "pypi:werkzeug"
+      ]
+    }
+  ]
+}

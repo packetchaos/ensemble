@@ -217,18 +217,39 @@ def overview(path=None, scope=None):
         " SUM(CASE WHEN upper(status) LIKE 'WARN%' THEN 1 ELSE 0 END) AS warning "
         "FROM compliance WHERE asset_uuid IS NOT NULL AND asset_uuid<>'' "
         "GROUP BY asset_uuid ORDER BY failed DESC, warning DESC", path=path)]
-    idents = _identities(path, [a["asset_uuid"] for a in arows])
-    for a in arows:
-        idn = idents.get(a["asset_uuid"], {})
-        a["hostname"], a["ip"] = idn.get("hostname") or "", idn.get("ip") or ""
-        p, f = int(a["passed"] or 0), int(a["failed"] or 0)
-        a["pass_pct"] = round(100.0 * p / (p + f), 1) if (p + f) else None
+    counts, arows_total, arows = _asset_rollup(arows, path)
 
     return {"available": True, "assets": st["assets"], "checks": st["checks"], "results": total,
             "by_status": by_status, "passed": passed, "failed": failed, "warning": warning,
             "pass_pct": round(100.0 * passed / (passed + failed), 1) if (passed + failed) else None,
             "failed_controls": failed_controls, "top_failing": top_failing,
-            "frameworks": frameworks, "audit_files": audit_files, "assets_rows": arows}
+            "frameworks": frameworks, "audit_files": audit_files, "assets_rows": arows,
+            "asset_counts": counts, "assets_rows_total": arows_total}
+
+
+OVERVIEW_ROWS = 500       # build 525: the overview's asset table shows the worst 500; the Drill-down pages the rest
+
+
+def _asset_rollup(arows, path=None):
+    """(counts over EVERY asset, how many there are, the worst OVERVIEW_ROWS of them with names).
+    The glance numbers come from `counts`, so trimming the table never changes a number; names are
+    looked up for the rows shown only (no IN over every uuid)."""
+    c = {"failed": 0, "warning": 0, "clean": 0, "lt50": 0}
+    for a in arows:
+        p, f, w = int(a.get("passed") or 0), int(a.get("failed") or 0), int(a.get("warning") or 0)
+        c["failed"] += 1 if f > 0 else 0
+        c["warning"] += 1 if w > 0 else 0
+        c["clean"] += 1 if (f == 0 and w == 0) else 0
+        c["lt50"] += 1 if (p + f > 0 and p / (p + f) < 0.5) else 0
+    n = len(arows)
+    shown = arows[:OVERVIEW_ROWS]
+    idents = _identities(path, [a["asset_uuid"] for a in shown])
+    for a in shown:
+        idn = idents.get(a["asset_uuid"], {})
+        a["hostname"], a["ip"] = idn.get("hostname") or "", idn.get("ip") or ""
+        p, f = int(a["passed"] or 0), int(a["failed"] or 0)
+        a["pass_pct"] = round(100.0 * p / (p + f), 1) if (p + f) else None
+    return c, n, shown
 
 
 def _overview_scoped(path, frag, sargs):
@@ -272,18 +293,14 @@ def _overview_scoped(path, frag, sargs):
         " SUM(CASE WHEN upper(status) LIKE 'WARN%' THEN 1 ELSE 0 END) AS warning "
         "FROM compliance WHERE asset_uuid IS NOT NULL AND asset_uuid<>''" + frag
         + " GROUP BY asset_uuid ORDER BY failed DESC, warning DESC", sargs, path=path)]
-    idents = _identities(path, [a["asset_uuid"] for a in arows])
-    for a in arows:
-        idn = idents.get(a["asset_uuid"], {})
-        a["hostname"], a["ip"] = idn.get("hostname") or "", idn.get("ip") or ""
-        p, f = int(a["passed"] or 0), int(a["failed"] or 0)
-        a["pass_pct"] = round(100.0 * p / (p + f), 1) if (p + f) else None
+    counts, arows_total, arows = _asset_rollup(arows, path)
 
     return {"available": True, "assets": assets, "checks": checks, "results": total,
             "by_status": by_status, "passed": passed, "failed": failed, "warning": warning,
             "pass_pct": round(100.0 * passed / (passed + failed), 1) if (passed + failed) else None,
             "failed_controls": failed_controls, "top_failing": top_failing,
-            "frameworks": frameworks, "audit_files": audit_files, "assets_rows": arows}
+            "frameworks": frameworks, "audit_files": audit_files, "assets_rows": arows,
+            "asset_counts": counts, "assets_rows_total": arows_total}
 
 
 def assets_list(path=None, only=None):
@@ -369,6 +386,174 @@ def cohort(f, path=None):
 
 
 # --------------------------------------------------------------------------- #
+#  Build 525 — the cohort as ONE streamed query (the drill-down's paged asset list + its CSV)
+#  The old path built the cohort's uuid set, aggregated EVERY asset, then looked their names up
+#  with an IN (…) of every uuid and shipped the whole list to the page (44,000+ rows → the page
+#  never finished). Now one SELECT aggregates per asset, joins the asset's name, filters to the
+#  cohort and sorts worst-first; it streams into the result store (≤ 500 rows a page call) and the
+#  same SQL is what `navi export query` runs for the full CSV.
+# --------------------------------------------------------------------------- #
+_FAIL_CASE = "SUM(CASE WHEN upper(status) LIKE 'FAIL%' THEN 1 ELSE 0 END)"
+_WARN_CASE = "SUM(CASE WHEN upper(status) LIKE 'WARN%' THEN 1 ELSE 0 END)"
+_PASS_CASE = "SUM(CASE WHEN upper(status) LIKE 'PASS%' THEN 1 ELSE 0 END)"
+
+
+def ready(path=None):
+    """compliance has rows — one LIMIT 1 probe (status() counts the whole table three times)."""
+    if not _table_exists("compliance", path):
+        return False
+    try:
+        return bool(db.scalar("SELECT 1 FROM compliance LIMIT 1", path=path, budget=0))
+    except Exception:
+        return False
+
+
+def cohort_meta(f, path=None):
+    """{f, kind, key, label} for a cohort string WITHOUT resolving its assets; None if unknown.
+    f empty → every audited asset."""
+    f = str(f or "")
+    if not f:
+        return {"f": "", "kind": "", "key": "", "label": "Every audited asset"}
+    kind, _, key = f.partition(":")
+    kind = kind.strip()
+    if kind == "st" and key in ("failed", "warning", "clean"):
+        label = {"failed": "Assets failing a check", "warning": "Assets with warnings",
+                 "clean": "Assets with no failures or warnings"}[key]
+    elif kind == "pct" and key == "lt50":
+        label = "Assets passing under 50% of their checks"
+    elif kind == "check" and key:
+        try:
+            name = db.scalar("SELECT check_name FROM compliance WHERE check_id=? LIMIT 1", (key,), path=path) or key
+        except Exception:
+            name = key
+        label = "Failing: " + re.sub(r"\s+", " ", str(name)).strip()
+    elif kind == "fw" and key:
+        label = "Framework · " + key
+    elif kind == "audit":
+        label = "Failing in " + (key or "(no audit file)")
+    else:
+        return None
+    return {"f": f, "kind": kind, "key": key, "label": label}
+
+
+def cohort_sql(f, path=None, asset_uuid=None):
+    """(sql, args) — one row per asset of the cohort: asset_uuid, hostname, ip, failed, warning,
+    passed, total — worst first. For fw:<name> the SQL is a superset (failing rows whose reference
+    mentions the name); cohort_rows() keeps exactly the assets with that framework.
+    asset_uuid: only that asset (is it in the cohort?)."""
+    m = cohort_meta(f, path)
+    if m is None:
+        return None, None
+    kind, key = m["kind"], m["key"]
+    where, args = ["asset_uuid IS NOT NULL", "asset_uuid<>''"], []
+    if asset_uuid:
+        where.append("asset_uuid=?")
+        args.append(asset_uuid)
+    one = " AND asset_uuid=?" if asset_uuid else ""      # one asset: the member probe uses hx_comp_asset too
+    if kind == "check":
+        where.append("asset_uuid IN (SELECT asset_uuid FROM compliance WHERE check_id=? AND " + _FAILED + one + ")")
+        args += [key] + ([asset_uuid] if one else [])
+    elif kind == "audit":
+        where.append("asset_uuid IN (SELECT asset_uuid FROM compliance WHERE COALESCE(audit_file,'')=? AND "
+                     + _FAILED + one + ")")
+        args += [key] + ([asset_uuid] if one else [])
+    elif kind == "fw":
+        where.append("asset_uuid IN (SELECT asset_uuid FROM compliance WHERE " + _FAILED + " AND reference LIKE ?" + one + ")")
+        args += ["%" + key + "%"] + ([asset_uuid] if one else [])
+    having = {"st": {"failed": "failed > 0", "warning": "warning > 0", "clean": "failed = 0 AND warning = 0"}.get(key),
+              "pct": "passed + failed > 0 AND 100.0 * passed / (passed + failed) < 50"}.get(kind)
+    ac = _cols("assets", path) if _table_exists("assets", path) else set()
+    if "uuid" in ac:
+        hn = "MAX(hostname)" if "hostname" in ac else "''"
+        ip = "MAX(ip_address)" if "ip_address" in ac else "''"
+        join = (" LEFT JOIN (SELECT uuid, %s AS hostname, %s AS ip FROM assets GROUP BY uuid) a ON a.uuid = c.asset_uuid"
+                % (hn, ip))
+        names = "COALESCE(a.hostname,'') AS hostname, COALESCE(a.ip,'') AS ip"
+    else:
+        join, names = "", "'' AS hostname, '' AS ip"
+    sql = ("SELECT c.asset_uuid AS asset_uuid, " + names + ", c.failed AS failed, c.warning AS warning, "
+           "c.passed AS passed, c.total AS total, CASE WHEN c.passed + c.failed > 0 THEN "
+           "ROUND(100.0 * c.passed / (c.passed + c.failed), 1) END AS pass_pct FROM (SELECT asset_uuid, COUNT(*) AS total, "
+           + _FAIL_CASE + " AS failed, " + _WARN_CASE + " AS warning, " + _PASS_CASE + " AS passed "
+           "FROM compliance WHERE " + " AND ".join(where) + " GROUP BY asset_uuid"
+           + (" HAVING " + having if having else "") + ") c" + join
+           + " ORDER BY c.failed DESC, c.warning DESC, c.asset_uuid")
+    return sql, tuple(args)
+
+
+def _fw_uuids(key, path=None):
+    out = set()
+    try:
+        for r in db.iter("SELECT asset_uuid, reference FROM compliance WHERE " + _FAILED + " AND reference LIKE ?",
+                         ("%" + key + "%",), path=path):
+            if r.get("asset_uuid") and any(x["framework"] == key for x in parse_reference(r.get("reference"))):
+                out.add(r["asset_uuid"])
+    except Exception:
+        pass
+    return out
+
+
+def cohort_rows(f, path=None):
+    """Stream the cohort's per-asset rows (dicts, worst first) — the drill-down list and its CSV.
+    Hostnames missing from `assets` are filled from vulns in batches of 500 (never one giant IN)."""
+    sql, args = cohort_sql(f, path)
+    if sql is None:
+        return
+    m = cohort_meta(f, path)
+    keep = _fw_uuids(m["key"], path) if m["kind"] == "fw" else None
+    batch = []
+
+    def flush(b):
+        miss = [r["asset_uuid"] for r in b if not r["hostname"]]
+        if miss:
+            ids = _identities(path, miss)
+            for r in b:
+                if not r["hostname"]:
+                    idn = ids.get(r["asset_uuid"]) or {}
+                    r["hostname"] = idn.get("hostname") or ""
+                    r["ip"] = r["ip"] or idn.get("ip") or ""
+        return b
+    for r in db.iter(sql, args, path=path):
+        if keep is not None and r["asset_uuid"] not in keep:
+            continue
+        p, fl = int(r.get("passed") or 0), int(r.get("failed") or 0)
+        batch.append({"asset_uuid": r["asset_uuid"], "hostname": r.get("hostname") or "", "ip": r.get("ip") or "",
+                      "failed": fl, "warning": int(r.get("warning") or 0), "passed": p,
+                      "total": int(r.get("total") or 0),
+                      "pass_pct": round(100.0 * p / (p + fl), 1) if (p + fl) else None})
+        if len(batch) >= 500:
+            yield from flush(batch)
+            batch = []
+    if batch:
+        yield from flush(batch)
+
+
+def in_cohort(f, asset_uuid, path=None):
+    """Is this one asset in the cohort? (one asset's aggregate — never the whole table)."""
+    if not f or not asset_uuid:
+        return bool(asset_uuid)
+    m = cohort_meta(f, path)
+    if m is None:
+        return False
+    sql, args = cohort_sql(f, path, asset_uuid=asset_uuid)
+    try:
+        rows = db.query(sql, args, path=path)
+    except Exception:
+        return False
+    if not rows:
+        return False
+    if m["kind"] == "fw":
+        try:
+            for r in db.query("SELECT reference FROM compliance WHERE asset_uuid=? AND " + _FAILED, (asset_uuid,), path=path):
+                if any(x["framework"] == m["key"] for x in parse_reference(r.get("reference"))):
+                    return True
+        except Exception:
+            pass
+        return False
+    return True
+
+
+# --------------------------------------------------------------------------- #
 #  Dashboard 2 — Tiresias: per-asset deep-dive + audit↔vuln correlation
 # --------------------------------------------------------------------------- #
 # Topic map for the inference: (label, icon, check-side keywords, vuln-side keywords).
@@ -448,8 +633,7 @@ def _correlate(checks, vulns):
 
 
 def asset_detail(path=None, asset_uuid=None, focus_check=None):
-    st = status(path)
-    if not st["ready"]:
+    if not ready(path):         # build 525: a LIMIT 1 probe — status() counted the whole table 3× per click
         return {"available": False, "reason": "no compliance data in navi.db"}
     asset_uuid = (asset_uuid or "").strip()
     if not asset_uuid:

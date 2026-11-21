@@ -4,8 +4,6 @@ Device inventory (build 503, core/iot_inventory.py): ▶ Run publishes one row p
 (confirmed / identified / predicted) to the result store. `drill` pages / searches it,
 `inventory_export` streams it as CSV and `inventory_tag` (gated) tags it — all by the run +
 filter KEY, so the browser never holds asset UUIDs and any size works (tag_set pages ≤ 1,999)."""
-import csv
-import io
 import re
 
 from core import navi_cli, iot_registry, iot_common, iot_inventory, payload
@@ -142,16 +140,18 @@ def inventory_export(p):
     if err:
         return err, 200 if err.get("expired") else 400
     run, flt, q = sel
-    buf = io.StringIO()
-    w = csv.writer(buf)
-    w.writerow(iot_inventory.CSV_COLS)
-    n = 0
-    for r in payload.STORE.iter_rows(run, iot_inventory.SECTION, flt, q):
-        r = dict(r, also="; ".join(r.get("also") or []))
-        vals = [r.get(c) if r.get(c) is not None else "" for c in iot_inventory.CSV_COLS]
-        w.writerow([("'" + v) if isinstance(v, str) and v[:1] in ("=", "+", "-", "@") else v for v in vals])
-        n += 1
-    return {"ok": True, "rows": n, "csv": buf.getvalue()}, 200
+    # build 525: every row; past 5,000 a background export job the page downloads (core/exports.py)
+    from core import exports
+    sec = iot_inventory.SECTION
+    n = (payload.STORE.page(run, sec, flags=flt, q=q, limit=1)[2] if (flt or q)
+         else payload.STORE.section_total(run, sec))
+
+    def rows():
+        for r in payload.STORE.iter_rows(run, sec, flt, q):
+            r = dict(r, also="; ".join(r.get("also") or []))
+            yield [r.get(c) for c in iot_inventory.CSV_COLS]
+    return exports.start((p or {}).get("name") or "iot-devices", rows=rows, header=list(iot_inventory.CSV_COLS),
+                         total=n, agent="iot_squad"), 200
 
 
 # the two schemes the Classifier reads (core/classify.py): a Device Type it maps to a class

@@ -27,6 +27,11 @@ from core import cloud as _cloud
 CROWN_ACR = 9
 _CROWN_TAG_VALUES = {"crown jewel", "crown-jewel", "mission critical", "mission-critical",
                      "tier 1", "tier-1", "tier1"}
+# build 523: only a BUSINESS designation makes a crown jewel — a tier / criticality tag. Other
+# specialists' own labels that happen to say "Crown Jewel" (Post-Quantum's `PQC Priority: Crown
+# Jewel`, Scan Health's `Crown Jewel Blind Spot`) are their findings, not your crown jewels.
+_CROWN_TAG_KEYS = {"business tier", "asset tier", "tier", "crown jewel", "criticality",
+                   "business criticality"}
 BUSINESS_OWNER_KEY = "Business Owner"
 ASSET_OWNER_KEY = "Asset Owner"
 DISPOSITIONS = ("Ignored", "Accepted", "Mitigated")
@@ -259,12 +264,14 @@ def _nk(s):
 #  Per-asset ownership rollup                                                  #
 # --------------------------------------------------------------------------- #
 def _is_crown(a):
+    """ACR ≥ CROWN_ACR, or a business tier / criticality tag of Crown Jewel / Mission Critical /
+    Tier 1. Build 523: no longer ANY tag whose value reads "Crown Jewel" — that counted Post-Quantum's
+    roadmap label (PQC Priority: Crown Jewel) and showed ACR 7–8 assets as crown jewels under an
+    "ACR ≥ 9" heading."""
     if a.get("acr") is not None and a["acr"] >= CROWN_ACR:
         return True
-    for v in a.get("_tagmap", {}).get("business tier", []):
-        if _nk(v) in _CROWN_TAG_VALUES:
-            return True
-    return any(_nk(v) in _CROWN_TAG_VALUES for vs in a.get("_tagmap", {}).values() for v in vs)
+    tm = a.get("_tagmap", {})
+    return any(_nk(v) in _CROWN_TAG_VALUES for k in _CROWN_TAG_KEYS for v in tm.get(k, []))
 
 
 def _asset_ownership(a, groups):
@@ -333,7 +340,9 @@ def _asset_ownership(a, groups):
         handled = surface
     elif surface:
         handled = handled_items
-        claimed_pct = round(100.0 * handled / surface, 1)
+        # build 523: 100% means EVERY open finding — 1,999 of 2,000 used to round up to 100.0 and
+        # count as "fully claimed"; a partial asset now tops out at 99.9
+        claimed_pct = 100.0 if handled >= surface else min(99.9, round(100.0 * handled / surface, 1))
     else:
         handled = 0
         claimed_pct = 100.0 if (asset_owner or biz) else None   # None = no exposure surface

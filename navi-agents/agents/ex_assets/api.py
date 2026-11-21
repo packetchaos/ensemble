@@ -11,8 +11,6 @@ software — {product, version?}: the assets with one Mimir product (or one of i
            software_page sends it 500 rows at a time (the browser pages them by 20);
            software_export writes every asset in that list (or its search) as CSV (build 481).
 """
-import csv
-import io
 import time
 
 from core import evidence as EV, payload, search, software as SW
@@ -71,15 +69,14 @@ def export(p):
     if not payload.STORE.run_info(run, "ex_assets"):
         return {"ok": False, "expired": True, "error": "this list is no longer on the server — open it again"}, 200
     q = (p or {}).get("q") if isinstance((p or {}).get("q"), str) else ""
-    buf = io.StringIO()
-    w = csv.writer(buf)
-    w.writerow(CSV_COLS)
-    n = 0
-    for r in payload.STORE.iter_rows(run, "assets", (), q.strip()[:200]):
-        vals = [r.get(c) if r.get(c) is not None else "" for c in CSV_COLS]
-        w.writerow([("'" + v) if isinstance(v, str) and v[:1] in ("=", "+", "-", "@") else v for v in vals])
-        n += 1
-    return {"ok": True, "rows": n, "csv": buf.getvalue()}, 200
+    q = q.strip()[:200]
+    # build 525: every row; past 5,000 a background export job the page downloads (core/exports.py)
+    from core import exports
+    n = (payload.STORE.page(run, "assets", q=q.lower(), limit=1)[2] if q
+         else payload.STORE.section_total(run, "assets"))
+    return exports.start((p or {}).get("name") or "ex-assets",
+                         rows=lambda: ([r.get(c) for c in CSV_COLS] for r in payload.STORE.iter_rows(run, "assets", (), q)),
+                         header=list(CSV_COLS), total=n, agent="ex_assets"), 200
 
 
 def _sw_key(p):
@@ -171,22 +168,41 @@ def software_export(p):
     q = (p or {}).get("q") if isinstance((p or {}).get("q"), str) else ""
     q = q.strip()[:200]
     run = (p or {}).get("run")
+    from core import exports
     if run and payload.STORE.run_info(run, "ex_assets"):
-        src = payload.STORE.iter_rows(run, "assets", (), q)          # the stored list, same order
+        n = (payload.STORE.page(run, "assets", q=q.lower(), limit=1)[2] if q
+             else payload.STORE.section_total(run, "assets"))
+
+        def src():
+            return payload.STORE.iter_rows(run, "assets", (), q)    # the stored list, same order
     else:                                                           # list expired: rebuild it from navi.db
         ql = q.lower()
-        src = (r for r in _sw_sort(EV.asset_rows(SW.assets_for(product=prod, version=ver)))
-               if not ql or ql in _sw_text(r).lower())
-    buf = io.StringIO()
-    w = csv.writer(buf)
-    w.writerow(["product", "version"] + CSV_COLS)
-    n = 0
-    for r in src:
-        vals = [prod, ver or ""] + [r.get(c) if r.get(c) is not None else "" for c in CSV_COLS]
-        w.writerow([("'" + v) if isinstance(v, str) and v[:1] in ("=", "+", "-", "@") else v for v in vals])
-        n += 1
-    return {"ok": True, "rows": n, "q": q, "csv": buf.getvalue()}, 200
+        rebuilt = [r for r in _sw_sort(EV.asset_rows(SW.assets_for(product=prod, version=ver)))
+                   if not ql or ql in _sw_text(r).lower()]
+        n = len(rebuilt)
+
+        def src():
+            return iter(rebuilt)
+    # build 525: every asset; past 5,000 a background export job (core/exports.py)
+    r = exports.start("software-" + prod + ("-" + ver if ver else ""),
+                      rows=lambda: ([prod, ver or ""] + [x.get(c) for c in CSV_COLS] for x in src()),
+                      header=["product", "version"] + list(CSV_COLS), total=n, agent="ex_assets")
+    r["q"] = q
+    return r, 200
 
 
-ACTIONS = {"search": run, "evidence": evidence, "drill": drill, "export": export,
+def search_export(p):
+    """Build 525: EVERY asset of an Asset Explorer search as CSV (the table's ⤓ CSV ▾ → every row) —
+    at once up to 5,000, past that a background job running `navi export query` over its own SQL."""
+    from core import exports
+    sql, args = search.export_sql(search.assets, ((p or {}).get("q") or "").strip(), 0, None)
+    if not sql:
+        return {"ok": False, "error": "nothing to export"}, 200
+    try:
+        return exports.start_sql("assets-explorer", sql, args, agent="ex_assets", trusted=True), 200
+    except Exception as e:
+        return {"ok": False, "error": str(e)}, 200
+
+
+ACTIONS = {"search_export": search_export, "search": run, "evidence": evidence, "drill": drill, "export": export,
            "software": software, "software_page": software_page, "software_export": software_export}

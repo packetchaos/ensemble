@@ -1309,7 +1309,7 @@ const AGENT_INTRO = {
    "<b>One check, every asset<\/b> — click a check ID to see it on every asset that ran it.",
    "<b>Into the deep-dives<\/b> — each asset opens Asset Dossier, or Compliance Drill-down for every check on that asset.",
    "<b>Ask in plain English<\/b> — a question becomes one read-only SQL query over the audit-result table that you can edit before it runs (needs an AI model).",
-   "<b>CSV and email<\/b> — export the whole search (up to 50,000 rows) or send it through Notify &amp; Report."]},
+   "<b>CSV and email<\/b> — export the whole search (every row — a background export job past 5,000) or send it through Notify &amp; Report."]},
  ex_fixed:{does:"Explorer › Fixed searches navi's remediation history: every fixed finding with each finding's first-seen and fixed dates, days to fix (computed, not trusted from navi's text field) and navi's own SLA Pass / Fail, SLA failures first.",caps:[
    "<b>Remediation history<\/b> — every fixed finding with plugin, name, severity and state.",
    "<b>Days to fix<\/b> — computed from first seen to fixed.",
@@ -1341,7 +1341,7 @@ const AGENT_INTRO = {
    "<b>Every site approved, every time<\/b> — nothing is fetched until you approve it, the approval is never remembered, and the lookup only reaches public addresses — never your internal network.",
    "<b>Affected products, counted for you<\/b> — each product and version range from the lookup — with CISA KEV, CVSS and the fixed versions — is counted in your inventory in one pass; one click searches it.",
    "<b>Versions compared properly<\/b> — 2.4.9 &lt; 2.4.10, 1.0.2k &lt; 1.0.2u, 2.0-rc1 &lt; 2.0, epochs ignored — the same way for every product.",
-   "<b>CSV and email<\/b> — export every install in the search (up to 50,000) or send it through Notify &amp; Report; each asset opens in Asset Dossier."]},
+   "<b>CSV and email<\/b> — export every install in the search (no cap — a background export job past 5,000) or send it through Notify &amp; Report; each asset opens in Asset Dossier."]},
  ex_tags:{does:"Explorer › Tags lists every tag in navi.db — one row per category : value with its asset count — searchable by category or value. Click a tag to see exactly which assets carry it, each linking to Asset Dossier and to the asset in Tenable.",caps:[
    "<b>Every tag<\/b> — one row per category : value, with its asset count and when it was first and last applied.",
    "<b>Search<\/b> — by category or value.",
@@ -2799,11 +2799,99 @@ function addTableCsv(tbl){
   const wrap=document.createElement('div'); wrap.className='csvbar'; wrap.style.cssText='text-align:right;margin:0 0 6px';
   const b=document.createElement('button'); b.type='button'; b.className='btn ghost sm'; b.textContent='⤓ CSV'; b.title='Download this table as CSV';
   b.onclick=function(){ const r=csvFromTable(tbl); if(!r[1]){ alert('Nothing to export.'); return; } downloadText(_safeName(name)+'.csv',r[0]); };
+  // build 525: a server-paged table (hDrill) holds one page — its ⤓ CSV offers the WHOLE list too,
+  // exported on the server (≤ 5,000 rows at once, more as a background job — hExport)
+  if(typeof tbl.__exportSpec==='function'){ b.textContent='⤓ CSV ▾'; b.title='Download this page, or every row';
+    b.onclick=function(ev){ hCsvMenu(b, {name:name, page:()=>csvFromTable(tbl), all:()=>tbl.__exportSpec(),
+      total:()=>(typeof tbl.__exportTotal==='function'?tbl.__exportTotal():null)}); }; }
   wrap.appendChild(b);
   let host=tbl;
   if(tbl.parentElement){ try{ if(/auto|scroll/.test(getComputedStyle(tbl.parentElement).overflowX)) host=tbl.parentElement; }catch(e){} }
   host.insertAdjacentElement('beforebegin',wrap);
 }
+/* ===== hExport — every row, not just the rows on screen (build 525, core/exports.py) =====
+   hExport(start, name): start = a body for /api/explore/export_start ({source:'store', run, section,
+   filter, q} — any server-paged table; {source:'sql', sql}) or an async function returning a
+   specialist's own export response. The server answers {inline, csv} for ≤ 5,000 rows (downloaded at
+   once) or starts a BACKGROUND JOB: the Exports tray (bottom right) shows its progress, survives a
+   page change (localStorage), and downloads the finished file in pieces (export_fetch) as one file.
+   hCsvMenu(button, {name, page:()=>[csv,n] | null, all:()=>start, total:()=>{value}|n}) — the
+   "⤓ CSV ▾" menu: this page / every row. Every value shown is escaped (esc). */
+const _HEX_KEY='hExports';
+function _hexLoad(){ try{ return JSON.parse(localStorage.getItem(_HEX_KEY)||'[]')||[]; }catch(e){ return []; } }
+function _hexSave(a){ try{ localStorage.setItem(_HEX_KEY, JSON.stringify(a.slice(-8))); }catch(e){} }
+function _hexTray(){
+  let t=document.getElementById('hExpTray');
+  if(!t){ t=document.createElement('div'); t.id='hExpTray';
+    t.style.cssText='position:fixed;right:16px;bottom:16px;z-index:9999;display:flex;flex-direction:column;gap:6px;max-width:min(380px,calc(100vw - 32px))';
+    document.body.appendChild(t); }
+  return t; }
+function _hexItem(id){
+  const t=_hexTray(); let el=t.querySelector('[data-hex="'+CSS.escape(id)+'"]');
+  if(!el){ el=document.createElement('div'); el.setAttribute('data-hex',id);
+    el.style.cssText='background:var(--panel,#fff);color:var(--ink);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:9px 12px;font-size:12.5px;box-shadow:0 6px 20px rgba(0,0,0,.18)';
+    t.appendChild(el); }
+  return el; }
+function _hexDone(id, ms){ setTimeout(()=>{ const el=document.querySelector('#hExpTray [data-hex="'+CSS.escape(id)+'"]'); if(el) el.remove();
+  _hexSave(_hexLoad().filter(x=>x.id!==id)); }, ms||9000); }
+function _hexN(v){ return v==null?'?':Number(v).toLocaleString(); }
+async function _hexDownload(ex){
+  _hexSave(_hexLoad().filter(x=>x.id!==ex.id));        // one download per export, even if this page is left mid-way
+  const parts=[], el=_hexItem(ex.id); let off=0, got=0;
+  while(off!=null){ const o=await jpost('/api/explore/export_fetch',{id:ex.id, offset:off});
+    if(!o||o.ok===false){ el.innerHTML='✗ '+esc((o&&o.error)||'download failed'); el.style.borderLeftColor='var(--crit)'; _hexDone(ex.id); return false; }
+    parts.push(o.text); got+=o.text.length; off=o.next;
+    el.innerHTML='⤓ Downloading <b>'+esc(ex.name)+'</b> — '+esc(o.size?Math.min(100,Math.round(100*(o.offset+o.text.length)/o.size)):100)+'%'; }
+  const blob=new Blob(['\ufeff'].concat(parts),{type:'text/csv;charset=utf-8'}); const u=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=u; a.download=ex.name||'export.csv'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),60000);
+  el.innerHTML='✓ <b>'+esc(ex.name)+'</b> — '+esc(_hexN(ex.rows))+' rows downloaded'; el.style.borderLeftColor='var(--ok)'; _hexDone(ex.id);
+  return true; }
+async function _hexWatch(ex){
+  const el=_hexItem(ex.id); let ms=1200;
+  for(;;){
+    const o=await jpost('/api/explore/export_status',{id:ex.id}).catch(()=>null);
+    const e=o&&o.ok?o.export:null;
+    if(!e){ el.innerHTML='✗ '+esc((o&&o.error)||'export lost'); el.style.borderLeftColor='var(--crit)'; _hexDone(ex.id); return; }
+    if(e.status==='done') return _hexDownload(e);
+    if(e.status!=='running'){ el.innerHTML=(e.status==='cancelled'?'■ cancelled — ':'✗ ')+'<b>'+esc(e.name)+'</b>'+(e.error?' — '+esc(e.error):''); el.style.borderLeftColor='var(--crit)'; _hexDone(ex.id); return; }
+    el.innerHTML='⏳ Exporting <b>'+esc(e.name)+'</b> in the background — '+esc(_hexN(e.rows))+' of '+esc(_hexN(e.total))+' rows'
+      +' <span class="sub">('+esc(e.engine==='navi'?'navi export query':'server')+(e.job_id!=null?' · job #'+esc(e.job_id):'')+')</span>'
+      +' <a href="#" data-hexc style="margin-left:6px">cancel</a><div class="sub" style="margin-top:3px">It keeps going if you leave this page; the file downloads here when it is done.</div>';
+    const c=el.querySelector('[data-hexc]'); if(c) c.onclick=ev=>{ ev.preventDefault(); jpost('/api/explore/export_cancel',{id:ex.id}); };
+    await new Promise(r=>setTimeout(r,ms)); ms=Math.min(4000,ms+400);
+  } }
+async function hExport(start, name){
+  let o; try{ o = typeof start==='function' ? await start() : await jpost('/api/explore/export_start', start); }
+  catch(e){ o={ok:false, error:e.message}; }
+  if(!o||o.ok===false){ const el=_hexItem('err'+Date.now()); el.innerHTML='✗ export failed — '+esc((o&&(o.error||o.message))||'unknown error'); el.style.borderLeftColor='var(--crit)'; _hexDone(el.getAttribute('data-hex'),7000); return o; }
+  if(o.inline){ downloadText(o.filename||_safeName(name||'export')+'.csv', o.csv||'');
+    const id='in'+Date.now(), el=_hexItem(id); el.innerHTML='✓ <b>'+esc(o.filename||name||'export')+'</b> — '+esc(_hexN(o.rows))+' rows'; el.style.borderLeftColor='var(--ok)'; _hexDone(id,5000); return o; }
+  if(o.export){ const ex=o.export; _hexSave(_hexLoad().filter(x=>x.id!==ex.id).concat([{id:ex.id, name:ex.name}])); _hexWatch(ex); }
+  return o; }
+function hCsvMenu(btn, o){
+  document.querySelectorAll('.hcsvmenu').forEach(m=>m.remove());
+  const m=document.createElement('div'); m.className='hcsvmenu';
+  m.style.cssText='position:absolute;z-index:9998;background:var(--panel,#fff);border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.2);min-width:230px;font-size:12.5px';
+  const tv=o.total?o.total():null, tot=(tv&&typeof tv==='object')?tv.value:tv, approx=(tv&&typeof tv==='object'&&tv.exact===false);
+  const pg=o.page?o.page():null;
+  m.innerHTML=(pg?'<button class="btn ghost sm" data-m="page" style="display:block;width:100%;text-align:left;margin-bottom:4px">This page'+(pg[1]!=null?' · '+esc(_hexN(pg[1]))+' rows':'')+'</button>':'')
+    +'<button class="btn ghost sm" data-m="all" style="display:block;width:100%;text-align:left">Every row'+(tot!=null?' · '+esc(_hexN(tot))+(approx?'+':''):'')
+    +'<div class="sub" style="font-weight:400">'+(tot==null?'at once up to 5,000 rows — a background export job past that':(tot<=5000&&!approx?'downloads now':'over 5,000 rows — runs as a background export job'))+'</div></button>';
+  document.body.appendChild(m);
+  const r=btn.getBoundingClientRect(); m.style.top=(window.scrollY+r.bottom+4)+'px'; m.style.left=Math.max(8,window.scrollX+r.right-m.offsetWidth)+'px';
+  const close=()=>{ m.remove(); document.removeEventListener('mousedown',out,true); };
+  const out=ev=>{ if(!m.contains(ev.target)&&ev.target!==btn) close(); };
+  setTimeout(()=>document.addEventListener('mousedown',out,true),0);
+  const bp=m.querySelector('[data-m="page"]'); if(bp) bp.onclick=()=>{ close(); const x=o.page(); if(!x||!x[1]){ alert('Nothing to export.'); return; } downloadText(_safeName(o.name||'export')+'.csv', x[0]); };
+  m.querySelector('[data-m="all"]').onclick=()=>{ close(); hExport(o.all(), o.name); };
+  return m; }
+// a page whose table is paged by its own code registers how to export EVERY row of it:
+//   hTableExport('tbl', ()=>()=>API.post('export',{q}))  → its ⤓ CSV becomes "⤓ CSV ▾" (this page / every row)
+function hTableExport(id, all, total){ const t=document.getElementById(id); if(t){ t.__exportSpec=all; t.__exportTotal=total||null; } }
+// resume exports a previous page started (the file still downloads here)
+try{ document.addEventListener('DOMContentLoaded',()=>{ _hexLoad().forEach(x=>_hexWatch(x)); }); }catch(e){}
+
 let _rszQ=new Set(), _rszPending=false;
 function _flushRsz(){ _rszPending=false; _rszQ.forEach(t=>{try{addColResizers(t);}catch(e){} try{addTableCsv(t);}catch(e){}}); _rszQ.clear(); }
 function queueRsz(t){ if(!t)return; _rszQ.add(t); if(!_rszPending){_rszPending=true; (window.requestAnimationFrame||setTimeout)(_flushRsz,0);} }
@@ -2877,7 +2965,7 @@ async function mountActivity(agentId){
   if(k.other_values) kp += chip(_actN(k.other_values),'other values already in navi.db','dim', _actN(k.other_assets)+' asset-tags in '+(k.categories||[]).join(', ')+' — applied outside this specialists install (navi CLI, Tenable UI, another install)');
   const nothing = !r.last_at && !ops.length && !other.length;
   const open=_actOpen(agentId);
-  const hasDetail = tags.length || other.length;
+  const hasDetail = true;               // every specialist gets Details ▾ — it says so when there's nothing to list
   box.innerHTML='<div class="actv-head"><h3>📋 Done so far</h3><span class="sub">'+(nothing?'nothing recorded for this specialist on this install yet':'this specialist on this install · tags checked against navi.db')+'</span><span class="sp"></span>'+
     (hasDetail?'<button class="btn ghost sm" type="button" id="actvToggle">'+(open?'Hide details ▴':'Details ▾')+'</button>':'')+
     '<button class="btn ghost sm" type="button" id="actvRefresh" title="Refresh">↻</button></div>'+
@@ -2888,6 +2976,7 @@ async function mountActivity(agentId){
     let h='';
     if(tags.length) h+='<h4 style="margin:0 0 6px">Applied by this specialist</h4><table id="actvTags"><thead><tr><th>Category</th><th>Value</th><th>Assets now</th><th>Times applied</th><th>Last</th><th>Status</th></tr></thead><tbody></tbody></table>';
     if(other.length) h+='<h4 style="margin:14px 0 6px">Already in navi.db, not applied from this install</h4><table id="actvOther"><thead><tr><th>Category</th><th>Value</th><th>Assets now</th></tr></thead><tbody></tbody></table>';
+    if(!tags.length && !other.length) h+='<p class="sub" style="margin:0">No tags yet in '+esc((k.categories||[]).join(', ')||'this specialist\'s categories')+' — none applied from this install, and none already in navi.db'+(o.navi_db?'':' (navi.db tags table unavailable)')+'.</p>';
     if(!o.navi_db) h+='<p class="sub">navi.db tags table unavailable — asset counts not shown.</p>';
     else if(o.navi_db_synced) h+='<p class="sub" style="margin-top:8px">Asset counts are from navi.db as of its last update · '+_actAgo(o.navi_db_synced)+'.</p>';
     body.innerHTML=h;
@@ -3098,15 +3187,22 @@ async function downloadsAutoApproved(id){
                        search:'certQ',            // optional <input id> → server-side search (debounced)
                        first:o});                 // optional: render ▶ Run's own top/page/total first
      T.set({filter:['expired'], q:''});            // new query → back to row 1
+   chunk:500 (build 525) — CHUNKED: each server call brings `chunk` rows (≤ 500, the section's
+   max_limit); the pager shows 20 at a time (Rows selector) out of that chunk and only asks the
+   server again when you page past it — a 44,000-row list costs one request per 500 rows.
    The pager reads "‹ Prev  1–200 of 35,214  Next ›" (a capped total shows "10,000+"), keeps a
    Rows selector (remembered per table, as hPaginate), and every value is escaped with esc().
    Requests go through api.post, so the page cache records and replays them like any read. */
 function hDrill(o){
   o = Object.assign({action:'drill', cols:6, filter:[], q:'', sort:''}, o||{});
+  if(o.chunk) return _hDrillChunked(o);
   const st = {run:o.run, section:o.section, sort:o.sort||'', filter:(o.filter||[]).slice(), q:o.q||'',
               limit:Math.min(200, hPageSize(o.table)), toks:[null], idx:0, rows:[], total:null, start:0, next:null, seq:0, err:null};
   const tbl = () => document.getElementById(o.table);
-  { const t=tbl(); if(t) t.dataset.paged='1'; }   // the auto-pager leaves this table alone
+  { const t=tbl(); if(t){ t.dataset.paged='1';    // the auto-pager leaves this table alone
+      // build 525: ⤓ CSV ▾ → "every row" exports the whole (filtered / searched) section on the server
+      t.__exportSpec=()=>({source:'store', run:st.run, section:st.section, filter:st.filter.slice(), q:st.q, name:o.exportName||o.table});
+      t.__exportTotal=()=>st.total; } }
   function totalTxt(t){ if(!t) return '?'; const v=Number(t.value||0).toLocaleString(); return t.exact===false ? v+'+' : v; }
   function pagerEl(){ const id=o.table+'DPager'; let p=document.getElementById(id); const t=tbl();
     if(!p && t){ p=document.createElement('div'); p.id=id; p.className='toolbar hdrill-pager';
@@ -3161,6 +3257,85 @@ function hDrill(o){
     st.q = st.q || String(inp.value||'').trim(); } }
   if(o.first && o.first.ok!==false && st.limit===((o.first.page||{}).limit||st.limit) && !st.q){ apply(o.first); render(); }
   else load();
+  return api;
+}
+function _hDrillChunked(o){
+  const CH=Math.max(20, Math.min(500, +o.chunk||500));
+  const st = {run:o.run, section:o.section, sort:o.sort||'', filter:(o.filter||[]).slice(), q:o.q||'',
+              per:Math.min(CH, hPageSize(o.table)), ctoks:[null], cidx:0, buf:[], bufStart:0, view:0,
+              total:null, next:null, seq:0, err:null, busy:false};
+  const tbl=()=>document.getElementById(o.table);
+  { const t=tbl(); if(t){ t.dataset.paged='1';
+      t.__exportSpec=o.exportAll||(()=>({source:'store', run:st.run, section:st.section, filter:st.filter.slice(), q:st.q, name:o.exportName||o.table}));
+      t.__exportTotal=()=>st.total; } }
+  function totalTxt(t){ if(!t) return '?'; const v=Number(t.value||0).toLocaleString(); return t.exact===false ? v+'+' : v; }
+  function pagerEl(){ const id=o.table+'DPager'; let p=document.getElementById(id); const t=tbl();
+    if(!p && t){ p=document.createElement('div'); p.id=id; p.className='toolbar hdrill-pager';
+      const an=(t.parentElement && t.parentElement.children.length===1 && /auto|scroll/.test(t.parentElement.style.overflowX+t.parentElement.style.overflow)) ? t.parentElement : t;
+      an.parentNode.insertBefore(p, an.nextSibling); }
+    return p; }
+  function shown(){ const a=st.view-st.bufStart; return st.buf.slice(Math.max(0,a), Math.max(0,a)+st.per); }
+  function render(){
+    const t=tbl(); if(!t) return; const tb=t.tBodies[0]||t.appendChild(document.createElement('tbody'));
+    const rows=shown();
+    if(st.err) tb.innerHTML='<tr><td colspan="'+(+o.cols||1)+'" class="sub">'+esc(st.err)+'</td></tr>';
+    else tb.innerHTML = rows.length ? rows.map((r,i)=>o.row(r, st.view+i)).join('')
+      : (o.empty || '<tr><td colspan="'+(+o.cols||1)+'" class="sub">No rows.</td></tr>');
+    if(o.wire && !st.err){ try{ o.wire(tb, rows); }catch(e){} }
+    const p=pagerEl(); if(!p) return;
+    const n=rows.length, a=n?st.view+1:0, b=st.view+n;
+    const hasNext = (st.view+st.per < st.bufStart+st.buf.length) || !!st.next;
+    const hasPrev = st.view>0;
+    if(!st.err && !hasPrev && !hasNext && n<=Math.min.apply(null,HPG_SIZES)){ p.style.display='none'; p.innerHTML=''; }
+    else {
+      p.style.display='';
+      p.innerHTML='<button class="btn ghost sm" data-hdp '+(hasPrev&&!st.busy?'':'disabled')+'>‹ Prev</button>'
+        +'<span class="sub hdrill-count" style="margin:0 10px">'+esc(a.toLocaleString())+'–'+esc(b.toLocaleString())+' of '+esc(totalTxt(st.total))+'</span>'
+        +'<button class="btn ghost sm" data-hdn '+(hasNext&&!st.busy?'':'disabled')+'>Next ›</button>'
+        +(st.busy?'<span class="sub" style="margin-left:8px"><span class="spin"></span> loading the next '+esc(CH)+'…</span>':'');
+      p.querySelector('[data-hdp]').onclick=prev;
+      p.querySelector('[data-hdn]').onclick=next;
+      hSizeControl(p, o.table, v=>{ st.per=Math.min(CH,v); st.view=st.bufStart+Math.floor((st.view-st.bufStart)/st.per)*st.per; render(); });
+    }
+    if(o.onRender){ try{ o.onRender(api); }catch(e){} }
+  }
+  function apply(resp, start){
+    if(!resp || resp.ok===false){ st.buf=[]; st.next=null;
+      st.err = resp && resp.expired ? 'This list’s rows are no longer on the server — reload the page.' : '✗ '+((resp&&(resp.error||resp.message))||'could not load these rows');
+      return false; }
+    st.err=null; st.buf=resp.top||[]; st.total=resp.total||st.total; st.bufStart=start;
+    st.next=(resp.page||{}).next||null; return true; }
+  async function loadChunk(ci, view){
+    const my=++st.seq; st.busy=true; render();
+    const body={run:st.run, section:st.section, limit:CH};
+    if(st.sort) body.sort=st.sort; if(st.filter.length) body.filter=st.filter; if(st.q) body.q=st.q;
+    if(st.ctoks[ci]) body.next=st.ctoks[ci];
+    Object.assign(body, o.extra||{});
+    let resp; try{ resp=await o.api.post(o.action, body); }catch(e){ resp={ok:false, error:e.message}; }
+    if(my!==st.seq) return;
+    st.busy=false;
+    if(apply(resp, ci*CH)){ st.cidx=ci; st.ctoks[ci+1]=st.next; st.view=Math.max(st.bufStart, Math.min(view, st.bufStart+Math.max(0,st.buf.length-1))); }
+    render(); return resp; }
+  function next(){ if(st.busy) return;
+    if(st.view+st.per < st.bufStart+st.buf.length){ st.view+=st.per; render(); return; }
+    if(st.next) loadChunk(st.cidx+1, st.bufStart+st.buf.length); }
+  function prev(){ if(st.busy||st.view<=0) return;
+    const v=Math.max(0, st.view-st.per);
+    if(v>=st.bufStart){ st.view=v; render(); return; }
+    loadChunk(st.cidx-1, v); }
+  function reset(){ st.ctoks=[null]; st.cidx=0; st.view=0; st.bufStart=0; }
+  const api = {
+    set(p){ p=p||{}; if('run' in p) st.run=p.run; if('section' in p) st.section=p.section; if('sort' in p) st.sort=p.sort||'';
+      if('filter' in p) st.filter=(p.filter||[]).filter(Boolean); if('q' in p) st.q=String(p.q||'').trim();
+      reset(); return loadChunk(0, 0); },
+    reload(){ return loadChunk(st.cidx, st.view); },
+    get rows(){ return shown(); }, get chunk(){ return st.buf; }, get total(){ return st.total; }, get state(){ return st; },
+  };
+  if(o.search){ const inp=document.getElementById(o.search); if(inp && !inp.__hd){ inp.__hd=1; let tm=null;
+    inp.addEventListener('input', ()=>{ clearTimeout(tm); tm=setTimeout(()=>api.set({q:inp.value}), 300); });
+    st.q = st.q || String(inp.value||'').trim(); } }
+  if(o.first && o.first.ok!==false && !st.q){ apply(o.first, 0); st.ctoks[1]=st.next; render(); }
+  else loadChunk(0, 0);
   return api;
 }
 /* ===== end hDrill ===== */

@@ -70,7 +70,10 @@ _OWN_CACHE = {"snapshot", "scent",
               "boards", "board_get", "board_save", "board_new", "board_delete", "board_default",
               "board_export", "board_import", "library", "widget_cached", "widget_run", "widget_sql",
               "widget_data", "sql_save", "sql_approve", "sql_delete", "sql_get", "scope_keys",
-              "scope_values", "scope_count", "preset_sql", "ai_sql", "sql_preview"}
+              "scope_values", "scope_count", "preset_sql", "ai_sql", "sql_preview",
+              # build 525: a CSV export starts a job / hands back a file — never a remembered answer
+              "export", "widget_export", "inventory_export", "software_export", "log_export", "c2log_export",
+              "export_start", "search_export"}
 
 
 # ---- results.db awareness (core/payload.ResultStore) -----------------------------------
@@ -150,7 +153,7 @@ def note_response(agent_id, action, nbytes):
         n = int(nbytes or 0)
     except (TypeError, ValueError):
         return False
-    if n <= _BIG_LIMIT or action in ("export",):   # an explicit file download, not a page payload
+    if n <= _BIG_LIMIT or action == "export" or action.startswith("export_"):   # a file download, not a page payload
         return False
     rec = {"agent": agent_id, "action": action, "bytes": n, "at": time.time()}
     BIG_RESPONSES.append(rec)
@@ -282,6 +285,10 @@ _OPEN_ACTIONS = {
 }
 # long orchestration runs started from a page → the background budget (2 h, heavy)
 _JOB_ACTIONS = {("contract", "run_now"), ("contract", "plan")}
+# build 525: a CSV export is an explicit request for EVERY row — never under the 5 s page-open budget,
+# whatever the page's hint (the owner's rule: nothing under 2 h). Past 5,000 rows it is a background job.
+_EXPORT_ACTIONS = {"export", "export_start", "search_export", "software_export", "inventory_export",
+                   "log_export", "c2log_export", "widget_export", "cohort"}
 _HINTS = ("open", "run")                 # what a client may ask for (never "job")
 _RUN_SET = None
 
@@ -456,6 +463,8 @@ def request_scope(agent_id, action, payload, hint=None):
     if payload.get("background"):
         return "open"
     if payload.get("_run"):
+        return "run"
+    if action in _EXPORT_ACTIONS:
         return "run"
     if hint in _HINTS:
         return hint

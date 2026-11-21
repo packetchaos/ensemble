@@ -73,7 +73,7 @@
       <input id="rng" class="fin" style="width:230px" placeholder="affected range, e.g. <2.4.60" title="Affected versions. Clauses separated by ; are OR'd, constraints inside a clause are AND'd: >=2.0 <2.17.1; >=2.18 <2.18.2">
       <label class="sub" style="display:flex;gap:4px;align-items:center" title="Match the product name exactly, not as part of a longer name"><input type="checkbox" id="exact"> exact name</label>
       <button class="btn run sm" id="go" data-run>▶ Search</button>
-      <button class="btn ghost sm" id="csv" title="Every install in this search (up to 50,000) as CSV">⤓ CSV</button>
+      <button class="btn ghost sm" id="csv" title="Every install in this search as CSV — a background export job past 5,000 rows">⤓ CSV</button>
     </div>
     <div id="flash" class="flash"></div>
     <div id="swGlance"><div class="kpi" id="kpi" style="margin-bottom:10px"></div>
@@ -181,13 +181,8 @@ function nemNote(r){ const n=r.nemesis||{}, t=v=>v?esc(String(v).replace('T',' '
 $('go').onclick=()=>{ STF=''; go(0); };
 ['q','ver','rng'].forEach(id=>$(id).addEventListener('keydown',e=>{ if(e.key==='Enter'){ STF=''; go(0); } }));
 $('csv').onclick=async()=>{ const b=$('csv'), l=b.textContent, f=form(); if(f.q.length<2){ flash('flash','Search a product first.','warn'); return; }
-  b.disabled=true; b.textContent='⤓ exporting…';
-  let o; try{ o=await API.post('export',Object.assign({status:STF},f)); }catch(e){ o={ok:false,error:e.message}; }
-  b.disabled=false; b.textContent=l;
-  if(!o||!o.ok){ flash('flash','✗ '+esc((o&&(o.message||o.error))||'export failed'),'crit'); return; }
-  if(!o.rows){ flash('flash','Nothing to export for this search.','warn'); return; }
-  downloadText('software-explorer.csv',o.csv);
-  if(o.capped) flash('flash','Exported the first '+fnum(o.max)+' installs — narrow the search for the rest.','warn'); };
+  // build 525: every install — ≤ 5,000 at once, more as a background export job (Exports tray)
+  hExport(()=>API.post('export',Object.assign({status:STF},f)),'software-explorer'); };
 
 /* ── ✨ zero-day lookup ─────────────────────────────────────────────────── */
 let SRC=[], LLM=false, MAXU=10, ZMAX=false;

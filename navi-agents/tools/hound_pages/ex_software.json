@@ -44,7 +44,7 @@
   ],
   [
    "CSV and email",
-   "export every install in the search (up to 50,000) or send it through Notify & Report; each asset opens in Asset Dossier."
+   "export every install in the search (no cap — a background export job past 5,000) or send it through Notify & Report; each asset opens in Asset Dossier."
   ]
  ],
  "how": "Explorer › Software runs read-only searches over the software table (and cpes, when navi has it) in your local navi.db, using the same name and version parser as Software Inventory. The match is plain SQL and version comparison, so a model never decides what is affected. The lookup reads NVD, CVE.org and OSV data by rules; an AI model, if one is set up, is used only to read other advisory pages and to suggest package-name variants (httpd, apache2), and every range it returns is re-checked before use. It writes no tags.",

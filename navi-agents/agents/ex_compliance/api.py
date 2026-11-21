@@ -7,19 +7,17 @@ per audit check result per asset, from `navi config update compliance`).
             counted over the WHOLE filtered set, not just the visible page.
   facets  — the dropdown values: audit files and frameworks (from DISTINCT `reference`
             strings — one parse per distinct check, not per row) with result counts.
-  export  — the filtered rows as CSV text, capped at EXPORT_MAX rows (the response says so).
+  export  — every filtered row as CSV (build 525: no cap — ≤ 5,000 at once, more as a background
+            export job, core/exports.py).
 
 navi stores `reference` as a stringified Python list ("[{'framework': '800-53', 'control':
 'CM-7'}, …]"); the framework filter matches that text exactly, so it needs no parse per row.
 """
-import csv
-import io
 import re
 
 from core import compliance, db
 
 _PAGE = 500
-EXPORT_MAX = 50000
 _STATUS_SQL = {"failed": "upper(c.status) LIKE 'FAIL%'", "passed": "upper(c.status) LIKE 'PASS%'",
                "warning": "upper(c.status) LIKE 'WARN%'",
                "unknown": "NOT (upper(COALESCE(c.status,'')) LIKE 'FAIL%' OR upper(COALESCE(c.status,'')) LIKE "
@@ -179,18 +177,21 @@ def export(p):
         return _missing()
     ac = _cols("assets")
     where, args = _where(p, cc, ac)
-    rows = _page(cc, ac, where, args, EXPORT_MAX + 1, 0)
-    capped = len(rows) > EXPORT_MAX
-    buf = io.StringIO()
-    w = csv.writer(buf)
-    w.writerow(_CSV)
-    for r in rows[:EXPORT_MAX]:
-        r = dict(r)
-        r["status"] = compliance._norm_status(r.get("status"))
-        r["refs"] = _refs(r.get("reference"))
-        w.writerow([_cell(r.get(c)) for c in _CSV])
-    return {"ok": True, "csv": buf.getvalue(), "rows": min(len(rows), EXPORT_MAX), "capped": capped,
-            "max": EXPORT_MAX}, 200
+    # build 525: EVERY matching result (no 50,000 cap) — at once up to 5,000, past that a background
+    # export job (core/exports.py) streams the explorer's own query straight to the file
+    from core import exports
+    need_join = bool(where) and ("a.hostname" in where or "a.ip_address" in where)
+    total = int(db.scalar("SELECT COUNT(*)" + _from(ac, need_join) + where, tuple(args)) or 0)
+    sql = _select(cc, ac) + _from(ac) + where + " ORDER BY " + _ORDER
+
+    def rows():
+        for r in db.iter(sql, tuple(args)):
+            r = dict(r)
+            r["status"] = compliance._norm_status(r.get("status"))
+            r["refs"] = _refs(r.get("reference"))
+            yield [r.get(c) for c in _CSV]
+    return exports.start("compliance-explorer", rows=rows, header=list(_CSV), total=total,
+                         agent="ex_compliance"), 200
 
 
 def _cell(v):

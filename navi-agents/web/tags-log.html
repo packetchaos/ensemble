@@ -163,6 +163,7 @@ async function exportScript(format){
   let o; try{ o=await EXPLORE.post('tag_export',{format, include_acr:document.getElementById('exportAcr').checked}); }catch(e){ flash('flash','✗ export failed: '+esc(e.message),'crit'); return; }
   if(!o||!o.ok){ flash('flash','✗ export failed','crit'); return; }
   if(!o.count){ flash('flash','Nothing to export yet — apply a tag from any agent first.','warn'); return; }
+  if(o.export){ hExport(()=>Promise.resolve(o),'navi-tags-log'); flash('flash','⏳ '+esc(Number(o.count).toLocaleString())+' rows — exporting in the background; the file downloads when it is ready.','run'); return; }   // build 525: past 5,000 rows
   downloadText(o.filename||('navi-tags.'+format), o.script, format==='csv'?'text/csv':'text/plain');
   const tail = format==='csv' ? ' — import it on the Automation Station page to build a policy.' : ' — add it to cron to re-run them.';
   const acrTxt = format==='csv' ? '' : (o.acr_included ? ' Includes '+o.acr_included+' applied ACR change(s) — replays are not recorded in the ACR log.' : (o.acr_left_out ? ' '+o.acr_left_out+' ACR change(s) left out (tick “include applied ACR changes” to add the applied ones).' : ''));

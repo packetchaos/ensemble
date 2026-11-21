@@ -166,6 +166,16 @@ def widget_sql(p):
         return _err(e)
 
 
+def widget_export(p):
+    """Build 525: every row of a widget's data as CSV (≤ 5,000 at once, more as a background job)."""
+    try:
+        return _boards.export_widget(_board(p), str(p.get("iid") or "")), 200
+    except PermissionError as e:
+        return {"ok": False, "review": True, "error": str(e)}, 200
+    except (LookupError, ValueError, TypeError) as e:
+        return _err(e)
+
+
 def widget_data(p):
     try:
         out = _boards.data(_board(p), str(p.get("iid") or ""), page=p.get("page") or 0, size=p.get("size") or 50)
@@ -284,7 +294,7 @@ ACTIONS.update({
     "boards": boards_list, "board_get": board_get, "board_save": board_save, "board_new": board_new,
     "board_delete": board_delete, "board_default": board_default, "board_export": board_export,
     "board_import": board_import, "library": library, "widget_cached": widget_cached,
-    "widget_run": widget_run, "widget_sql": widget_sql, "widget_data": widget_data,
+    "widget_run": widget_run, "widget_sql": widget_sql, "widget_data": widget_data, "widget_export": widget_export,
     "sql_save": sql_save, "sql_approve": sql_approve, "sql_delete": sql_delete, "sql_get": sql_get,
     "scope_keys": scope_keys, "preset_sql": preset_sql, "ai_sql": ai_sql, "sql_preview": sql_preview, "scope_values": scope_values, "scope_count": scope_count,
 })

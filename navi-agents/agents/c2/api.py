@@ -2487,7 +2487,13 @@ def c2log_rows(p):
 
 
 def c2log_export(p):
-    return {"ok": True, **c2log.export_csv(_log_filters(p))}, 200
+    """Every matching row (no cap) — past 5,000 a background export job (core/exports.py)."""
+    from core import exports
+    hdr, rows, n = c2log.export_source(_log_filters(p))
+    r = exports.start("hounds-c2-log", rows=rows, header=hdr, total=n, agent="c2")
+    if r.get("inline"):
+        r["count"] = r.get("rows", 0)
+    return r, 200
 
 
 ACTIONS = {"run": run, "load": load, "status": status, "hosts": hosts, "precheck": precheck,

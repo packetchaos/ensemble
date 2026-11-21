@@ -502,22 +502,26 @@ def tag_export(p):
     if fmt == "csv":
         import csv as _csv
         import io as _io
+        from core import exports
+        hdr = ["agent", "category", "value", "selector", "detail", "op", "status", "business_case"]
+        # build 525: EVERY job in the log (the page view keeps the newest 2,000; the export doesn't)
+        all_rows = [[j.get("agent", ""), j.get("category", ""), j.get("value", ""), j.get("selector", ""),
+                     j.get("detail", ""), j.get("op", ""), j.get("status", ""), j.get("business_case", "")]
+                    for j in tagq.list_jobs(limit=-1) if not (which == "done" and j.get("status") != "done")]
+        if len(all_rows) > exports.INLINE_MAX:            # a background export job the page downloads
+            r = exports.start("navi-tags-log", rows=lambda: iter(all_rows), header=hdr, total=len(all_rows),
+                              agent="explore")
+            r.update(format="csv", count=len(all_rows))
+            return r, 200
         buf = _io.StringIO()
         w = _csv.writer(buf)
-        w.writerow(["agent", "category", "value", "selector", "detail", "op", "status", "business_case"])
-        rows = 0
-        for j in tagq.list_jobs():
-            if which == "done" and j.get("status") != "done":
-                continue
-            w.writerow([csv_safe(x) for x in (
-                j.get("agent", ""), j.get("category", ""), j.get("value", ""),
-                j.get("selector", ""), j.get("detail", ""), j.get("op", ""),
-                j.get("status", ""), j.get("business_case", ""))])
-            rows += 1
-        return {"ok": True, "format": "csv", "count": rows,
+        w.writerow(hdr)
+        for r in all_rows:
+            w.writerow([csv_safe(x) for x in r])
+        return {"ok": True, "format": "csv", "count": len(all_rows),
                 "filename": "navi-tags-log.csv", "script": buf.getvalue()}, 200
     include_acr = p.get("include_acr") is True or str(p.get("include_acr")).lower() in ("1", "true", "yes", "on")
-    jobs = list(reversed(tagq.list_jobs()))          # log is newest-first; replay oldest-first
+    jobs = list(reversed(tagq.list_jobs(limit=-1)))  # log is newest-first; replay oldest-first (every job)
     cmds, n_acr, skipped_acr = [], 0, 0
     for j in jobs:
         spec = j.get("spec") or {}
@@ -642,7 +646,56 @@ def activity(p):
     return _act.summary(p.get("agent", "")), 200
 
 
-ACTIONS = {"activity": activity, "asset": asset, "vuln": vuln, "cert_month": cert_month, "applied": applied,
+# ── build 525: full CSV exports (core/exports.py) ───────────────────────────────────────────
+# ≤ 5,000 rows come straight back ({inline, csv}); more run as a background job the page polls
+# (export_status) and downloads in pieces (export_fetch). No row cap anywhere.
+def export_start(p):
+    """{source:"store", run, section, filter?, q?, name?} — every row of a stored run's section
+    (any server-paged table); {source:"sql", sql, name?} — a reviewed read-only SELECT, every row
+    (no LIMIT added), on the guarded engine (navi's credential tables stay unreadable)."""
+    from core import exports
+    src = (p or {}).get("source") or "store"
+    if src == "store":
+        return exports.store_export(p), 200
+    if src == "sql":
+        raw = (p.get("sql") or "").strip().rstrip(";").strip()
+        sql, err = _safe_select(raw + "\nLIMIT -1" if not re.search(r"\blimit\b", _bare(raw), re.I) else raw)
+        if err:
+            return {"ok": False, "error": err}, 200
+        try:                                   # ≤ 5,000 rows → at once; more → a background job
+            n = int(db.user_query("SELECT COUNT(*) AS n FROM (SELECT 1 FROM (%s\n) LIMIT %d)"
+                                  % (sql, exports.INLINE_MAX + 1))[0]["n"])
+        except Exception as e:
+            return {"ok": False, "error": str(e)}, 200
+        if n <= exports.INLINE_MAX:
+            return exports.start(p.get("name") or "query", sql=sql, total=n, agent="explore"), 200
+        return exports.start(p.get("name") or "query", sql=sql, total=None, agent="explore", force_job=True), 200
+    return {"ok": False, "error": "unknown export source"}, 400
+
+
+def export_status(p):
+    from core import exports
+    return exports.status((p or {}).get("id")), 200
+
+
+def export_fetch(p):
+    from core import exports
+    return exports.fetch((p or {}).get("id"), (p or {}).get("offset") or 0), 200
+
+
+def export_cancel(p):
+    from core import exports
+    return exports.cancel((p or {}).get("id")), 200
+
+
+def export_list(p):
+    from core import exports
+    return {"ok": True, "exports": exports.recent(), "inline_max": exports.INLINE_MAX}, 200
+
+
+ACTIONS = {"export_start": export_start, "export_status": export_status, "export_fetch": export_fetch,
+           "export_cancel": export_cancel, "export_list": export_list,
+           "activity": activity, "asset": asset, "vuln": vuln, "cert_month": cert_month, "applied": applied,
            "tags_compare": tags_compare, "verify_tags": verify_tags,
            "nl_query": nl_query, "nl_translate": nl_translate, "run_sql": run_sql,
            "columns": columns, "which_agent": which_agent,

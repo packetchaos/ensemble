@@ -22,7 +22,7 @@ Read-only composition, double-gated send:
 import datetime
 import re
 
-from core import db, tagname
+from core import brand, db, tagname
 from core.acrlog import csv_safe   # spreadsheet-formula neutraliser for CSV attachments
 from core.gates import confirmed
 
@@ -265,11 +265,11 @@ def _cert_rows(days):
 #    {to, owner, subject, body_text, body_html, asset_count, meta}
 #  body_text is what actually gets emailed; body_html is the UI preview.
 # --------------------------------------------------------------------------- #
-_SIGN = "\n— navi Ensemble · automated by navi (reply to reach the security team)"
-_HOUND_FOR = [("kev", "Laelaps (CISA KEV)"), ("cert", "Certania (certificates)"),
-              ("eol", "Charon (end-of-life)"), ("lifecycle", "Charon (end-of-life)"),
-              ("post-quantum", "Heimdall (post-quantum)"), ("mitre", "MITRE ATT&CK Map (ATT&CK)"),
-              ("iot", "Argos (IoT/OT)"), ("ai", "Pythia (AI)")]
+_SIGN = "\n— " + brand.BRAND + " · automated by navi (reply to reach the security team)"
+_HOUND_FOR = [("kev", brand.display("cisakev")), ("cert", brand.display("certificate")),
+              ("eol", brand.display("eol")), ("lifecycle", brand.display("eol")),
+              ("post-quantum", brand.display("postquantum")), ("mitre", brand.display("mitre")),
+              ("iot", brand.display("iot_squad")), ("ai", brand.display("ai"))]
 
 
 def _sev_tag(s):
@@ -480,9 +480,9 @@ def _contract_message(kind, to, payload):
     title = "the plan" if kind == "contract_plan" else "the result"
     body = (payload or {}).get("text") or ""
     when = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    lines = [f"🤝 AI Contract — {title} ({when})", "", body or "(no detail supplied)", _SIGN]
-    subject = f"🤝 [Tenable] AI Contract {('plan' if kind=='contract_plan' else 'result')} — {when}"
-    body_html = _html_wrap(subject, f"<p><b>AI Contract — {title}</b> ({_esc(when)})</p>"
+    lines = [f"🤝 {brand.ORCHESTRATOR} — {title} ({when})", "", body or "(no detail supplied)", _SIGN]
+    subject = f"🤝 [Tenable] {brand.ORCHESTRATOR} {('plan' if kind=='contract_plan' else 'result')} — {when}"
+    body_html = _html_wrap(subject, f"<p><b>{_esc(brand.ORCHESTRATOR)} — {title}</b> ({_esc(when)})</p>"
                            f"<pre style='white-space:pre-wrap'>{_esc(body)}</pre>" + _sign_html())
     return {"to": to, "owner": "Contract watchers", "subject": subject,
             "body_text": "\n".join(lines), "body_html": body_html,
@@ -499,13 +499,9 @@ _AGENT_SIGNALS = {
     "identity": ["83303", "10860", "41028", "10859", "149334", "17651", "104410", "110723"],
     "iot_squad": [],
 }
-_AGENT_HOUND = {
-    "cisakev": "Laelaps", "certificate": "Certania", "postquantum": "Heimdall",
-    "attackpath": "Fenrir", "iot_squad": "Argos", "ai": "Pythia", "exproute": "Exposure Routes",
-    "software": "Software Inventory", "eol": "Charon", "acr": "Criticality Calibration", "scan_eval": "Scan Health",
-    "agentgroup": "Agent Group Sync", "tagremoval": "Tag Removal", "mitre": "MITRE ATT&CK Map", "customapp": "Custom App Discovery",
-    "identity": "Identity Inventory", "insights": "Ensemble Report",
-}
+# build 524: the names the console shows (core.brand — "Codename · Plain job" for a hero, the plain
+# name otherwise), so an email names the specialist exactly as its page does
+_AGENT_HOUND = {aid: brand.display(aid) for aid in brand.ROSTER}
 
 
 def _uuids_for_tag(category, value):
@@ -610,7 +606,7 @@ def _contract_summary_message(payload, to):
     act, ach = _chart_block(asset_pairs, "Assets tagged by category", unit="")
 
     # text body
-    L = [f"📜 AI Contract — run summary ({'ARMED · executed' if armed else 'PLAN · preview'})", "",
+    L = [f"📜 {brand.ORCHESTRATOR} — run summary ({'ARMED · executed' if armed else 'PLAN · preview'})", "",
          f"Tags deployed: {total_tags} across {len(tag_pairs)} categor{'y' if len(tag_pairs)==1 else 'ies'}"
          + (f", touching ~{total_assets} assets" if total_assets else "") + ".",
          (f"Errors: {total_err + len(errored_agents)}." if (total_err or errored_agents) else "No errors."), ""]
@@ -658,13 +654,13 @@ def _contract_summary_message(payload, to):
         items = "".join(f"<li>{_esc(a)}: {_esc(e)}</li>" for a, e in errored_agents) + \
                 "".join(f"<li>{_esc(x['category'])} : {_esc(x['value'])} — {_esc(x['message'])}</li>" for x in errors[:20])
         err_html = f"<p style='color:#c81e3f;margin-bottom:4px'><b>Errors</b></p><ul>{items}</ul>"
-    inner = (f"<p><b>AI Contract — run summary</b> · {'ARMED · executed' if armed else 'PLAN · preview'}</p>"
+    inner = (f"<p><b>{_esc(brand.ORCHESTRATOR)} — run summary</b> · {'ARMED · executed' if armed else 'PLAN · preview'}</p>"
              + hstat
              + (f"<div style='margin:12px 0'>{tch}</div>" if tch else "")
              + (f"<div style='margin:12px 0'>{ach}</div>" if ach else "")
              + f"<p style='margin-bottom:4px'><b>By category</b></p><ul>{hcat}</ul>"
              + skip_html + err_html + _sign_html())
-    subject = (f"📜 [Tenable] AI Contract summary — {total_tags} tags / {len(tag_pairs)} categories"
+    subject = (f"📜 [Tenable] {brand.ORCHESTRATOR} summary — {total_tags} tags / {len(tag_pairs)} categories"
                + (f" · {total_err+len(errored_agents)} errors" if (total_err or errored_agents) else ""))
     return {"to": to or payload.get("to") or "", "owner": "Contract watchers", "subject": subject,
             "body_text": "\n".join(L), "body_html": _html_wrap(subject, inner),
@@ -880,7 +876,7 @@ def _esc(s):
 
 
 def _sign_html():
-    return ("<p style='color:#8a99ad;font-size:12px;margin-top:16px'>— navi Ensemble · "
+    return ("<p style='color:#8a99ad;font-size:12px;margin-top:16px'>— " + _esc(brand.BRAND) + " · "
             "automated by navi (reply to reach the security team)</p>")
 
 
@@ -890,7 +886,7 @@ def _html_wrap(subject, inner):
             f"color:#0f172a;background:#ffffff;border:1px solid #e2e8f0;border-top:4px solid #8b8fe6;"
             f"border-radius:12px;padding:18px 20px'>"
             f"<div style='font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.14em;"
-            f"text-transform:uppercase;color:#5457cc;font-weight:700;margin-bottom:6px'>\U0001F43E The Hounds</div>"
+            f"color:#5457cc;font-weight:700;margin-bottom:6px'>{_esc(brand.BRAND)}</div>"
             f"<div style='font-weight:800;font-size:16px;margin-bottom:8px;"
             f"color:#0f172a'>{_esc(subject)}</div>{inner}</div>")
 

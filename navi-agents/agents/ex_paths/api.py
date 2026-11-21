@@ -36,4 +36,17 @@ def count(p):
     return {"ok": True, "assets": int(n or 0)}, 200
 
 
-ACTIONS = {"search": run, "tag": tag, "count": count}
+def export(p):
+    """Build 525: EVERY row of this search as CSV (the table's ⤓ CSV ▾ → every row) — at once up to
+    5,000, past that a background job running `navi export query` over the explorer's own SQL."""
+    from core import exports
+    sql, args = search.export_sql(search.paths, (p.get("q") or "").strip(), 0, None)
+    if not sql:
+        return {"ok": False, "error": "nothing to export"}, 200
+    try:
+        return exports.start_sql("paths-explorer", sql, args, agent="ex_paths", trusted=True), 200
+    except Exception as e:
+        return {"ok": False, "error": str(e)}, 200
+
+
+ACTIONS = {"export": export, "search": run, "tag": tag, "count": count}

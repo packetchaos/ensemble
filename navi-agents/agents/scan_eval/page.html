@@ -270,11 +270,8 @@ document.getElementById('polCsv').onclick=()=>DATA&&csvDim(DATA.policies,'policy
 document.getElementById('scaCsv').onclick=()=>DATA&&csvDim(DATA.scans,'scan','scan-eval-scans');
 document.getElementById('aCsv').onclick=async function(){ if(!DATA||!RUN)return;
   // every row of the current view, streamed from the stored run on the server (not just the loaded page)
-  const btn=this; btn.disabled=true; const lbl=btn.textContent; btn.textContent='⏳ CSV…';
-  let o; try{ o=await API.post('export',{run:RUN, filter:viewFlags(), q:aQ()}); }catch(e){ o={ok:false,error:e.message}; }
-  btn.disabled=false; btn.textContent=lbl;
-  if(!o||!o.ok){ flash('flash','✗ '+esc((o&&o.error)||'export failed'),'crit'); return; }
-  downloadText(_safeName('scan-eval-assets')+'.csv', o.csv); };
+  // build 525: ≤ 5,000 rows at once, more as a background export job (Exports tray)
+  hExport(()=>API.post('export',{run:RUN, filter:viewFlags(), q:aQ()}),'scan-eval-assets'); };
 document.getElementById('tagSlow').onclick=function(){ tagKeys(['slow'],this,((DATA&&DATA.metrics)||{}).slow); };
 
 function render(){ if(!DATA) return; renderMetrics(); renderAssets(); renderDims(); renderSlow(); }

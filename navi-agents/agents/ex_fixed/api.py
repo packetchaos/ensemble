@@ -104,4 +104,26 @@ def search(p):
             "page": off // _n + 1, "has_next": has_next, "count": min(len(rows), _n)}}, 200
 
 
-ACTIONS = {"search": search}
+def export(p):
+    """Build 525: EVERY row of the search as CSV (the page used to export only the rows on screen).
+    ≤ 5,000 at once; more → a background job running `navi export query` over this same SQL."""
+    from core import exports
+    if not _exists():
+        return {"ok": False, "error": "no fixed table in navi.db"}, 200
+    cols = _cols()
+    where, args = _where(p or {}, cols)
+    C = {n: _c(cols, n) for n in _WANT}
+    dur = _dur_days("first_found", "last_fixed")
+    total = int(db.scalar("SELECT COUNT(*) FROM fixed" + where, tuple(args)) or 0)
+    sql = ("SELECT " + ", ".join("%s AS %s" % (C[n], n) for n in _WANT) + ","
+           " CASE WHEN last_fixed IS NOT NULL AND TRIM(last_fixed)<>'' THEN ROUND(" + dur + ",1) END AS fix_days"
+           " FROM fixed" + where +
+           " ORDER BY (pass_fail IS NULL),"
+           "  CASE lower(pass_fail) WHEN 'fail' THEN 0 WHEN 'pass' THEN 1 ELSE 2 END,"
+           "  CASE lower(severity) WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2"
+           "   WHEN 'low' THEN 3 ELSE 4 END")
+    return exports.start("fixed-explorer", sql=sql, args=tuple(args), total=total, agent="ex_fixed",
+                         trusted=True), 200
+
+
+ACTIONS = {"search": search, "export": export}

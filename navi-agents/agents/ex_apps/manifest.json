@@ -9,7 +9,8 @@
   "needs_backend": true,
   "page": "page.html",
   "actions": [
-    "search"
+    "search",
+    "export"
   ],
   "hero": false,
   "mission": "Platform",

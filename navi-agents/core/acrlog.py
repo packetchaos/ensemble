@@ -281,25 +281,44 @@ def csv_safe(v):
     return v
 
 
-def export_csv(filters=None) -> dict:
-    w, p = _where(filters)
-    data = _q("SELECT * FROM acr_log" + w + " ORDER BY id ASC", p)
-    buf = io.StringIO()
-    wr = csv.writer(buf)
-    hdr = ["ts_utc", "batch", "agent", "category", "value", "mod", "score", "asset_uuid", "host", "ip",
-           "acr_before", "acr_after", "result", "business_case", "reasons", "note", "message"]
-    wr.writerow(hdr)
-    for r in data:
-        try:
-            rs = ";".join(json.loads(r.get("reasons") or "[]"))
-        except Exception:
-            rs = ""
-        wr.writerow([csv_safe(x) for x in (
-            time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(r.get("ts") or 0)), r.get("batch"),
+_EXPORT_HDR = ["ts_utc", "batch", "agent", "category", "value", "mod", "score", "asset_uuid", "host", "ip",
+               "acr_before", "acr_after", "result", "business_case", "reasons", "note", "message"]
+
+
+def _export_row(r):
+    try:
+        rs = ";".join(json.loads(r.get("reasons") or "[]"))
+    except Exception:
+        rs = ""
+    return [time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(r.get("ts") or 0)), r.get("batch"),
             r.get("agent"), r.get("category"), r.get("value"), r.get("mod"), r.get("score"),
             r.get("asset_uuid"), r.get("host"), r.get("ip"), r.get("acr_before"), r.get("acr_after"),
-            r.get("result"), r.get("business_case"), rs, r.get("note"), r.get("message"))])
-    return {"count": len(data), "csv": buf.getvalue(), "filename": "hounds-acr-log.csv"}
+            r.get("result"), r.get("business_case"), rs, r.get("note"), r.get("message")]
+
+
+def export_source(filters=None):
+    """(header, rows() → every matching row as a list, count) — build 525: the CSV has no cap;
+    core.exports builds it at once up to 5,000 rows, as a background job past that."""
+    w, p = _where(filters)
+    n = _q("SELECT COUNT(*) AS n FROM acr_log" + w, p)
+    count = int((n[0] if n else {}).get("n") or 0)
+
+    def rows():
+        for r in _q("SELECT * FROM acr_log" + w + " ORDER BY id ASC", p):
+            yield _export_row(r)
+    return list(_EXPORT_HDR), rows, count
+
+
+def export_csv(filters=None) -> dict:
+    hdr, rows, _n = export_source(filters)
+    buf = io.StringIO()
+    wr = csv.writer(buf)
+    wr.writerow(hdr)
+    k = 0
+    for r in rows():
+        wr.writerow([csv_safe(x) for x in r])
+        k += 1
+    return {"count": k, "csv": buf.getvalue(), "filename": "hounds-acr-log.csv"}
 
 
 def applied_assets() -> dict:

@@ -1,0 +1,708 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "navi Ensemble 2.44.525 SBOM",
+  "documentNamespace": "https://github.com/packetchaos/ensemble/sbom/2.44.525/979e6341-6d5f-5947-abec-31460e2d4fa5",
+  "creationInfo": {
+    "created": "2026-11-21T16:23:42Z",
+    "creators": [
+      "Tool: tools/sbom.py-2.44.525",
+      "Person: Casey Reid (packetchaos)"
+    ]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-navi-ensemble",
+      "name": "navi Ensemble",
+      "versionInfo": "2.44.525",
+      "supplier": "Person: Casey Reid (packetchaos)",
+      "downloadLocation": "https://github.com/packetchaos/ensemble",
+      "filesAnalyzed": false,
+      "licenseDeclared": "MIT",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "APPLICATION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:github/packetchaos/ensemble@2.44.525"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-pypi-navi-pro",
+      "name": "navi-pro",
+      "versionInfo": ">=8.8",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "GPL-3.0-only OR MIT",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "APPLICATION",
+      "comment": "navi — the Tenable CLI the Ensemble drives for every Tenable read and write (`navi …`) (scope: required)",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/navi-pro"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-navi-dep-click",
+      "name": "click",
+      "versionInfo": ">=7.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "BSD-3-Clause",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/click"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-navi-dep-restfly",
+      "name": "restfly",
+      "versionInfo": "<=1.5.1",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "MIT",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/restfly"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-navi-dep-requests",
+      "name": "requests",
+      "versionInfo": ">=2.31",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "Apache-2.0",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/requests"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-navi-dep-flask",
+      "name": "flask",
+      "versionInfo": ">=2.3.2",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "BSD-3-Clause",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/flask"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-navi-dep-ipy",
+      "name": "IPy",
+      "versionInfo": ">=1.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "BSD-3-Clause",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/ipy"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-navi-dep-pytenable",
+      "name": "pytenable",
+      "versionInfo": ">=1.4.3",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "MIT",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/pytenable"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-navi-dep-arrow",
+      "name": "arrow",
+      "versionInfo": ">=0.17.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "Apache-2.0",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/arrow"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-navi-dep-boto3",
+      "name": "boto3",
+      "versionInfo": ">=1.17.48",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "Apache-2.0",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/boto3"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-navi-dep-pexpect",
+      "name": "pexpect",
+      "versionInfo": ">=4.8.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "ISC",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/pexpect"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-navi-dep-typing-extensions",
+      "name": "typing-extensions",
+      "versionInfo": ">=4.0.1",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "PSF-2.0",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/typing-extensions"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-navi-dep-pandas",
+      "name": "pandas",
+      "versionInfo": ">=1.1.5",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "BSD-3-Clause",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/pandas"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-navi-dep-numpy",
+      "name": "numpy",
+      "versionInfo": ">=1.19.5",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "BSD-3-Clause",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/numpy"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-navi-dep-xlrd",
+      "name": "xlrd",
+      "versionInfo": ">=2.0.1",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "BSD-3-Clause",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/xlrd"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-pypi-fastapi",
+      "name": "fastapi",
+      "versionInfo": ">=0.110",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "MIT",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "comment": "web server option (app_fastapi.py) — run one of FastAPI, Flask or the stdlib server (scope: optional)",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/fastapi"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-pypi-uvicorn",
+      "name": "uvicorn",
+      "versionInfo": ">=0.27",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "BSD-3-Clause",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "comment": "ASGI server for the FastAPI option (scope: optional)",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/uvicorn"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-pypi-starlette",
+      "name": "starlette",
+      "versionInfo": "unpinned",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "BSD-3-Clause",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "comment": "FastAPI's foundation (imported directly by app_fastapi.py) (scope: optional)",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/starlette"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-pypi-flask",
+      "name": "flask",
+      "versionInfo": ">=3.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "BSD-3-Clause",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "comment": "web server option (app_flask.py) (scope: optional)",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/flask"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-pypi-werkzeug",
+      "name": "werkzeug",
+      "versionInfo": "unpinned",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "BSD-3-Clause",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "comment": "Flask's WSGI toolkit (imported directly by app_flask.py) (scope: optional)",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/werkzeug"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-pypi-boto3",
+      "name": "boto3",
+      "versionInfo": ">=1.34",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "Apache-2.0",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "comment": "only when NAVI_LLM_PROVIDER=bedrock (AWS credentials + SigV4) (scope: optional)",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/boto3"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-pypi-certifi",
+      "name": "certifi",
+      "versionInfo": "unpinned",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "MPL-2.0",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "comment": "CA bundle for model-provider TLS when present; falls back to the system store (scope: optional)",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/certifi"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-pypi-fastmcp",
+      "name": "fastmcp",
+      "versionInfo": ">=2.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "Apache-2.0",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "comment": "the optional MCP server (hounds_mcp.py) (scope: optional)",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/fastmcp"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-pypi-mcp",
+      "name": "mcp",
+      "versionInfo": "unpinned",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "MIT",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "comment": "alternative to fastmcp for hounds_mcp.py (the official SDK ships FastMCP) (scope: optional)",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/mcp"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-pypi-anyio",
+      "name": "anyio",
+      "versionInfo": "unpinned",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "MIT",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "comment": "MCP self-test only (hounds_mcp_selftest.py) (scope: excluded)",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/anyio"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-pypi-playwright",
+      "name": "playwright",
+      "versionInfo": "unpinned",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "Apache-2.0",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "LIBRARY",
+      "comment": "browser tests only (scope: excluded)",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/playwright"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-platform-cpython",
+      "name": "CPython",
+      "versionInfo": ">=3.10",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "PSF-2.0",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "OPERATING-SYSTEM",
+      "comment": "Python 3.10+ — the core runs on the standard library only (sqlite3, subprocess, urllib, ssl) (scope: required)"
+    },
+    {
+      "SPDXID": "SPDXRef-font-inter",
+      "name": "Inter (web font)",
+      "versionInfo": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "OFL-1.1",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "OTHER",
+      "comment": "loaded by the browser from Google Fonts (console.css); the UI falls back to system fonts (scope: required)"
+    },
+    {
+      "SPDXID": "SPDXRef-font-space-grotesk",
+      "name": "Space Grotesk (web font)",
+      "versionInfo": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "OFL-1.1",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "OTHER",
+      "comment": "loaded by the browser from Google Fonts (console.css); the UI falls back to system fonts (scope: required)"
+    },
+    {
+      "SPDXID": "SPDXRef-font-jetbrains-mono",
+      "name": "JetBrains Mono (web font)",
+      "versionInfo": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseDeclared": "OFL-1.1",
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "primaryPackagePurpose": "OTHER",
+      "comment": "loaded by the browser from Google Fonts (console.css); the UI falls back to system fonts (scope: required)"
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-navi-pro",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-fastapi",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-uvicorn",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-starlette",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-flask",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-werkzeug",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-boto3",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-certifi",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-fastmcp",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-mcp",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-anyio",
+      "relationshipType": "TEST_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-playwright",
+      "relationshipType": "TEST_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-platform-cpython",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-font-inter",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-font-space-grotesk",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-font-jetbrains-mono",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-navi-ensemble"
+    },
+    {
+      "spdxElementId": "SPDXRef-navi-dep-click",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-navi-pro"
+    },
+    {
+      "spdxElementId": "SPDXRef-navi-dep-restfly",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-navi-pro"
+    },
+    {
+      "spdxElementId": "SPDXRef-navi-dep-requests",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-navi-pro"
+    },
+    {
+      "spdxElementId": "SPDXRef-navi-dep-flask",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-navi-pro"
+    },
+    {
+      "spdxElementId": "SPDXRef-navi-dep-ipy",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-navi-pro"
+    },
+    {
+      "spdxElementId": "SPDXRef-navi-dep-pytenable",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-navi-pro"
+    },
+    {
+      "spdxElementId": "SPDXRef-navi-dep-arrow",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-navi-pro"
+    },
+    {
+      "spdxElementId": "SPDXRef-navi-dep-boto3",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-navi-pro"
+    },
+    {
+      "spdxElementId": "SPDXRef-navi-dep-pexpect",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-navi-pro"
+    },
+    {
+      "spdxElementId": "SPDXRef-navi-dep-typing-extensions",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-navi-pro"
+    },
+    {
+      "spdxElementId": "SPDXRef-navi-dep-pandas",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-navi-pro"
+    },
+    {
+      "spdxElementId": "SPDXRef-navi-dep-numpy",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-navi-pro"
+    },
+    {
+      "spdxElementId": "SPDXRef-navi-dep-xlrd",
+      "relationshipType": "DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-navi-pro"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-starlette",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-fastapi"
+    },
+    {
+      "spdxElementId": "SPDXRef-pypi-werkzeug",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-pypi-flask"
+    }
+  ],
+  "comment": "External services the Ensemble contacts are listed in the CycloneDX file (services)."
+}

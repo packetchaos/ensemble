@@ -132,8 +132,14 @@ def log(p):
 
 
 def log_export(p):
-    """Read: the ACR log as CSV (same filters as `log`, no row limit)."""
-    return {"ok": True, **acrlog.export_csv(_filters(p))}, 200
+    """Read: the ACR log as CSV (same filters as `log`, no row limit). Build 525: past 5,000 rows it
+    is a background export job (core/exports.py) the page downloads when it's done."""
+    from core import exports
+    hdr, rows, n = acrlog.export_source(_filters(p))
+    r = exports.start("hounds-acr-log", rows=rows, header=hdr, total=n, agent="acr")
+    if r.get("inline"):
+        r["count"] = r.get("rows", 0)
+    return r, 200
 
 
 def protect(p):

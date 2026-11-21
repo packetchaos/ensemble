@@ -38,6 +38,8 @@
 <script src="/static/console.js"></script>
 <script>
 const API=agentApi('ex_assets'); let PAGE=hPageSize('tbl');   // 20/page by default, Rows selector up to 50
+// build 525: ⤓ CSV ▾ → every asset of the search (not just this page) — a background job past 5,000 rows
+hTableExport('tbl', ()=>()=>API.post('search_export',{q:document.getElementById('q').value.trim()}));
 async function go(off){ off=off||0;
   document.getElementById('go').disabled=true; flash('flash','<span class="spin"></span> querying navi.db…','run');
   let o; try{ o=await API.post('search',{q:document.getElementById('q').value.trim(),offset:off,limit:PAGE}); }catch(e){ o={ok:false,error:e.message}; }
@@ -120,14 +122,11 @@ async function loadEvidence(key){
 }
 document.getElementById('evCsv').onclick=async function(){
   if(_swq?!SWL:(!TEV||!TEV.state||!TEV.state.run)) return;
-  const b=this, l=b.textContent; b.disabled=true; b.textContent='⏳ CSV…';
   const q=(document.getElementById('evQ').value||'').trim();
-  const req=_swq?Object.assign({run:SWL.run, q},_swq.version==null?{product:_swq.product}:_swq):{run:TEV.state.run, q};
-  let o; try{ o=await API.post(_swq?'software_export':'export',req); }catch(e){ o={ok:false,error:e.message}; }
-  b.disabled=false; b.textContent=l;
-  if(!o||!o.ok){ flash('evFlash','✗ '+esc((o&&o.error)||'export failed'),'crit'); return; }
-  downloadText(_safeName(_swq?('software-'+_swq.product+(_swq.version?'-'+_swq.version:'')):('evidence-'+_evKey))+'.csv', o.csv);
-  if(_swq) flash('evFlash','⬇ exported '+Number(o.rows||0).toLocaleString()+' asset(s) — every one in this list'+(o.q?' matching “'+esc(o.q)+'”':''),'ok'); };
+  const req=_swq?Object.assign({run:SWL.run, q},_swq.version==null?{product:_swq.product}:_swq):{run:TEV.state.run, q,
+    name:'evidence-'+_evKey};
+  // build 525: every asset in this list — ≤ 5,000 at once, more as a background export job (Exports tray)
+  hExport(()=>API.post(_swq?'software_export':'export',req), _swq?('software-'+_swq.product):('evidence-'+_evKey)); };
 if(_swq) loadEvidence('software'); else if(_evKey) loadEvidence(_evKey);
 mountAgentHeader({icon:'🔎',name:'Asset Explorer',sub:'navi.db search · 500/page'});
 try{ hMailAuto(); }catch(e){}

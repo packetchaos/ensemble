@@ -74,8 +74,10 @@ async function go(off){ off=off||0;
   hSizeControl(pg,'tbl',v=>{ PAGE=v; go(0); });
 }
 function kpi(v,l,c){ return '<div class="k"><div class="v"'+(c?' style="color:'+c+'"':'')+'>'+v+'</div><div class="l">'+esc(l)+'</div></div>'; }
-document.getElementById('csv').onclick=()=>{ if(!LAST.length){alert('Nothing to export yet.');return;}
-  downloadCSV('fixed-explorer.csv',['asset_uuid','plugin_id','plugin_name','severity','state','pass_fail','first_found','last_fixed','fix_days'],LAST); };
+// build 525: every row of the search (not just this page) — past 5,000 a background job (navi export query)
+document.getElementById('csv').onclick=()=>hExport(()=>API.post('export',{q:document.getElementById('q').value.trim(),
+  severity:document.getElementById('sev').value,state:document.getElementById('state').value,
+  pass_fail:document.getElementById('pf').value}),'fixed-explorer');
 document.getElementById('go').onclick=()=>go(0);
 document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')go(0);});
 ['sev','state','pf'].forEach(id=>document.getElementById(id).onchange=()=>go(0));

@@ -25,6 +25,38 @@ def _lim(limit):
     return max(1, min(PAGE, n))
 
 
+class _SqlOnly(Exception):
+    """Build 525: raised by _q() in export mode — carries the explorer's own SQL (no LIMIT /
+    OFFSET) so export_sql() can hand EVERY row of a search to core/exports.py."""
+    def __init__(self, sql, params):
+        super().__init__("sql only")
+        self.sql, self.params = sql, tuple(params)
+
+
+import threading as _threading
+_MODE = _threading.local()
+
+
+def _q(base, params, n, offset):
+    """The explorer page query: `base` + LIMIT/OFFSET — or, inside export_sql(), the base itself."""
+    if getattr(_MODE, "sql_only", False):
+        raise _SqlOnly(base, params)
+    return db.query(f"{base} LIMIT {n+1} OFFSET {int(offset)};", tuple(params))
+
+
+def export_sql(fn, *args, **kw):
+    """(sql, params) of an explorer search with no page limit — fn is one of this module's search
+    functions, called with the search arguments it normally gets."""
+    _MODE.sql_only = True
+    try:
+        fn(*args, **kw)
+    except _SqlOnly as e:
+        return e.sql, e.params
+    finally:
+        _MODE.sql_only = False
+    return None, ()
+
+
 def _page(rows, offset, n=PAGE):
     has_next = len(rows) > n
     return {"rows": rows[:n], "count": min(len(rows), n), "limit": n,
@@ -45,8 +77,7 @@ def assets(q="", offset=0, limit=None):
         tc = ["hostname", "ip_address"] + (["operating_system"] if has("operating_system") else []) + (["network"] if has("network") else [])
         where = "WHERE " + " OR ".join(f"{c} LIKE ?" for c in tc)
         params = [f"%{q}%"] * len(tc)
-    rows = db.query(f"SELECT {', '.join(sel)} FROM assets {where} ORDER BY hostname "
-                    f"LIMIT {n+1} OFFSET {int(offset)};", tuple(params))
+    rows = _q(f"SELECT {', '.join(sel)} FROM assets {where} ORDER BY hostname", params, n, offset)
     return _page(rows, int(offset), n)
 
 
@@ -84,9 +115,7 @@ def vulns(q="", offset=0, limit=None):
              "WHEN 'critical' THEN 4 WHEN '4' THEN 4 WHEN 'high' THEN 3 WHEN '3' THEN 3 "
              "WHEN 'medium' THEN 2 WHEN '2' THEN 2 WHEN 'low' THEN 1 WHEN '1' THEN 1 ELSE 0 END DESC, "
              "vpr DESC")
-    rows = db.query(
-        f"SELECT {', '.join(sel)} FROM vulns v {join} {where} {order} "
-        f"LIMIT {n+1} OFFSET {int(offset)};", tuple(params))
+    rows = _q(f"SELECT {', '.join(sel)} FROM vulns v {join} {where} {order}", params, n, offset)
     return _page(rows, int(offset), n)
 
 
@@ -99,9 +128,8 @@ def _hx_plugins(q, offset, n):
     if q:
         where = "WHERE name LIKE ? OR plugin_id LIKE ? OR family LIKE ?"
         params = [f"%{q}%"] * 3
-    rows = db.query(
-        f"SELECT plugin_id, name, family, assets FROM hx_plugin {where} "
-        f"ORDER BY assets DESC, plugin_id LIMIT {n+1} OFFSET {int(offset)};", tuple(params))
+    rows = _q(f"SELECT plugin_id, name, family, assets FROM hx_plugin {where} "
+              f"ORDER BY assets DESC, plugin_id", params, n, offset)
     return _page(rows, int(offset), n)
 
 
@@ -117,10 +145,9 @@ def plugins(q="", offset=0, limit=None):
         cs = ["plugin_name", "plugin_id"] + (["plugin_family"] if "plugin_family" in cols else [])
         where = "WHERE " + " OR ".join(f"{c} LIKE ?" for c in cs)
         params = [f"%{q}%"] * len(cs)
-    rows = db.query(
-        f"SELECT plugin_id, MAX(plugin_name) AS name, {fam} AS family, "
-        f"COUNT(DISTINCT asset_uuid) AS assets FROM vulns {where} "
-        f"GROUP BY plugin_id ORDER BY assets DESC LIMIT {n+1} OFFSET {int(offset)};", tuple(params))
+    rows = _q(f"SELECT plugin_id, MAX(plugin_name) AS name, {fam} AS family, "
+              f"COUNT(DISTINCT asset_uuid) AS assets FROM vulns {where} "
+              f"GROUP BY plugin_id ORDER BY assets DESC", params, n, offset)
     return _page(rows, int(offset), n)
 
 
@@ -143,9 +170,8 @@ def tags(q="", offset=0, limit=None):
         tc = ["tag_key", "tag_value"] + (["tag_uuid"] if has("tag_uuid") else [])
         where = "WHERE " + " OR ".join(f"{c} LIKE ?" for c in tc)
         params = [f"%{q}%"] * len(tc)
-    rows = db.query(f"SELECT {', '.join(sel)} FROM tags {where} "
-                    f"GROUP BY tag_key, tag_value ORDER BY assets DESC, tag_key, tag_value "
-                    f"LIMIT {n+1} OFFSET {int(offset)};", tuple(params))
+    rows = _q(f"SELECT {', '.join(sel)} FROM tags {where} "
+              f"GROUP BY tag_key, tag_value ORDER BY assets DESC, tag_key, tag_value", params, n, offset)
     return _page(rows, int(offset), n)
 
 
@@ -172,10 +198,9 @@ def tag_assets(key, value, q="", offset=0, limit=None):
             + (["a.operating_system"] if ah("operating_system") else [])
         where.append("(" + " OR ".join(f"{c} LIKE ?" for c in tc) + ")")
         params += [f"%{q}%"] * len(tc)
-    rows = db.query(
-        f"SELECT {', '.join(sel)} FROM tags t LEFT JOIN assets a ON a.uuid = t.asset_uuid "
-        f"WHERE {' AND '.join(where)} GROUP BY t.asset_uuid "
-        f"ORDER BY hostname, ip_address LIMIT {n+1} OFFSET {int(offset)};", tuple(params))
+    rows = _q(f"SELECT {', '.join(sel)} FROM tags t LEFT JOIN assets a ON a.uuid = t.asset_uuid "
+              f"WHERE {' AND '.join(where)} GROUP BY t.asset_uuid "
+              f"ORDER BY hostname, ip_address", params, n, offset)
     return _page(rows, int(offset), n)
 
 
@@ -186,9 +211,10 @@ def routes(q="", offset=0, limit=None):
         where = "WHERE app_name LIKE ? OR vuln_type LIKE ?"
         params = [f"%{q}%", f"%{q}%"]
     try:
-        rows = db.query(
-            f"SELECT route_id, app_name, vuln_type, total_vulns, plugin_list FROM vuln_route {where} "
-            f"ORDER BY total_vulns DESC LIMIT {n+1} OFFSET {int(offset)};", tuple(params))
+        rows = _q(f"SELECT route_id, app_name, vuln_type, total_vulns, plugin_list FROM vuln_route {where} "
+                  f"ORDER BY total_vulns DESC", params, n, offset)
+    except _SqlOnly:
+        raise
     except Exception:
         rows = []
     return _page(rows, int(offset), n)
@@ -201,10 +227,11 @@ def paths(q="", offset=0, limit=None):
         where = "WHERE p.path LIKE ?"
         params = [f"%{q}%"]
     try:
-        rows = db.query(
-            "SELECT p.path, p.plugin_id, p.asset_uuid, a.hostname, a.ip_address "
-            "FROM vuln_paths p LEFT JOIN assets a ON a.uuid=p.asset_uuid "
-            f"{where} ORDER BY p.path LIMIT {n+1} OFFSET {int(offset)};", tuple(params))
+        rows = _q("SELECT p.path, p.plugin_id, p.asset_uuid, a.hostname, a.ip_address "
+                  "FROM vuln_paths p LEFT JOIN assets a ON a.uuid=p.asset_uuid "
+                  f"{where} ORDER BY p.path", params, n, offset)
+    except _SqlOnly:
+        raise
     except Exception:
         rows = []
     return _page(rows, int(offset), n)

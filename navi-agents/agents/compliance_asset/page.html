@@ -45,6 +45,7 @@
 .capp:hover{border-color:var(--accent);color:var(--ink)}.capp.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .capp b{font-family:var(--mono);font-size:10.5px;margin-left:4px}
 tr.hl td{background:var(--crit-bg)}
+#alist tr.cur td{background:var(--panel-2);font-weight:600}
 </style>
 </head><body data-autorun>
 <div class="wrap">
@@ -67,6 +68,7 @@ tr.hl td{background:var(--crit-bg)}
     <div id="cohort" style="display:none;margin-top:10px"></div>
     <div id="flash" class="flash" style="margin-top:8px"></div>
   </section>
+  <div id="listWrap"></div>
   <div id="body"></div>
   <footer>Compliance Deep-Dive · Compliance Drill-down · read-only navi.db · audit↔vuln links inferred by topic on the same asset</footer>
 </div>
@@ -81,6 +83,11 @@ tr.hl td{background:var(--crit-bg)}
 <script>
 const API=agentApi('compliance_asset');
 let DET=null, APPS=[], CURR=null, WRITES=null, CFILTER='all';
+/* build 525: the group's asset list lives on the server (cohort → result store). COHRESP = the
+   first chunk (≤ 500 rows, worst first) + its drill handle; LIST = the chunked pager over it
+   (20 a page, the next 500 fetched only when you page past them). Built once per group — opening
+   another asset never rebuilds it. INCOH = the open asset is in the group (server-checked). */
+let COHRESP=null, LIST=null, INCOH=false;
 let LENS='asset', AUD=null, AFILE='';
 /* ?f=<cohort> — opened from a Compliance Overview widget (st:failed, check:<id>, fw:<name>, audit:<file>,
    pct:lt50): the server narrows the asset list to it and opens its worst asset first. */
@@ -96,38 +103,76 @@ function stpill(s){ s=String(s||'unknown').toLowerCase(); return `<span class="s
 function svpill(s){ s=String(s||'info').toLowerCase(); if(!SEVO.includes(s))s='info'; return `<span class="sv sv-${s}">${esc(s)}</span>`; }
 function ctrlShort(n){ return String(n||'').replace(/\s+/g,' ').trim(); }
 
+async function loadCohort(){
+  // a big group builds as a background run (run-bg): the console waits for it and leaving the page
+  // doesn't stop it; the answer is cached on the server until navi.db changes
+  flash('flash','<span class="spin"></span> gathering '+(COHF?'the assets in this group':'every audited asset')+', worst first…','run');
+  let o; try{ const r=await fetch('/api/compliance_asset/cohort',{method:'POST',
+      headers:{'Content-Type':'application/json','X-Hounds-Budget':'run-bg'},body:JSON.stringify({f:COHF||''})}); o=await r.json(); }
+  catch(e){ o={ok:false,error:e.message}; }
+  if(o&&o.ok===false&&COHF&&/unknown group/.test(o.error||'')){ COHF=''; return loadCohort(); }   // unknown cohort → plain view
+  if(!o||o.ok===false){ flash('flash','✗ '+esc((o&&(o.error||o.message))||'could not load the asset list'),'crit');
+    COHRESP={_f:COHF, top:[], summary:{count:0}}; APPS=[]; renderList(); return; }
+  COHRESP=o; COHRESP._f=COHF; APPS=o.top||[]; renderList();
+}
 async function load(au){
-  CURR=au||q('asset')||q('target')||'';
+  CURR=au||CURR||q('asset')||q('target')||'';
+  if(!COHRESP||COHRESP._f!==COHF) await loadCohort();
+  if(!CURR) CURR=((COHRESP&&COHRESP.top)||[])[0]?COHRESP.top[0].asset_uuid:'';
   flash('flash','<span class="spin"></span> investigating the asset…','run');
-  let o; try{ o=await API.post('detail',{asset_uuid:CURR,f:COHF||undefined}); }catch(e){ o={ok:false,error:e.message}; }
+  let o; try{ o=await API.post('detail',{asset_uuid:CURR,f:COHF||undefined,list:false}); }catch(e){ o={ok:false,error:e.message}; }
   if(!o||!o.ok){ flash('flash','✗ '+esc((o&&o.error)||'failed'),'crit'); return; }
-  flashClear('flash'); const r=o.result||{}; DET=r.detail||{}; APPS=r.assets||[]; WRITES=o.writes||null; COH=r.cohort||null;
+  flashClear('flash'); const r=o.result||{}; DET=r.detail||{}; WRITES=o.writes||null; COH=r.cohort||null; INCOH=!!r.in_cohort;
+  if(COH) COH.count=(COHRESP&&COHRESP.summary&&COHRESP.summary.count)||0;
   if(COHF&&!COH) COHF='';      // unknown cohort → plain view
   CURR=(DET.asset&&DET.asset.uuid)||CURR;
-  // a failure cohort opens on the failing checks; a warning cohort on the warnings
   // a failure cohort opens on the failing checks, a warning cohort on the warnings — but only
   // for an asset IN the cohort (one opened from elsewhere shows all its checks)
-  const inCoh=COH&&APPS.some(a=>a.asset_uuid===CURR);
-  CFILTER=inCoh?((COH.kind==='st'&&COH.key==='warning')?'warning':(COH.kind==='st'&&COH.key==='clean'?'all':'failed')):'all';
-  setURL(); renderAsset();
+  CFILTER=(COH&&INCOH)?((COH.kind==='st'&&COH.key==='warning')?'warning':(COH.kind==='st'&&COH.key==='clean'?'all':'failed')):'all';
+  setURL(); renderAsset(); markList();
 }
+/* the group's assets — 20 a page out of 500-row chunks; ⤓ CSV ▾ → this page or every row
+   (a background export job past 5,000 rows) */
+function renderList(){
+  const W=document.getElementById('listWrap'); if(!W) return;
+  if(LENS!=='asset'){ W.innerHTML=''; return; }
+  const sm=(COHRESP&&COHRESP.summary)||{}, tot=(COHRESP&&COHRESP.total)||null;
+  W.innerHTML='<section class="card" id="alistCard" style="margin-top:16px" data-nav="Assets" data-nav-icon="🖥"><div class="toolbar" style="flex-wrap:wrap;gap:8px"><div><h3 style="margin:0">🖥 '
+    +esc(COHF?(sm.label||'Assets in this group'):'Every audited asset')+'</h3>'
+    +'<p class="sub" style="margin:2px 0 0">'+esc(fnum(sm.count||0))+' asset'+((sm.count||0)===1?'':'s')+', worst first · click one to open it below · '
+    +'the list loads 500 at a time</p></div>'
+    +'<input class="fld" id="alistQ" placeholder="search host, IP or UUID…" style="margin-left:auto;min-width:220px" spellcheck="false"></div>'
+    +'<div style="overflow-x:auto"><table id="alist"><thead><tr><th>Host</th><th>IP</th><th>Failed</th><th>Warning</th><th>Pass rate</th><th>Checks</th></tr></thead><tbody></tbody></table></div></section>';
+  if(!COHRESP||!COHRESP.drill){ document.querySelector('#alist tbody').innerHTML='<tr><td colspan="6" class="sub">No assets.</td></tr>'; return; }
+  const row=a=>'<tr class="arow" data-au="'+esc(a.asset_uuid)+'" style="cursor:pointer"><td><a class="cname">'+esc(a.hostname||String(a.asset_uuid).slice(0,14)+'…')+'</a></td>'
+    +'<td class="mono">'+esc(a.ip||'')+'</td><td class="mono" style="color:var(--crit)">'+esc(fnum(a.failed))+'</td>'
+    +'<td class="mono" style="color:var(--med)">'+esc(fnum(a.warning))+'</td>'
+    +'<td class="mono" style="color:'+bandColor(a.pass_pct)+'">'+esc(a.pass_pct!=null?a.pass_pct+'%':'—')+'</td><td class="mono">'+esc(fnum(a.total))+'</td></tr>';
+  LIST=hDrill({api:API, table:'alist', run:COHRESP.drill.run, section:'assets', chunk:500, cols:6, row, first:COHRESP,
+    search:'alistQ', exportName:'compliance-assets',
+    exportAll:()=>()=>API.post('export',{f:COHF||'', run:LIST?LIST.state.run:COHRESP.drill.run, q:LIST?LIST.state.q:''}),
+    empty:'<tr><td colspan="6" class="sub">No asset matches.</td></tr>',
+    wire:tb=>{ tb.querySelectorAll('tr.arow').forEach(tr=>tr.onclick=()=>load(tr.getAttribute('data-au'))); markList(); }});
+}
+function markList(){ document.querySelectorAll('#alist tr.arow').forEach(tr=>tr.classList.toggle('cur', tr.getAttribute('data-au')===CURR)); }
 function cohortBar(){
   const el=document.getElementById('cohort');
   if(!COH||LENS!=='asset'){ el.style.display='none'; el.innerHTML=''; return; }
   const CAP=30; el.style.display='block';
   el.innerHTML=`<div class="cohort"><span>⚖️ From Compliance: <b>${esc(COH.label)}</b> — <b>${fnum(COH.count)}</b> asset${COH.count===1?'':'s'}</span>`
     +`<a class="applink" href="#" id="cohortClear" style="margin-left:auto">show all assets</a>`
-    +(APPS.length?`<div class="capps">${APPS.slice(0,CAP).map(a=>`<a class="capp${a.asset_uuid===CURR?' on':''}" href="#" data-au="${esc(a.asset_uuid)}" title="${esc(a.ip||'')}">${esc(a.hostname||a.ip||String(a.asset_uuid).slice(0,10))}${a.failed?'<b>'+a.failed+' fail</b>':''}</a>`).join('')}${APPS.length>CAP?`<span class="sub">+${APPS.length-CAP} more in the Asset list</span>`:''}</div>`:'<div class="sub">No asset in navi.db matches this group any more.</div>')+'</div>';
-  document.getElementById('cohortClear').onclick=e=>{ e.preventDefault(); COHF=''; COH=null; load(CURR); };
+    +(APPS.length?`<div class="capps">${APPS.slice(0,CAP).map(a=>`<a class="capp${a.asset_uuid===CURR?' on':''}" href="#" data-au="${esc(a.asset_uuid)}" title="${esc(a.ip||'')}">${esc(a.hostname||a.ip||String(a.asset_uuid).slice(0,10))}${a.failed?'<b>'+esc(a.failed)+' fail</b>':''}</a>`).join('')}${(COH.count||APPS.length)>CAP?`<span class="sub">+${esc(fnum((COH.count||APPS.length)-CAP))} more in the list below</span>`:''}</div>`:'<div class="sub">No asset in navi.db matches this group any more.</div>')+'</div>';
+  document.getElementById('cohortClear').onclick=e=>{ e.preventDefault(); COHF=''; COH=null; COHRESP=null; load(CURR); };
   el.querySelectorAll('[data-au]').forEach(x=>x.onclick=e=>{ e.preventDefault(); load(x.getAttribute('data-au')); });
 }
 function assetOptions(){
   const sel=document.getElementById('asel');
-  const cur=(!APPS.some(a=>a.asset_uuid===CURR)&&DET&&DET.asset&&DET.asset.uuid)?   // opened outside the cohort
-    `<option value="${esc(CURR)}" selected>${esc(DET.asset.hostname||DET.asset.ip||String(CURR).slice(0,12))} · (outside this group)</option>`:'';
+  // the selector holds the first chunk (≤ 500, worst first); the full list pages below it
+  const cur=(!APPS.some(a=>a.asset_uuid===CURR)&&DET&&DET.asset&&DET.asset.uuid)?
+    `<option value="${esc(CURR)}" selected>${esc(DET.asset.hostname||DET.asset.ip||String(CURR).slice(0,12))}${(COH&&!INCOH)?' · (outside this group)':''}</option>`:'';
   if(!APPS.length&&!cur){ sel.innerHTML='<option value="">(no assets)</option>'; return; }
   sel.innerHTML=cur+APPS.map(a=>{ const nm=a.hostname||a.ip||(String(a.asset_uuid).slice(0,12)+'…');
-    return `<option value="${esc(a.asset_uuid)}"${a.asset_uuid===CURR?' selected':''}>${esc(nm)} · ${a.failed} fail</option>`; }).join('');
+    return `<option value="${esc(a.asset_uuid)}"${a.asset_uuid===CURR?' selected':''}>${esc(nm)} · ${esc(a.failed)} fail</option>`; }).join('');
 }
 function renderAsset(){
   assetOptions(); cohortBar();
@@ -135,7 +180,7 @@ function renderAsset(){
   if(!DET.available){ B.innerHTML=DET.empty_cohort
       ?'<section class="card"><p class="sub">'+esc(DET.reason)+' <a class="applink" href="#" id="emptyAll">Show all assets</a>.</p></section>'
       :'<section class="card"><p class="sub">No compliance data. Populate with <span class="mono">navi config update compliance</span>.</p></section>';
-    const ea=document.getElementById('emptyAll'); if(ea) ea.onclick=e=>{ e.preventDefault(); COHF=''; COH=null; load(''); };
+    const ea=document.getElementById('emptyAll'); if(ea) ea.onclick=e=>{ e.preventDefault(); COHF=''; COH=null; COHRESP=null; CURR=''; load(''); };
     return; }
   const a=DET.asset||{}, bs=DET.by_status||{}, corr=DET.correlations||[], sev=DET.vuln_severity||{};
   const nm=a.hostname||a.ip||(String(a.uuid||'').slice(0,14)+'…');
@@ -243,8 +288,8 @@ function setLens(lens){
   document.getElementById('lensSub').textContent = (lens==='asset')
     ? 'One asset in full: every audit check it passed, failed or warned — and the inferred link between a failed control and the real findings backing it.'
     : 'The same estate through the audit file: adherence, the checks and assets a file covers, and the real vulns backing its failing controls — aggregate and per file.';
-  if(lens==='asset'){ document.getElementById('body').innerHTML=''; load(CURR); }
-  else { cohortBar(); loadAudit(); }
+  if(lens==='asset'){ document.getElementById('body').innerHTML=''; if(COHRESP) renderList(); load(CURR); }
+  else { cohortBar(); renderList(); loadAudit(); }
 }
 async function loadAudit(){
   flash('flash','<span class="spin"></span> rolling the estate up by audit file…','run');
@@ -289,7 +334,7 @@ function corrCardAgg(c){
       +(c.asset_count>c.assets.length?'<span class="sub">+'+(c.asset_count-c.assets.length)+' more</span>':'')+'</div>'):'')
     +'</section>';
 }
-function wireAuj(){ document.querySelectorAll('.auj').forEach(x=>x.onclick=(ev)=>{ ev.stopPropagation(); CURR=x.getAttribute('data-au'); AFILE=''; COHF=''; COH=null; setLens('asset'); }); }   // a hand-picked asset leaves the cohort
+function wireAuj(){ document.querySelectorAll('.auj').forEach(x=>x.onclick=(ev)=>{ ev.stopPropagation(); CURR=x.getAttribute('data-au'); AFILE=''; COHF=''; COH=null; COHRESP=null; setLens('asset'); }); }   // a hand-picked asset leaves the cohort
 function renderAuditAggregate(){
   const files=AUD.files||[], corr=AUD.correlations||[];
   let h='<div class="lensgrid">'

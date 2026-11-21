@@ -193,8 +193,6 @@ def drill(p):
 def export(p):
     """The asset table as CSV — EVERY row of the current view (state / metric filter / search),
     streamed from the stored run. An explicit download, not a page payload."""
-    import csv
-    import io
     run = (p or {}).get("run")
     sc = _scope(p)
     if sc:
@@ -209,19 +207,20 @@ def export(p):
     if not isinstance(flt, list) or len(flt) > 6 or not all(isinstance(f, str) and f in FLAGS for f in flt):
         return {"ok": False, "error": "bad filter"}, 400
     q = (p or {}).get("q") if isinstance((p or {}).get("q"), str) else ""
-    buf = io.StringIO()
-    w = csv.writer(buf)
-    w.writerow(CSV_COLS)
-    n = 0
-    for x in payload.STORE.iter_rows(run, "assets", flt, q.strip()[:200]):
-        vals = [x.get("host"), x.get("ip") or "", "" if x.get("acr") is None else x.get("acr"),
-                _ST_LABEL.get(x.get("status"), x.get("status")), x.get("patch") or "", x.get("last_scan") or "",
-                "" if x.get("age_days") is None else x.get("age_days"), x.get("type") or "", x.get("scanner") or "",
-                x.get("policy") or "", x.get("scan") or "", "" if x.get("dur") is None else round(x.get("dur"))]
-        # spreadsheet-formula injection guard (a host / policy name starting with = + - @)
-        w.writerow([("'" + v) if isinstance(v, str) and v[:1] in ("=", "+", "-", "@") else v for v in vals])
-        n += 1
-    return {"ok": True, "rows": n, "csv": buf.getvalue()}, 200
+    q = q.strip()[:200]
+    # build 525: every row of the view; past 5,000 a background export job (core/exports.py) —
+    # cells go through exports.csv_safe (the spreadsheet-formula guard)
+    from core import exports
+    n = (payload.STORE.page(run, "assets", flags=flt, q=q.lower(), limit=1)[2] if (flt or q)
+         else payload.STORE.section_total(run, "assets"))
+
+    def rows():
+        for x in payload.STORE.iter_rows(run, "assets", flt, q):
+            yield [x.get("host"), x.get("ip") or "", "" if x.get("acr") is None else x.get("acr"),
+                   _ST_LABEL.get(x.get("status"), x.get("status")), x.get("patch") or "", x.get("last_scan") or "",
+                   "" if x.get("age_days") is None else x.get("age_days"), x.get("type") or "", x.get("scanner") or "",
+                   x.get("policy") or "", x.get("scan") or "", "" if x.get("dur") is None else round(x.get("dur"))]
+    return exports.start("scan-eval-assets", rows=rows, header=list(CSV_COLS), total=n, agent="scan_eval"), 200
 
 
 def _open_only():

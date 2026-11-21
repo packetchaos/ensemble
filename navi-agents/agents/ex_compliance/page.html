@@ -29,7 +29,7 @@
       <select class="fld fsel" id="audit"><option value="">any audit file</option></select>
       <select class="fld fsel" id="fw"><option value="">any framework</option></select>
       <button class="btn run sm" id="go" data-run>▶ Search</button>
-      <button class="btn ghost sm" id="csv" title="Every row of this search (up to 50,000) as CSV">⤓ CSV</button>
+      <button class="btn ghost sm" id="csv" title="Every row of this search as CSV — a background export job past 5,000 rows">⤓ CSV</button>
       <span class="chip" id="count"></span>
     </div>
     <div class="toolbar" id="scope" style="display:none"></div>
@@ -112,13 +112,8 @@ function toggle(tr){ const nx=tr.nextElementSibling; if(nx&&nx.classList.contain
       +'<a class="btn ghost sm" href="/agents/argos/page.html?target='+encodeURIComponent(u)+'">🔦 Asset Dossier — the whole asset</a></div>':'')+'</td>';
   tr.insertAdjacentElement('afterend',det); }
 function kpi(v,l,c){ return '<div class="k"><div class="v"'+(c?' style="color:'+c+'"':'')+'>'+v+'</div><div class="l">'+esc(l)+'</div></div>'; }
-document.getElementById('csv').onclick=async()=>{ const b=document.getElementById('csv'), l=b.textContent; b.disabled=true; b.textContent='⤓ exporting…';
-  let o; try{ o=await API.post('export',body(0)); }catch(e){ o={ok:false,error:e.message}; }
-  b.disabled=false; b.textContent=l;
-  if(!o||!o.ok){ flash('flash','✗ '+esc((o&&(o.message||o.error))||'export failed'),'crit'); return; }
-  if(!o.rows){ flash('flash','Nothing to export for this search.','warn'); return; }
-  downloadText('compliance-explorer.csv',o.csv);
-  if(o.capped) flash('flash','Exported the first '+fnum(o.max)+' rows of this search — narrow the filters for the rest.','warn'); };
+// build 525: every row of the search — ≤ 5,000 at once, more as a background export job (Exports tray)
+document.getElementById('csv').onclick=()=>hExport(()=>API.post('export',body(0)),'compliance-explorer');
 document.getElementById('go').onclick=()=>go(0);
 document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')go(0);});
 ['status','audit','fw'].forEach(id=>document.getElementById(id).onchange=()=>go(0));

@@ -10,7 +10,7 @@ inventory (`software`, and `cpes` when navi has it). Read-only: it writes no tag
                   (core.fused_score.score_map — written by a whole-estate, default-weighted
                   Exposure Score build; never computed here). {sort:"nemesis"} ranks the
                   selection most-exposed first.
-  export        — that selection as CSV, one row per install (capped at EXPORT_MAX), with the
+  export        — that selection as CSV, one row per install (build 525: no cap; past 5,000 a background job), with the
                   Nemesis score as the last column.
   lookup_plan   — ✨ zero-day lookup, step 1: from the user's words, the sources Harrier
                   proposes to read (NVD / CVE.org / OSV per CVE, an NVD search, pasted URLs).
@@ -23,8 +23,6 @@ inventory (`software`, and `cpes` when navi has it). Read-only: it writes no tag
 Version logic, statuses and the range syntax live in core/swsearch; the fetcher and parsers in
 core/advisory.
 """
-import csv
-import io
 import os
 import threading
 import urllib.parse
@@ -33,7 +31,6 @@ from core import advisory, db, fused_score, gates, llm, swsearch
 
 _PAGE = 20
 _PAGE_MAX = 200
-EXPORT_MAX = 50000
 _CACHE, _CACHE_LOCK, _CACHE_N = {}, threading.Lock(), 8
 
 
@@ -158,24 +155,18 @@ def export(p):
     st = str(p.get("status") or "").strip().lower()
     scores, _ninfo = _nemesis()
     scores = scores or {}
-    buf = io.StringIO()
-    w = csv.writer(buf)
-    w.writerow(_CSV)
-    n, capped = 0, False
-    for r in res["rows"]:
-        if st in swsearch.STATUS_ORDER and r["status"] != st:
-            continue
-        for i in r["installs"]:
-            if n >= EXPORT_MAX:
-                capped = True
-                break
-            w.writerow([_cell(x) for x in (r["hostname"], r["ip_address"], r["asset_uuid"], r["operating_system"],
-                                           r["network"], r["acr"], r["last_found"], r["status"], i["product"],
-                                           i["version"], i["status"], scores.get(r["asset_uuid"], ""))])
-            n += 1
-        if capped:
-            break
-    return {"ok": True, "csv": buf.getvalue(), "rows": n, "capped": capped, "max": EXPORT_MAX}, 200
+    # build 525: every install (no 50,000 cap) — past 5,000 rows a background export job (core/exports.py)
+    from core import exports
+    sel = [r for r in res["rows"] if not (st in swsearch.STATUS_ORDER and r["status"] != st)]
+    total = sum(len(r["installs"]) for r in sel)
+
+    def rows():
+        for r in sel:
+            for i in r["installs"]:
+                yield [r["hostname"], r["ip_address"], r["asset_uuid"], r["operating_system"], r["network"], r["acr"],
+                       r["last_found"], r["status"], i["product"], i["version"], i["status"],
+                       scores.get(r["asset_uuid"], "")]
+    return exports.start("software-explorer", rows=rows, header=list(_CSV), total=total, agent="ex_software"), 200
 
 
 # ── ✨ zero-day lookup ────────────────────────────────────────────────────────

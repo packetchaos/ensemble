@@ -38,6 +38,12 @@ DEFAULT_CATEGORIES = {
 }
 
 
+# The "Done so far" panel also surfaces values inside a SHARED category that a hound writes under a
+# fixed prefix — e.g. the IoT squad tags 'Asset Inventory : Device Type: <device>' (the Classifier's
+# scheme). Panel-only: it never widens what a hound may WRITE (allowed_category stays as is).
+PANEL_SCOPES = {"iot_squad": [("Asset Inventory", "Device Type: ")]}
+
+
 def allowed_category(agent, category) -> bool:
     """Server-side guard: a fixed-button agent may only write the categories it owns, so a
     crafted request can't make it tag e.g. 'Business Unit'."""
@@ -202,6 +208,18 @@ def summary(agent: str) -> dict:
                 counts[(r.get("tag_key"), r.get("tag_value"))] = r.get("n") or 0
         except Exception:
             out["navi_db"] = False
+    for cat, prefix in PANEL_SCOPES.get(agent, []):
+        if not out["navi_db"]:
+            break
+        try:   # hx_tags_kv covers (tag_key, tag_value, asset_uuid) — a prefix range on one key
+            names = tagname.names(cat) or [cat]
+            ph = ",".join("?" * len(names))
+            for r in db.query(f"SELECT tag_key, tag_value, COUNT(DISTINCT asset_uuid) n FROM tags "
+                              f"WHERE tag_key IN ({ph}) AND tag_value >= ? AND tag_value < ? "
+                              f"GROUP BY tag_key, tag_value;", tuple(names) + (prefix, prefix + "\uffff")):
+                counts[(r.get("tag_key"), r.get("tag_value"))] = r.get("n") or 0
+        except Exception:
+            pass
 
     # removals by ANY hound (usually Tag Removal) — a removed value isn't "awaiting sync"
     removed = {}
@@ -267,6 +285,6 @@ def summary(agent: str) -> dict:
         "last_write": max([o["last"] or 0 for o in out["ops"]] or [0]) or None,
         "other_values": len(out["other"]),
         "other_assets": sum(x["assets"] for x in out["other"]),
-        "categories": cats,
+        "categories": cats + ["%s (%s…)" % (c, pf) for c, pf in PANEL_SCOPES.get(agent, [])],
     }
     return out

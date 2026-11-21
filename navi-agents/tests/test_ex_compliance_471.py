@@ -80,11 +80,16 @@ f, _ = api.facets({})
 check({x["audit_file"]: x["results"] for x in f["result"]["audit_files"]} == {"CIS.audit": 3, "STIG.audit": 3}
       and {x["framework"]: x["results"] for x in f["result"]["frameworks"]} == {"PCI": 3, "PCI-DSSv3.2.1": 2, "800-53": 2},
       "facets: audit files and frameworks with counts")
-api.EXPORT_MAX = 3
+# build 525: no cap — every row; past exports.INLINE_MAX it is a background job (tests/test_exports_525.py)
 e, _ = api.export({})
-check(e["rows"] == 3 and e["capped"] and e["csv"].count("\n") == 4, "export capped at EXPORT_MAX and says so")
+check(e["inline"] and e["rows"] == 6 and e["csv"].count("\n") == 7, "export: every row of the search, no cap")
+from core import exports as _x  # noqa: E402
+_x.INLINE_MAX = 3
+e, _ = api.export({})
+check(not e["inline"] and e["export"]["total"] == 6, "past the inline limit it becomes a background export job")
+_x.INLINE_MAX = 5000
 e, _ = api.export({"check": "1.2", "asset": "a1"})
-check("'=cmd" in e["csv"] and not e["capped"], "CSV neutralises formula cells")
+check("'=cmd" in e["csv"], "CSV neutralises formula cells")
 
 js = open(os.path.join(ROOT, "web", "assets", "console.js"), encoding="utf-8").read()
 check("function mountSearchIcon(" in js and "mountSearchIcon(hdr); hdr.appendChild(g)" in js

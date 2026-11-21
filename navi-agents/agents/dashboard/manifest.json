@@ -31,7 +31,8 @@
     "scope_count",
     "preset_sql",
     "ai_sql",
-    "sql_preview"
+    "sql_preview",
+    "widget_export"
   ],
   "codename": "",
   "hero": false,

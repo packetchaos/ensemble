@@ -83,7 +83,9 @@ function render(){
   }
   const bs=OV.by_status||{}, rows=OV.assets_rows||[]; let h='';
   const cnt=pred=>rows.filter(pred).length;
-  const nFail=cnt(a=>+a.failed>0), nWarn=cnt(a=>+a.warning>0), nClean=cnt(a=>!(+a.failed)&&!(+a.warning)), nLow=cnt(a=>{ const p=+a.passed||0, f=+a.failed||0; return p+f>0&&p/(p+f)<0.5; });   // exact ratio, as the server's pct:lt50 (pass_pct is rounded)
+  // build 525: the server counts EVERY asset (asset_counts) and sends only the worst 500 rows for the table
+  const AC=OV.asset_counts||null, NROWS=OV.assets_rows_total!=null?OV.assets_rows_total:rows.length;
+  const nFail=AC?AC.failed:cnt(a=>+a.failed>0), nWarn=AC?AC.warning:cnt(a=>+a.warning>0), nClean=AC?AC.clean:cnt(a=>!(+a.failed)&&!(+a.warning)), nLow=AC?AC.lt50:cnt(a=>{ const p=+a.passed||0, f=+a.failed||0; return p+f>0&&p/(p+f)<0.5; });   // exact ratio, as the server's pct:lt50 (pass_pct is rounded)
   const nTxt=n=>fnum(n)+' asset'+(n===1?'':'s');
   // a glance metric: opens the matching assets in the Deep-Dive (f) or jumps to a section (j); dimmed when no asset matches
   const SC=tagScope();
@@ -98,7 +100,7 @@ function render(){
         :'<p class="sub" style="margin:2px 0 0">Numbers, bars and controls open the matching assets in <b>🔍 Compliance Deep-Dive</b> — its asset list is narrowed to that group, worst first.</p>')
     +'<div id="glxComp"></div></section>';
   const glance=[
-    {title:SC?'Assets (this tag)':'Assets', hero:mk(fnum(OV.assets),SC?'tagged assets audited':'assets audited',{n:rows.length}),
+    {title:SC?'Assets (this tag)':'Assets', hero:mk(fnum(OV.assets),SC?'tagged assets audited':'assets audited',{n:NROWS}),
      chips:[mk(fnum(nFail),'assets failing a check',{f:'st:failed',n:nFail,c:'crit'}),
             mk(fnum(nWarn),'assets with warnings',{f:'st:warning',n:nWarn,c:'med'}),
             mk(fnum(nLow),'assets under 50% pass',{f:'pct:lt50',n:nLow,c:'crit',t:'Passing under half of their checks'}),
@@ -148,7 +150,7 @@ function render(){
         +`<td>${+a.failed?`<a class="rlink" href="${esc(deepFor('audit:'+(a.audit_file||'')))}" title="Open the assets failing a check in this benchmark">🔍 open</a>`:'<span class="sub">—</span>'}</td></tr>`; }).join('')
     +'</tbody></table></div></section>'; }
   // assets by compliance
-  h+='<section class="card" id="secAssets" data-nav="Assets" data-nav-icon="🖥" style="margin-top:16px"><div class="toolbar"><h2 style="margin:0;font-size:17px">🖥 Assets by compliance'+esc(OFTAG())+'</h2><span class="chip" style="margin-left:auto">'+rows.length+' asset'+(rows.length===1?'':'s')+(SC?' tagged '+esc(tagScopeLabel(SC)):'')+'</span></div>'
+  h+='<section class="card" id="secAssets" data-nav="Assets" data-nav-icon="🖥" style="margin-top:16px"><div class="toolbar"><h2 style="margin:0;font-size:17px">🖥 Assets by compliance'+esc(OFTAG())+'</h2><span class="chip" style="margin-left:auto">'+(NROWS>rows.length?'worst '+fnum(rows.length)+' of '+fnum(NROWS)+' — <a class="applink" href="'+esc(deepFor(''))+'">every asset in the Drill-down →</a>':fnum(rows.length)+' asset'+(rows.length===1?'':'s'))+(SC?' tagged '+esc(tagScopeLabel(SC)):'')+'</span></div>'
     +'<div style="overflow-x:auto"><table class="nocsv"><thead><tr><th>Asset</th><th>Pass %</th><th>Passed</th><th>Failed</th><th>Warn</th><th>Deep-dive</th></tr></thead><tbody>'
     +rows.map(a=>{ const nm=a.hostname||a.ip||(String(a.asset_uuid||'').slice(0,12)+'…');
       const dd=deepFor('',a.asset_uuid);
@@ -163,7 +165,7 @@ function render(){
   renderGlance('glxComp', glance);
   wireTag();
   mountSectionNav();
-  setNavCount('secAssets', rows.length); setNavCount('secCtrl', OV.failed_controls||0);
+  setNavCount('secAssets', NROWS); setNavCount('secCtrl', OV.failed_controls||0);
 }
 
 /* ---- tag a control's failing assets with an Audit Owner ---- */

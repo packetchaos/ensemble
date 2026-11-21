@@ -410,10 +410,9 @@ function renderDevices(clearQ){
 }
 async function devCsv(){
   if(!DT||!INV) return; const st=DT.state;
-  let o; try{ o=await API.post('inventory_export',{run:INV.run, filter:st.filter, q:st.q}); }catch(e){ o={ok:false,error:e.message}; }
-  if(!o||!o.ok){ flash('devFlash','✗ '+esc((o&&o.error)||'export failed'),'crit'); return; }
-  downloadText('iot-devices-'+String(DFOCUS?DFOCUS.label:'all').replace(/[^\w.-]+/g,'_')+'.csv', o.csv);
-  flash('devFlash','⬇ exported '+fnum(o.rows)+' device asset(s) — every one in this list'+(st.q?' matching “'+esc(st.q)+'”':''),'ok'); }
+  // build 525: every device in this list — ≤ 5,000 at once, more as a background export job (Exports tray)
+  const name='iot-devices-'+String(DFOCUS?DFOCUS.label:'all').replace(/[^\w.-]+/g,'_');
+  hExport(()=>API.post('inventory_export',{run:INV.run, filter:st.filter, q:st.q, name}), name); }
 // predicted rows in the list being tagged — from the glance rollups (a search can only narrow it)
 function devPredicted(st){
   if(st.filter.indexOf('st:predicted')>=0) return 1;

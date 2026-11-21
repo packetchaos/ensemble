@@ -48,6 +48,7 @@ import time
 import zlib
 
 TOP_MAX = 200
+CHUNK_MAX = 500          # build 525: a chunked section (sections[sec]["max_limit"]) sends ≤ 500 rows a call
 MAX_BYTES = int(os.environ.get("NAVI_PAYLOAD_MAX_BYTES", str(2 * 1024 * 1024)))
 COUNT_CAP = 10000
 KEEP_RUNS = int(os.environ.get("NAVI_RESULTS_KEEP_RUNS", "2"))
@@ -151,14 +152,17 @@ def cap(body, limit=None, max_rows=TOP_MAX):
     return body
 
 
-def response(summary=None, top=None, total_=None, page=None, drill=None, tag=None, meta=None, **extra):
-    """Build one contract response (and cap() it)."""
-    body = {"ok": True, "summary": summary or {}, "top": list(top or [])[:TOP_MAX],
+def response(summary=None, top=None, total_=None, page=None, drill=None, tag=None, meta=None,
+             max_rows=TOP_MAX, **extra):
+    """Build one contract response (and cap() it). max_rows (build 525): a section that pages in
+    CHUNK_MAX chunks (the page shows 20 at a time from the chunk) may return up to that many."""
+    max_rows = max(1, min(int(max_rows or TOP_MAX), CHUNK_MAX))
+    body = {"ok": True, "summary": summary or {}, "top": list(top or [])[:max_rows],
             "total": total_ if total_ is not None else total(len(top or [])),
-            "page": page or {"next": None, "start": 0, "limit": TOP_MAX},
+            "page": page or {"next": None, "start": 0, "limit": max_rows},
             "drill": drill, "tag": tag, "meta": dict(meta or {})}
     body.update(extra)
-    return cap(body)
+    return cap(body, max_rows=max_rows)
 
 
 # --------------------------------------------------------------------------- tokens
@@ -513,7 +517,7 @@ class ResultStore:
         key list. Returns (rows, last_key or None, total, exact)."""
         run = self._rid(run)
         cols = [c for c in (sort or ()) if c in _SORT_COLS] + ["seq"]
-        limit = max(1, min(int(limit or TOP_MAX), TOP_MAX))
+        limit = max(1, min(int(limit or TOP_MAX), CHUNK_MAX))
         w, a = self._where(run, sec, flags, q)
         if after:
             if len(after) != len(cols):
@@ -714,8 +718,9 @@ def drill(hound, p, sections, store=None, limit=None):
     if not isinstance(q, str) or len(q) > _Q_MAX:
         return {"ok": False, "error": "bad search"}, 400
     q = q.strip()
+    top_max = max(1, min(int(spec.get("max_limit") or TOP_MAX), CHUNK_MAX))
     try:
-        lim = max(1, min(int(p.get("limit") or limit or 50), TOP_MAX))
+        lim = max(1, min(int(p.get("limit") or limit or 50), top_max))
     except (TypeError, ValueError):
         lim = 50
     bind = {"run": run, "sec": sec, "sort": sort_name, "f": sorted(flt), "q": q.lower()}
@@ -735,5 +740,5 @@ def drill(hound, p, sections, store=None, limit=None):
                     total_=total(n, exact, now_iso(info["built_at"])),
                     page={"next": nxt, "start": pos, "limit": lim},
                     drill={"action": "drill", "run": run, "section": sec},
-                    meta={"built_at": now_iso(info["built_at"])})
+                    meta={"built_at": now_iso(info["built_at"])}, max_rows=top_max)
     return body, 200

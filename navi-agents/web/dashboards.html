@@ -473,7 +473,7 @@ function openMenu(btn, iid){
       +(w.scope ? '<button data-a="unpin">⚑ Follow the board scope</button>' : '<button data-a="pin" title="Keep this widget on the current scope even if the board scope changes">⚑ Fix to the current scope</button>')
       +(String(w.ref).startsWith('sql.') ? '<button data-a="editsql">✎ Edit SQL</button>' : '')
       +(d.source&&d.source.page ? '<button data-a="open">↗ Open '+esc(d.source.name||'specialist')+'</button>' : '')
-      +(d.snapshot?'':'<button data-a="csv">⬇ CSV (up to 5,000 rows)</button>')
+      +(d.snapshot?'':'<button data-a="csv">⬇ CSV (every row)</button>')
       +'<button data-a="dup">⧉ Duplicate</button>')
     +'<div class="sep"></div><button data-a="remove" style="color:var(--crit)">🗑 Remove from board</button>';
   document.body.appendChild(m); placePop(m, btn);
@@ -571,7 +571,7 @@ async function openData(iid, page){
       +o.rows.map(r=>'<tr>'+cols.map(c=>'<td>'+cell(c,r[c])+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>':'<p class="sub">No rows for this scope.</p>')
     +'<div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap">'
     +'<button class="btn sm" id="dprev"'+(o.page?'':' disabled')+'>← Previous</button><button class="btn sm" id="dnext"'+(o.more?'':' disabled')+'>Next →</button>'
-    +'<span class="grow" style="flex:1"></span><button class="btn sm" id="dsql">{ } SQL</button><button class="btn sm" id="dcsv">⬇ CSV (up to 5,000 rows)</button></div>';
+    +'<span class="grow" style="flex:1"></span><button class="btn sm" id="dsql">{ } SQL</button><button class="btn sm" id="dcsv" title="Every row — over 5,000 it runs as a background export job">⬇ CSV (every row)</button></div>';
   M.querySelector('[data-close]').onclick=closeModal;
   document.getElementById('dprev').onclick=()=>openData(iid, o.page-1);
   document.getElementById('dnext').onclick=()=>openData(iid, o.page+1);
@@ -579,11 +579,9 @@ async function openData(iid, page){
   document.getElementById('dcsv').onclick=()=>exportCsv(iid);
 }
 async function exportCsv(iid){
+  // build 525: every row — ≤ 5,000 at once, more as a background export job (Exports tray)
   const w=B.widgets.find(x=>x.iid===iid); const d=defOf(w);
-  const o=await call('widget_data', {board:B.id, iid, page:0, size:5000});
-  if(!o || !o.ok){ alert((o&&(o.message||o.error))||'Could not export.'); return; }
-  downloadCSV((w.title||d.title||'widget'), o.columns||[], o.rows||[]);
-  if(o.more) alert('Exported the first 5,000 rows. Narrow the scope for the rest.');
+  return hExport(()=>call('widget_export', {board:B.id, iid}), (w.title||d.title||'widget'));
 }
 
 /* ---------- library tray ---------- */

@@ -79,11 +79,29 @@ got = {k: tot([k]) for k in want}
 check(got == want, "scan_eval filters match the page's rules over every row (past the old 20,000)")
 check(tot(["st:failed", "f:crown"]) == sum(r["status"] == "failed" and r["crown"] for r in ROWS), "state + metric filter combine")
 check(tot([], "h24999") == 1, "server-side search reaches row 25,000")
+def _csv_of(e):
+    """build 525: ≤ 5,000 rows come back inline; more run as a background export job — wait for it
+    and read the whole file (core/exports.py), so the check is still 'every row of the view'."""
+    if e.get("inline", True) and "csv" in e:
+        return e["csv"]
+    import time as _t
+    from core import exports as _x
+    eid = e["export"]["id"]
+    while _x.status(eid)["export"]["status"] == "running":
+        _t.sleep(0.1)
+    parts, off = [], 0
+    while off is not None:
+        f = _x.fetch(eid, off)
+        parts.append(f["text"])
+        off = f["next"]
+    return "".join(parts)
+
+
 e, _ = se.export({"run": run, "filter": ["f:agent"]})
-lines = e["csv"].strip().splitlines()
-check(e["ok"] and e["rows"] == want["f:agent"] and len(lines) == want["f:agent"] + 1, "CSV export: every row of the view (%d)" % e["rows"])
+lines = _csv_of(e).strip().splitlines()
+check(e["ok"] and len(lines) == want["f:agent"] + 1, "CSV export: every row of the view (%d)" % (len(lines) - 1))
 e2, _ = se.export({"run": run, "q": "h7"})
-check("'=cmd" in e2["csv"], "CSV export guards spreadsheet formulas")
+check("'=cmd" in _csv_of(e2), "CSV export guards spreadsheet formulas")
 b, st = se.export({"run": run, "filter": ["x:y"]})
 check(st == 400, "CSV export: undeclared filter → 400")
 from core import launcher  # noqa: E402

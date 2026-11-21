@@ -106,8 +106,11 @@ function renderAll(){ renderHead(); renderTable(); }
 
 /* ---- actions ---- */
 document.getElementById('dvSqlBtn').onclick=()=>{ const s=document.getElementById('dvSql'); s.style.display=s.style.display==='none'?'block':'none'; };
-document.getElementById('dvCsv').onclick=()=>{ if(!rows().length){ alert('Nothing to export yet.'); return; }
-  downloadCSV(((CTX.comp&&CTX.comp.title)||'widget')+'.csv', cols(), rows()); };
+document.getElementById('dvCsv').onclick=()=>{ const sql=((CTX.comp&&CTX.comp.sql)||'').trim(), t=(CTX.comp&&CTX.comp.title)||'widget';
+  // build 525: every row of the widget's SQL — a background export job past 5,000 rows
+  if(sql) return hExport({source:'sql', sql, name:t}, t);
+  if(!rows().length){ alert('Nothing to export yet.'); return; }
+  downloadCSV(t+'.csv', cols(), rows()); };
 
 document.getElementById('dvRerun').onclick=async function(){
   const b=this; const sql=((CTX.comp&&CTX.comp.sql)||'').trim();

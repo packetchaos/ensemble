@@ -519,7 +519,7 @@ def _spawn(argv, cwd, env, answer=None, devnull_stdin=False):
     return proc, proc.stdout.fileno()
 
 
-def run_navi_streamed(sub_argv, emit, live=None, cancel_ev=None, timeout_s=120, mask=None):
+def run_navi_streamed(sub_argv, emit, live=None, cancel_ev=None, timeout_s=120, mask=None, cwd=None):
     """Run one navi command INSIDE an in-process task (start_task) and stream its output into
     that task's window: committed lines via emit(), the '\r'-redrawn line via live(). stdin is
     /dev/null; the child is killed on cancel or after timeout_s. mask(line) → the line as shown
@@ -532,7 +532,8 @@ def run_navi_streamed(sub_argv, emit, live=None, cancel_ev=None, timeout_s=120, 
     argv = [navi] + list(sub_argv)
     env = dict(os.environ, PYTHONUNBUFFERED="1")
     try:
-        proc, fd = _spawn(argv, _run_cwd() or None, env, devnull_stdin=True)
+        # cwd: build 525 — an export runs navi in its own folder (navi.db there is a symlink)
+        proc, fd = _spawn(argv, cwd or _run_cwd() or None, env, devnull_stdin=True)
     except Exception as e:
         emit("[spawn error] %s" % e)
         return {"rc": -1, "lines": [], "timed_out": False, "cancelled": False}

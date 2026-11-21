@@ -76,4 +76,27 @@ def search(p):
             "page": off // _n + 1, "has_next": has_next, "count": min(len(rows), _n)}}, 200
 
 
-ACTIONS = {"search": search}
+def export(p):
+    """Build 525: EVERY app of the search as CSV (the page used to export only the rows on screen);
+    ≤ 5,000 at once, more as a background export job (core/exports.py)."""
+    from core import exports
+    if not _exists():
+        return {"ok": False, "error": "no apps table in navi.db"}, 200
+    where, args = _where(p or {})
+    total = int(db.scalar("SELECT COUNT(*) FROM apps" + where, args) or 0)
+    cols = ["name", "target", "critical", "high", "medium", "low", "info", "findings_total", "tech_str",
+            "top_owasp", "scan_completed_time"]
+
+    def rows():
+        for r in db.iter("SELECT %s FROM apps%s ORDER BY CAST(critical_count AS INT) DESC,"
+                         " CAST(high_count AS INT) DESC" % (was._APP_COLS, where), args):
+            a = was._row_view(r)
+            ow = a.get("owasp") or {}
+            top = max(ow.items(), key=lambda kv: kv[1]) if ow else None
+            a["top_owasp"] = (top[0] + " " + was.OWASP_LABELS.get(top[0], top[0])) if (top and top[1] > 0) else ""
+            a["tech_str"] = ", ".join(a.get("tech") or [])
+            yield [a.get(c) for c in cols]
+    return exports.start("was-apps", rows=rows, header=cols, total=total, agent="ex_apps"), 200
+
+
+ACTIONS = {"search": search, "export": export}

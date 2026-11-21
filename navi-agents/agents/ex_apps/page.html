@@ -66,8 +66,9 @@ async function go(off){ off=off||0;
   hSizeControl(pg,'tbl',v=>{ PAGE=v; go(0); });
 }
 function kpi(v,l,c){ return '<div class="k"><div class="v"'+(c?' style="color:'+c+'"':'')+'>'+v+'</div><div class="l">'+esc(l)+'</div></div>'; }
-document.getElementById('csv').onclick=()=>{ if(!LAST.length){alert('Nothing to export yet.');return;}
-  downloadCSV('was-apps.csv',['name','target','critical','high','medium','low','info','findings_total','tech_str','top_owasp','scan_completed_time'],LAST); };
+// build 525: every app of the search (not just this page) — a background export job past 5,000 rows
+document.getElementById('csv').onclick=()=>hExport(()=>API.post('export',{q:document.getElementById('q').value.trim(),
+  sev:document.getElementById('sev').value,recency:document.getElementById('recency').value}),'was-apps');
 document.getElementById('go').onclick=()=>go(0);
 document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')go(0);});
 ['sev','recency'].forEach(id=>document.getElementById(id).onchange=()=>go(0));

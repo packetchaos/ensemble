@@ -20,7 +20,7 @@ from core import navi_cli  # noqa: E402
 def main():
     s = navi_cli.write_status()
     print("=" * 68)
-    print(" The Hounds — write-gate diagnostic")
+    print(" navi Ensemble — write-gate diagnostic")
     print("=" * 68)
     print(f"  repo root ................ {s['repo_root']}")
     print(f"  NAVI_ALLOW_WRITES ........ {s['NAVI_ALLOW_WRITES']!r}")

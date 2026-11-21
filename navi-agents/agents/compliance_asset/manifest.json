@@ -13,7 +13,10 @@
     "detail",
     "tag",
     "audit_files",
-    "audit_file"
+    "audit_file",
+    "cohort",
+    "drill",
+    "export"
   ],
   "hero": false,
   "mission": "Compliance"

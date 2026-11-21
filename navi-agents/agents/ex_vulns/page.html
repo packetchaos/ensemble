@@ -24,6 +24,8 @@
 <script src="/static/console.js"></script>
 <script>
 const API=agentApi('ex_vulns'); let PAGE=hPageSize('tbl');   // 20/page by default, Rows selector up to 50
+// build 525: ⤓ CSV ▾ → every row of the search (not just this page) — a background job past 5,000 rows
+hTableExport('tbl', ()=>()=>API.post('export',{q:document.getElementById('q').value.trim()}));
 async function go(off){ off=off||0;
   document.getElementById('go').disabled=true; flash('flash','<span class="spin"></span> querying navi.db…','run');
   let o; try{ o=await API.post('search',{q:document.getElementById('q').value.trim(),offset:off,limit:PAGE}); }catch(e){ o={ok:false,error:e.message}; }

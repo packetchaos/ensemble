@@ -532,11 +532,12 @@ def _brief(jobs):
     return out
 
 
-def list_jobs(brief=False) -> list:
+def list_jobs(brief=False, limit=2000) -> list:
     """Newest-first. Reads the durable sidecar (shared + restart-proof); falls back
     to this process's in-memory mirror only if the DB is unavailable.
-    brief=True: long --query selectors collapsed to a summary (the polled log view)."""
-    db = _db_all()
+    brief=True: long --query selectors collapsed to a summary (the polled log view).
+    limit: the newest N (the page's view); -1 = every job (build 525: exports read them all)."""
+    db = _db_all(limit)
     if db is not None:
         return _brief(db) if brief else db
     with _LOCK:
