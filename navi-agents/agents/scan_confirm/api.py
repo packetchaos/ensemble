@@ -250,15 +250,26 @@ def _csv_cell(v):
     return ("'" + s) if s[:1] in ("=", "+", "-", "@", "\t", "\r") else s
 
 
+EXPORT_PAGE = 50000                         # rows per export request — the page stitches the pages into one file
+
+
 def export(p):
+    """CSV of the run's verdicts, one PAGE at a time (offset → next_offset) so a 1M+ pair run is never
+    one giant response and never silently truncated. The header is on the first page only."""
     run_, err = _run_of(p)
     if err:
         return err
-    rows = sc.verdict_rows(run_["run_id"], None, 0, 1000000)["rows"]
+    try:
+        off = max(0, int((p or {}).get("offset") or 0))
+    except (TypeError, ValueError):
+        off = 0
+    page = sc.verdict_rows(run_["run_id"], None, off, EXPORT_PAGE)
+    rows, total = page["rows"], page["total"]
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["asset_uuid", "target", "host", "plugin_id", "verdict", "rule", "scan_id", "history_id", "time_start",
-                "state_now", "last_found_now", "baseline_state", "auth_evidence"])
+    if off == 0:
+        w.writerow(["asset_uuid", "target", "host", "plugin_id", "verdict", "rule", "scan_id", "history_id", "time_start",
+                    "state_now", "last_found_now", "baseline_state", "auth_evidence"])
     for r in rows:
         e = r.get("evidence") or {}
         now = e.get("row") if isinstance(e.get("row"), dict) else {}
@@ -267,8 +278,9 @@ def export(p):
                                            r["rule"], e.get("scan_id"), e.get("history_id"), e.get("time_start"),
                                            now.get("state") or "absent", now.get("last_found"),
                                            b.get("state") or "absent", e.get("auth_evidence"))])
+    nxt = off + len(rows)
     return {"ok": True, "filename": "scan-confirmation-%s.csv" % run_["run_id"], "csv": buf.getvalue(),
-            "rows": len(rows)}, 200
+            "rows": len(rows), "offset": off, "total": total, "next_offset": nxt if (rows and nxt < total) else None}, 200
 
 
 def events(p):
@@ -314,8 +326,11 @@ def scan_launch(p):
     with _LAUNCH_LOCK:
         run_ = sc.get_run(run_["run_id"])
         if run_["state"] != "PLANNED":
-            if sc.is_active(run_["run_id"]) or run_["state"] not in sc.TERMINAL_STATES:
+            if sc.is_active(run_["run_id"]):
                 return {"ok": True, "already": True, "job_id": run_.get("job_id"), "state": run_["state"]}, 200
+            if run_["state"] not in sc.TERMINAL_STATES:      # left going by a restart — its job is gone
+                return {"ok": False, "interrupted": True, "error": "this run was interrupted (the server restarted) — "
+                        "open it and press ↻ Resume watching; nothing is relaunched"}, 200
             return {"ok": False, "error": "this run already finished (%s) — plan again" % run_["state"]}, 200
         if (p or {}).get("plan_sha256") != run_.get("plan_sha256"):
             return {"ok": False, "error": "the plan changed since you reviewed it — press ▶ Plan again",
@@ -412,7 +427,7 @@ def scan_resume_watch(p):
     run_, err = _run_of(p)
     if err:
         return err
-    if run_["state"] not in ("LAUNCHING", "RUNNING", "SCANS_DONE", "SYNCING"):
+    if run_["state"] not in ("PREFLIGHT", "LAUNCHING", "RUNNING", "SCANS_DONE", "SYNCING"):
         return {"ok": False, "error": "this run is %s — nothing to resume" % run_["state"]}, 200
     out = sc.start(run_["run_id"], resume=True, label="Scan Confirmation · resume %s" % run_["run_id"])
     return {"ok": True, **out, "run_id": run_["run_id"]}, 200

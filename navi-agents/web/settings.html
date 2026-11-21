@@ -24,6 +24,9 @@
   .cli{font-family:var(--mono);font-size:12px;line-height:1.5;color:#c9d4e5;background:#0c0e13;border:1px solid var(--line);
        border-radius:10px;padding:12px 14px;white-space:pre-wrap;word-break:break-word;max-height:min(74vh,760px);overflow:auto;min-height:160px}
   .cli .cmd{color:var(--accent);font-weight:700}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{border:0;background:transparent;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--ink)}
+  .seg button.on{background:color-mix(in srgb,var(--accent) 22%,transparent);font-weight:600}
   .cli .ok{color:var(--ok)} .cli .err{color:var(--crit)}
   .kpis{display:flex;flex-wrap:wrap;gap:18px;margin-top:10px}
   .kpi .v{font-size:26px;font-weight:800} .kpi .l{font-size:11px;color:var(--mut)}
@@ -192,6 +195,24 @@
     <div class="kpis" id="usageKpis"></div>
   </section>
 
+  <section class="card" id="secSbom">
+    <div class="toolbar"><div><h2 style="margin:0">📦 Software bill of materials</h2>
+      <p class="sub" style="margin:2px 0 0">Everything navi Ensemble is built on — the navi CLI and its dependencies, the optional web server and model packages, Python, the web fonts — and the outside services it talks to. <b>This install</b> records the versions actually present here; <b>declared</b> is the version ranges shipped in <span class="mono">sbom/</span>. CycloneDX 1.6 or SPDX 2.3, JSON.</p></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn sm" data-sbom="cyclonedx" data-inst="1">⬇ This install · CycloneDX</button>
+      <button class="btn ghost sm" data-sbom="spdx" data-inst="1">⬇ This install · SPDX</button>
+      <button class="btn ghost sm" data-sbom="cyclonedx" data-inst="">⬇ Declared · CycloneDX</button>
+      <button class="btn ghost sm" data-sbom="spdx" data-inst="">⬇ Declared · SPDX</button>
+      <span class="sub" id="sbomNote" style="align-self:center"></span></div>
+    <details id="sbomView" style="margin-top:10px"><summary class="sub" style="cursor:pointer">Show the SBOM (JSON)</summary>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 6px">
+        <span class="seg" id="sbomMode"><button data-v="1" class="on">This install</button><button data-v="">Declared</button></span>
+        <span class="seg" id="sbomFmt"><button data-v="cyclonedx" class="on">CycloneDX</button><button data-v="spdx">SPDX</button></span>
+        <button class="btn ghost sm" id="sbomCopy">⧉ Copy</button>
+        <span class="sub" id="sbomViewNote"></span></div>
+      <pre class="cli" id="sbomJson" tabindex="0" style="max-height:min(60vh,560px);white-space:pre;overflow:auto">Loading…</pre>
+    </details>
+  </section>
   <footer>Settings · repo-only control panel · env vars are process-live, persisted by the config store · navi updates stream from <span class="mono">navi config update</span></footer>
 </div>
 
@@ -222,6 +243,7 @@ function renderStat(){
     + chip('Remote exec', s.rce_enabled, s.rce_enabled?'enabled':'gated')
     + chip('Scan launch', s.scan_launch_enabled, s.scan_launch_enabled?'enabled':'gated')
     + '<span class="chip" title="'+esc(ssh.message||'')+'" style="border-color:'+(sshGood===true?'var(--ok)':sshGood===false?'var(--crit)':'var(--cx-e7c66b)')+';color:'+(sshGood===true?'var(--ok)':sshGood===false?'var(--crit)':'var(--cx-e7c66b)')+'">SSH creds: '+esc(sshTxt)+'</span>'
+    + ((s.other_users||[]).length && !s.token_required ? '<span class="chip" title="Other accounts logged in to this machine can reach a loopback console. Set HOUNDS_REQUIRE_TOKEN=1 and restart to require the access token here too." style="border-color:var(--cx-e7c66b);color:var(--cx-e7c66b)">⚠ Shared machine: '+esc(s.other_users.slice(0,3).join(', '))+(s.other_users.length>3?' +'+(s.other_users.length-3):'')+' logged in — no token required</span>' : '')
     + chip('navi CLI', s.navi_available, s.navi_available?(s.navi_path||'found'):'not found')
     + chip('AI', ai, ai?(esc(s.llm.provider||'?')+' · '+esc(s.llm.model||'')):esc((s.llm&&s.llm.why)||'no model'))
     + (s.llm&&s.llm.base_url?'<span class="chip" title="Reasoning endpoint in use">🔌 '+esc(s.llm.base_url)+'</span>':'')
@@ -279,6 +301,32 @@ async function loadStatus(){
   if(!o||!o.ok)return; STAT=o; renderStat(); renderEnv(); renderStore(); renderUsage(o.usage); renderDl(); renderTr();
 }
 
+// ---- SBOM (tools/sbom.py) — a read; saved as plain JSON (no byte-order mark) ----
+document.querySelectorAll('[data-sbom]').forEach(b=>b.onclick=async()=>{
+  document.getElementById('sbomNote').textContent='building…';
+  let o; try{ o=await API.post('sbom',{format:b.dataset.sbom, installed:!!b.dataset.inst}); }catch(e){ o={ok:false,error:e.message}; }
+  if(!o||!o.ok){ document.getElementById('sbomNote').textContent='✗ '+((o&&o.error)||'failed'); return; }
+  const u=URL.createObjectURL(new Blob([o.json],{type:'application/json'})); const a=document.createElement('a');
+  a.href=u; a.download=o.filename; a.click(); setTimeout(()=>URL.revokeObjectURL(u),2000);
+  document.getElementById('sbomNote').textContent='✓ '+o.filename+' · '+o.components+' components · '+o.services+' services';
+});
+// SBOM viewer — loads when opened (a read); the JSON goes in as text, never HTML
+const SBV={inst:'1', fmt:'cyclonedx', text:'', seq:0};
+async function sbomShow(){
+  const pre=document.getElementById('sbomJson'), note=document.getElementById('sbomViewNote'), seq=++SBV.seq;
+  pre.textContent='Loading…'; note.textContent='';
+  let o; try{ o=await API.post('sbom',{format:SBV.fmt, installed:!!SBV.inst}); }catch(e){ o={ok:false,error:e.message}; }
+  if(seq!==SBV.seq) return;                                     // a newer toggle superseded this read
+  if(!o||!o.ok){ pre.textContent='✗ '+((o&&o.error)||'could not build the SBOM'); return; }
+  SBV.text=o.json; pre.textContent=o.json; pre.scrollTop=0;
+  note.textContent=o.filename+' · '+o.components+' components · '+o.services+' services';
+}
+function sbomSeg(id,key){ document.querySelectorAll('#'+id+' button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.toggle('on',x===b)); SBV[key]=b.dataset.v; sbomShow(); }); }
+sbomSeg('sbomMode','inst'); sbomSeg('sbomFmt','fmt');
+document.getElementById('sbomView').addEventListener('toggle',e=>{ if(e.target.open && !SBV.text) sbomShow(); });
+document.getElementById('sbomCopy').onclick=async()=>{ const n=document.getElementById('sbomViewNote');
+  try{ await navigator.clipboard.writeText(SBV.text); n.textContent='✓ copied'; }catch(e){ n.textContent='copy blocked by the browser — select the text instead'; } };
 // ---- external downloads (core/downloads.py registry + NAVI_AUTO_APPROVE_DOWNLOADS) ----
 function renderDl(){
   const d=STAT.downloads||{}, f=(STAT.env||[]).find(x=>x.section==='downloads')||{}, on=!!d.auto_approve;

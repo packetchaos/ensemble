@@ -82,7 +82,7 @@ if not os.path.exists(_root_readme):
     _root_readme = os.path.join(os.path.dirname(ROOT), "README.md")
 for f_ in ("INSTALL.md", "README.md", _root_readme):
     t_ = open(os.path.join(ROOT, f_) if not os.path.isabs(f_) else f_, encoding="utf-8").read()
-    check(f"{version.MAJOR}.43.{version.BUILD}" in t_ and "1.43.486" not in t_, f"{os.path.basename(f_)} names {version.MAJOR}.43.{version.BUILD}")
+    check(version.version_string() in t_ and "1.43.486" not in t_, f"{os.path.basename(f_)} names {version.version_string()}")
 
 # ============ 2. owner decision 7b — yum --setopt=exit_on_lock=1 ============
 fxD = json.load(open(os.path.join(HERE, "fixtures", "c2_plugin_output", "real_D_centos7_rsyslog_zstream.json"), encoding="utf-8"))

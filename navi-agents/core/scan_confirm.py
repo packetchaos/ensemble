@@ -53,7 +53,8 @@ TIMEOUT_MIN_DEFAULT, TIMEOUT_MIN_MAX = 360, 24 * 60
 SYNC_ATTEMPTS_DEFAULT, SYNC_INTERVAL_DEFAULT = 6, 300
 CREATE_TIMEOUT_S = 120
 STATUS_TIMEOUT_S = 60
-SYNC_TIMEOUT_S = 240
+SYNC_TIMEOUT_S = 2 * 3600              # a scoped vulns sync at 150K assets can run long — never under 2 hours
+LIST_TIMEOUT_S = 600                   # one-shot reads that return big lists (/scans, /scans/<id>)
 LAUNCH_PROOF_S = 120
 POLL_FIRST_S, POLL_MAX_S, POLL_BACKOFF = 30, 300, 1.5
 MAX_SCAN_LIST = 5000                   # existing scans offered in the one-off pickers (enabled first, newest first)
@@ -944,7 +945,7 @@ def nonterminal_runs():
     con = _con()
     try:
         return [r["run_id"] for r in con.execute(
-            "SELECT run_id FROM scan_runs WHERE state IN ('LAUNCHING','RUNNING','SCANS_DONE','SYNCING')")]
+            "SELECT run_id FROM scan_runs WHERE state IN ('PREFLIGHT','LAUNCHING','RUNNING','SCANS_DONE','SYNCING')")]
     finally:
         con.close()
 
@@ -983,7 +984,7 @@ def verdict_rows(run_id, verdict_filter=None, offset=0, limit=50):
         counts = {r["verdict"]: r["n"] for r in con.execute(
             "SELECT verdict, COUNT(*) AS n FROM scan_run_verdicts WHERE run_id=? GROUP BY verdict", (run_id,))}
         rows = []
-        for r in con.execute(f"SELECT * FROM scan_run_verdicts WHERE {w} ORDER BY verdict, target, plugin_id "
+        for r in con.execute(f"SELECT * FROM scan_run_verdicts WHERE {w} ORDER BY verdict, target, plugin_id, asset_uuid "
                              f"LIMIT ? OFFSET ?", args + [int(limit), int(offset)]):
             d = dict(r)
             d["evidence"] = json.loads(d.pop("evidence_json") or "{}")
@@ -1087,7 +1088,7 @@ def lookups(force=False, runner=None):
         for x in (po.get("policies") if isinstance(po, dict) else po) or [] if isinstance(x, dict)],
         key=lambda x: str(x.get("name") or "").lower())
     # the data behind `navi explore info scans` (name, id, status, uuid) — plus each scan's policy_id
-    sl = api_read("/scans", runner, timeout=SYNC_TIMEOUT_S)
+    sl = api_read("/scans", runner, timeout=LIST_TIMEOUT_S)
     raw = (sl.get("scans") if isinstance(sl, dict) else sl) or [] if sl is not None else None
     scans = None if raw is None else [
         {"id": str(x.get("id") or ""), "name": x.get("name"), "status": x.get("status"), "uuid": x.get("uuid"),
@@ -1553,10 +1554,10 @@ def sync_and_verify(run_id, emit, live, ev, nv=None, read=None, n_steps=4):
                     raise _Abort()
                 r = nv(sync_args(norm, p, mode, since), SYNC_TIMEOUT_S)
                 if r.get("timed_out") and not ev.is_set():
-                    emit("↻ sync timed out — retrying once with threads=1")
-                    r = nv(sync_args(norm, p, mode, since, threads=1), SYNC_TIMEOUT_S)
-                    if r.get("timed_out"):
-                        event(run_id, "sync_timeout", {"plugin": p, "mode": mode})
+                    # no slower retry: the next sync attempt (or ↻ Re-verify) picks it up again
+                    emit("⏱ sync of plugin %s (%s) ran past %d min — continuing; the next attempt retries it"
+                         % (p, mode, SYNC_TIMEOUT_S // 60))
+                    event(run_id, "sync_timeout", {"plugin": p, "mode": mode})
         _hdr(emit, n_steps, n_steps, "VERIFY (%d/%d)" % (a, attempts))
         rows, summ = _finish_verdicts(run_id, read, emit, "SYNCING")
         pend = summ["counts"].get("PENDING_INGESTION", 0)
@@ -1600,8 +1601,19 @@ def start(run_id, resume=False, label=None, fn=None):
             _ACTIVE.pop(run_id, None)
         raise
     jid = (res.get("job") or {}).get("id")
-    set_state(run_id, get_run(run_id)["state"], job_id=jid)
+    set_job(run_id, jid)                       # the job id only — never write the state back (the worker owns it)
     return {"ok": True, "job_id": jid}
+
+
+def set_job(run_id, job_id):
+    with _LOCK:
+        con = _con()
+        try:
+            con.execute("UPDATE scan_runs SET job_id=?, updated=? WHERE run_id=?", (job_id, time.time(), run_id))
+            con.commit()
+        finally:
+            con.close()
+    event(run_id, "job", {"job_id": job_id})
 
 
 def is_active(run_id):
@@ -1634,11 +1646,18 @@ def deletable_scans(days, now=None):
                 v = None
             if v:
                 theirs.add(str(v))
+        # one decision per SCAN, not per row: a reused scan appears on several runs' rows. It is deletable
+        # only when EVERY row using it is old and finished, and no run using it is still going.
         return [dict(r) for r in con.execute(
-            "SELECT DISTINCT s.run_id, s.plan_index, s.scan_id, s.launched FROM scan_run_scans s "
-            "WHERE s.scan_id IS NOT NULL AND s.deleted IS NULL AND s.launched IS NOT NULL AND s.launched < ? "
-            "AND s.status IN ('completed','canceled','aborted','stopped','timeout','launch_failed') ORDER BY s.launched",
-            (cut,)) if str(r["scan_id"]) not in theirs]
+            "SELECT s.scan_id, MIN(s.run_id) AS run_id, MAX(s.launched) AS launched FROM scan_run_scans s "
+            "JOIN scan_runs r ON r.run_id = s.run_id "
+            "WHERE s.scan_id IS NOT NULL AND s.deleted IS NULL "
+            "GROUP BY s.scan_id "
+            "HAVING MAX(COALESCE(s.launched, r.created)) < ? "
+            "AND SUM(CASE WHEN s.status IN ('completed','canceled','cancelled','aborted','stopped','timeout',"
+            "'launch_failed','not_launched') THEN 0 ELSE 1 END) = 0 "
+            "AND SUM(CASE WHEN r.state IN ('REFUSED','LAUNCH_FAILED','VERIFIED','ABORTED') THEN 0 ELSE 1 END) = 0 "
+            "ORDER BY MAX(s.launched)", (cut,)) if str(r["scan_id"]) not in theirs]
     finally:
         con.close()
 
@@ -1693,7 +1712,7 @@ def scan_info(scan_id, runner=None):
     scanner_name, targets} (or None). The list's policy_id is added by the caller when it has it."""
     if not _DIGITS.match(str(scan_id or "")):
         return None
-    raw = api_read("/scans/%s" % scan_id, runner, timeout=SYNC_TIMEOUT_S)
+    raw = api_read("/scans/%s" % scan_id, runner, timeout=LIST_TIMEOUT_S)
     info = raw.get("info") if isinstance(raw, dict) else None
     if not isinstance(info, dict):
         return None

@@ -228,13 +228,21 @@ let _saveT=null, _saving=null;
 function saveSoon(ms){ clearTimeout(_saveT); _saveT=setTimeout(saveNow, ms==null?350:ms); }
 async function saveNow(){
   clearTimeout(_saveT); if(!B) return;
+  while(_saving){ try{ await _saving; }catch(e){} }          // one save at a time — never two with the same rev
+  if(!B) return;
   const body={id:B.id, rev:B.rev, name:B.name, layout:B.layout, scope:B.scope, widgets:B.widgets};
+  const sent=JSON.stringify([body.name, body.layout, body.scope, body.widgets]);
+  const keep=B.widgets.map(w=>w.iid);
   _saving = call('board_save', {board:body});
-  const o = await _saving; _saving=null;
-  if(o && o.ok){ const keep=B.widgets; B=o.board; DEFS=Object.assign(DEFS, o.defs||{}); SCOPE_N=o.scope_assets;
-    // the server may assign iids to new widgets — map results across by position
-    const old={}; keep.forEach((w,i)=>{ old[i]=w.iid; });
-    B.widgets.forEach((w,i)=>{ if(old[i] && old[i]!==w.iid && RES[old[i]]){ RES[w.iid]=RES[old[i]]; } });
+  let o; try{ o = await _saving; } finally { _saving=null; }
+  if(o && o.ok){
+    const edited = JSON.stringify([B.name, B.layout, B.scope, B.widgets]) !== sent;   // changed while saving?
+    DEFS=Object.assign(DEFS, o.defs||{}); SCOPE_N=o.scope_assets;
+    // the server may assign iids to new widgets — carry results (and the local widget) across by position
+    o.board.widgets.forEach((w,i)=>{ const was=keep[i];
+      if(was!==w.iid){ if(RES[was]) RES[w.iid]=RES[was]; if(edited && B.widgets[i] && B.widgets[i].iid===was) B.widgets[i].iid=w.iid; } });
+    if(edited){ B.rev=o.board.rev; saveSoon(0); }            // keep the newer local edits and save them next
+    else B=o.board;
     const bi=BOARDS.find(x=>x.id===B.id); if(bi){ bi.name=B.name; bi.widgets=B.widgets.length; }
     renderBar(); renderScopeCount(); return true; }
   if(o && o.conflict){ banner('This board was changed in another tab or by someone else. <button class="btn sm" id="reloadB">Reload it</button>', 'warn', 'conflict');

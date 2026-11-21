@@ -102,7 +102,7 @@ if not os.path.exists(_root_readme):
     _root_readme = os.path.join(os.path.dirname(ROOT), "README.md")  # in the repo it is ../README.md
 for f_ in ("INSTALL.md", "README.md", _root_readme):
     t_ = open(os.path.join(ROOT, f_), encoding="utf-8").read()
-    check(f"{version.MAJOR}.43.{version.BUILD}" in t_ and "1.43.485" not in t_, f"{f_} names {version.MAJOR}.43.{version.BUILD}")
+    check(version.version_string() in t_ and "1.43.485" not in t_, f"{f_} names {version.version_string()}")
 
 # ============ 1. plugin-output formats — TABLE-DRIVEN over tests/fixtures/c2_plugin_output/*.json ============
 FIX = sorted(glob.glob(os.path.join(HERE, "fixtures", "c2_plugin_output", "*.json")))

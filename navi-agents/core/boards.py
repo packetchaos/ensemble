@@ -286,10 +286,15 @@ def save(b):
         r = con.execute("SELECT rev FROM boards WHERE id=?", (bid,)).fetchone()
         if not r:
             return None, "no such board"
-        if b.get("rev") is not None and int(b.get("rev")) != int(r["rev"]):
-            return None, "conflict"
-        con.execute("UPDATE boards SET name=?, body=?, rev=rev+1, updated=? WHERE id=?",
-                    (body["name"], json.dumps(body), time.time(), bid))
+        if b.get("rev") is not None:
+            # compare-and-set in ONE statement: two saves carrying the same rev can't both win
+            cur = con.execute("UPDATE boards SET name=?, body=?, rev=rev+1, updated=? WHERE id=? AND rev=?",
+                              (body["name"], json.dumps(body), time.time(), bid, int(b.get("rev"))))
+            if cur.rowcount == 0:
+                return None, "conflict"
+        else:
+            con.execute("UPDATE boards SET name=?, body=?, rev=rev+1, updated=? WHERE id=?",
+                        (body["name"], json.dumps(body), time.time(), bid))
         _audit(con, "save", bid, f"{len(body['widgets'])} widgets")
         con.commit()
     finally:
@@ -788,13 +793,13 @@ def data(board, iid, page=0, size=50):
     full, disp, info = prepare(d, scope, drill=True)
     size = max(1, min(widgets.EXPORT_MAX, int(size or 50)))
     page = max(0, int(page or 0))
-    rows = db.user_query(f"SELECT * FROM ({full}) LIMIT {size + 1} OFFSET {page * size}")
+    rows = db.user_query(f"SELECT * FROM ({full}\n) LIMIT {size + 1} OFFSET {page * size}")   # \n: a trailing -- comment must not swallow the wrapper
     more = len(rows) > size
     rows = rows[:size]
     total = None
     if page == 0:
         try:
-            total = int(db.user_query(f"SELECT COUNT(*) AS n FROM (SELECT 1 FROM ({full}) LIMIT 100001)")[0]["n"])
+            total = int(db.user_query(f"SELECT COUNT(*) AS n FROM (SELECT 1 FROM ({full}\n) LIMIT 100001)")[0]["n"])
         except Exception:
             total = None
     return {"rows": rows, "columns": list(rows[0].keys()) if rows else [], "page": page, "size": size,

@@ -524,7 +524,6 @@ def run_navi_streamed(sub_argv, emit, live=None, cancel_ev=None, timeout_s=120, 
     that task's window: committed lines via emit(), the '\r'-redrawn line via live(). stdin is
     /dev/null; the child is killed on cancel or after timeout_s. mask(line) → the line as shown
     and logged (hides a credential / navi's printed payload). → {rc, lines, timed_out, cancelled}."""
-    import select
     mask = mask or (lambda x: x)
     navi = navi_cli._resolve_navi()
     if not navi:
@@ -561,6 +560,43 @@ def run_navi_streamed(sub_argv, emit, live=None, cancel_ev=None, timeout_s=120, 
                     cur = ""
                     cr = False
                 cur += ch
+    # One reader thread for both the pty and the pipe (Windows) case: select() doesn't work on a
+    # Windows pipe, so a blocking read in a thread is the portable way (same idea as _drain_blocking).
+    import queue as _queue
+    q = _queue.Queue()
+
+    def _pump():
+        try:
+            while True:
+                b = os.read(fd, 65536)
+                if not b:
+                    break
+                q.put(b)
+        except OSError:                          # EIO on a pty once the child has exited
+            pass
+        finally:
+            # the READER owns the pty fd: closing it here (never from the caller) means a thread still
+            # blocked on it can't end up reading some later, unrelated fd that reused the number
+            if _HAS_PTY:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+        q.put(None)
+    threading.Thread(target=_pump, name="navi-stream", daemon=True).start()
+
+    def _take(chunk):
+        nonlocal carry
+        carry += chunk
+        try:
+            text = carry.decode("utf-8")
+            carry = b""
+        except UnicodeDecodeError as e:
+            text = carry[:e.start].decode("utf-8", "replace")
+            carry = carry[e.start:]
+        feed(text)
+    eof = False
+    quiet = 0
     try:
         while True:
             if cancel_ev is not None and cancel_ev.is_set():
@@ -570,40 +606,20 @@ def run_navi_streamed(sub_argv, emit, live=None, cancel_ev=None, timeout_s=120, 
                 timed_out = True
                 break
             try:
-                r, _w, _x = select.select([fd], [], [], 0.25)
-            except (OSError, ValueError):
-                r = []
-            if r:
-                try:
-                    chunk = os.read(fd, 65536)
-                except OSError:
-                    chunk = b""
-                if not chunk:
-                    if proc.poll() is not None:
+                chunk = q.get(timeout=0.25)
+            except _queue.Empty:
+                # navi exited but something it started still holds the terminal open: stop after a
+                # quiet second instead of waiting for the timeout (what the select loop used to do)
+                if proc.poll() is not None:
+                    quiet += 1
+                    if quiet >= 4:
                         break
-                    continue
-                carry += chunk
-                try:
-                    text = carry.decode("utf-8")
-                    carry = b""
-                except UnicodeDecodeError as e:
-                    text = carry[:e.start].decode("utf-8", "replace")
-                    carry = carry[e.start:]
-                feed(text)
-            elif proc.poll() is not None:
-                # drain anything left without blocking
-                try:
-                    while True:
-                        r2, _w, _x = select.select([fd], [], [], 0)
-                        if not r2:
-                            break
-                        chunk = os.read(fd, 65536)
-                        if not chunk:
-                            break
-                        feed(chunk.decode("utf-8", "replace"))
-                except OSError:
-                    pass
+                continue
+            quiet = 0
+            if chunk is None:
+                eof = True
                 break
+            _take(chunk)
         if timed_out or cancelled:
             try:
                 proc.kill()
@@ -614,12 +630,19 @@ def run_navi_streamed(sub_argv, emit, live=None, cancel_ev=None, timeout_s=120, 
             proc.wait(timeout=10)
         except Exception:
             pass
+        if not eof:                              # whatever was already read before the kill
+            while True:
+                try:
+                    chunk = q.get_nowait()
+                except _queue.Empty:
+                    break
+                if chunk is None:
+                    break
+                _take(chunk)
+        if carry:
+            feed(carry.decode("utf-8", "replace"))
     finally:
-        try:
-            if _HAS_PTY:
-                os.close(fd)
-        except OSError:
-            pass
+        # the pty fd is closed by the reader thread when it sees EOF (see _pump)
         if live:
             live("")
     if cur.strip():

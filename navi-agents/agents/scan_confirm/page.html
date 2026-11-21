@@ -561,8 +561,19 @@ async function loadVerdicts(reset){
 }
 $('vPrev').onclick=()=>{ ST.voff=Math.max(0,ST.voff-ST.vlim); loadVerdicts(false); };
 $('vNext').onclick=()=>{ ST.voff+=ST.vlim; loadVerdicts(false); };
-$('csv').onclick=async()=>{ if(!ST.run) return; let o; try{ o=await API.post('export',{run_id:ST.run.run_id}); }catch(e){ return; }
-  if(o&&o.ok) downloadText(o.filename, o.csv); };
+$('csv').onclick=async()=>{ if(!ST.run) return; const b=$('csv'), parts=[]; let off=0, name='', total=0, got=0;
+  b.disabled=true;
+  try{
+    while(off!==null){                                 // pages of 50,000 rows → one file, nothing dropped
+      const o=await API.post('export',{run_id:ST.run.run_id, offset:off});
+      if(!o||!o.ok){ flash('flash','✗ export failed'+(o&&o.error?' — '+esc(o.error):''),'crit'); return; }
+      parts.push(o.csv); name=o.filename; total=o.total; got+=o.rows; off=o.next_offset;
+      b.textContent='⬇ '+N(got)+' / '+N(total);
+    }
+    const u=URL.createObjectURL(new Blob(parts,{type:'text/csv'})); const a=document.createElement('a');
+    a.href=u; a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(u),4000);
+  }catch(e){ flash('flash','✗ export failed — '+esc(e.message),'crit'); }
+  finally{ b.disabled=false; b.textContent='⬇ CSV'; } };
 $('reverify').onclick=async()=>{ if(!ST.run||!confirm('Re-verify? This syncs these plugins into navi.db again and recomputes the results — no scan is launched.')) return;
   let r; try{ r=await API.post('scan_reverify',{run_id:ST.run.run_id, confirm:true}); }catch(e){ r={ok:false,error:e.message}; }
   if(!r||!r.ok){ flash('flash',(r&&r.blocked?'🔒 ':'✗ ')+esc((r&&(r.reason||r.error))||'failed'),'crit'); return; }

@@ -6,6 +6,7 @@ are appended here with provenance and reused on future runs. Rejected proposals
 are remembered so they are not re-proposed.
 """
 import json
+import re
 import os
 from core.security import private_open as _popen
 
@@ -17,6 +18,25 @@ def registry_path() -> str:
     return os.environ.get("IOT_REGISTRY_PATH", DEFAULT_PATH)
 
 
+_PID = re.compile(r"^[0-9]{1,7}$")   # ASCII digits only
+
+
+def valid_pid(pid) -> bool:
+    """A Tenable plugin id: digits only. Plugin ids are written into SQL and handed to navi
+    as --plugin, so nothing else is ever stored or used (build 521)."""
+    return bool(_PID.match(str(pid or "").strip()))
+
+
+def _clean(data: dict) -> dict:
+    """Drop any non-numeric plugin id a hand-edited / swapped-in registry might carry."""
+    for d in data.get("detections") or []:
+        if isinstance(d, dict):
+            for k in ("plugins", "signal_plugins"):
+                if k in d:
+                    d[k] = [str(x).strip() for x in (d.get(k) or []) if valid_pid(x)]
+    return data
+
+
 def load() -> dict:
     p = registry_path()
     if not os.path.exists(p):
@@ -25,7 +45,7 @@ def load() -> dict:
         data = json.load(f)
     data.setdefault("detections", [])
     data.setdefault("rejected", [])
-    return data
+    return _clean(data)
 
 
 def save(data: dict) -> None:
@@ -81,7 +101,10 @@ def apply_decisions(decisions: list[dict]) -> dict:
     added, refused = 0, 0
     for dec in decisions:
         name = dec["iot_name"]
-        pid = str(dec["plugin_id"])
+        pid = str(dec.get("plugin_id") or "").strip()
+        if not valid_pid(pid):
+            refused += 1                       # never store a non-numeric plugin id
+            continue
         term = (dec.get("term") or "").strip()
         key = proposal_key(name, pid)
         if dec.get("approve"):
@@ -134,8 +157,8 @@ def export_base(proposals: list[dict], merge: bool = False) -> dict:
         det = base.setdefault(name.lower(), {
             "iot_name": name, "vendor": p.get("vendor", ""), "plugins": [],
             "name_contains": [], "output_contains": [], "source": "learned", "provenance": []})
-        pid, term = str(p.get("plugin_id")), (p.get("term") or "").strip()
-        if pid and pid not in det["plugins"]:
+        pid, term = str(p.get("plugin_id") or "").strip(), (p.get("term") or "").strip()
+        if valid_pid(pid) and pid not in det["plugins"]:
             det["plugins"].append(pid)
         if term and term not in det["output_contains"] and term not in det["name_contains"]:
             det["output_contains"].append(term)

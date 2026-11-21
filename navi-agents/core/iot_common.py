@@ -15,6 +15,7 @@ Guardrails are still computed, but on (plugin + term) co-occurrence — NOT the
 plugin alone — so a broad "banner" carrier plugin isn't wrongly dropped. They
 are surfaced as WARNINGS (Agent 4 coverage ledger) rather than silent filters.
 """
+import re
 import csv
 import json
 import math
@@ -298,9 +299,11 @@ def _detection_where(det: dict, db_path=None, hx=False):
     an identity string in a SIGNAL plugin's output) AND the IoT-candidate filter
     (no software enum / no general-purpose OS). None when the detection has no match
     clause. Used by BOTH discovery and the single-query tag selector so they agree."""
-    sig = ",".join("'" + p + "'" for p in (det.get("signal_plugins") or SIGNAL_PLUGINS))
+    # plugin ids are digits only (build 521): a registry value is never trusted into SQL
+    sig = ",".join("'" + p + "'" for p in [str(x).strip() for x in (det.get("signal_plugins") or SIGNAL_PLUGINS)
+                                         if re.fullmatch(r"[0-9]{1,7}", str(x).strip())]) or "''"
     clauses = []
-    pids = [str(p) for p in (det.get("plugins") or []) if str(p).strip()]
+    pids = [str(p).strip() for p in (det.get("plugins") or []) if re.fullmatch(r"[0-9]{1,7}", str(p).strip())]
     if pids:
         clauses.append("v.plugin_id IN (" + ",".join("'" + p + "'" for p in pids) + ")")
     for t in det.get("name_contains", []):          # match the PLUGIN NAME (device-specific)

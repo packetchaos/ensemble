@@ -13,7 +13,7 @@ Four jobs:
 import os
 import urllib.parse
 
-from core import cli_jobs, config_store, db, downloads, gates, hx_optimize, llm, navi_cli, tagname
+from core import cli_jobs, config_store, db, downloads, gates, hx_optimize, llm, navi_cli, security, tagname
 
 # Environment variables surfaced on the page. secret=True → value is masked and never
 # echoed back; an empty submit for a secret means "leave unchanged" (don't wipe it).
@@ -128,7 +128,8 @@ def _mask(v):
 # ship the stored key to whoever runs that URL).
 _LLM_KEYS = ("NAVI_LLM_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY")
 _LLM_ENDPOINT = ("NAVI_LLM_BASE_URL", "NAVI_LLM_PROVIDER")
-_ENABLE_VALUES = ("1", "true", "yes", "on")
+_ENABLE_VALUES = ("1", "true", "yes", "on")   # kept for callers; the gate test is navi_cli._truthy (below)
+_OFF_VALUES = ("", "0", "false", "no", "off", "n", "f", "disabled")
 
 
 def _display(key, raw):
@@ -174,6 +175,7 @@ def status(p):
             "rce_gate_reason": navi_cli.rce_gate_reason(),
             "scan_launch_enabled": navi_cli.scan_launch_enabled(),
             "scan_launch_gate_reason": navi_cli.scan_launch_gate_reason(),
+            "other_users": _other_users(), "token_required": security.token_required(),
             "ssh": db.ssh_status(),
             "navi_available": navi_cli.navi_available(),
             "navi_path": (navi_cli._resolve_navi() or ""),
@@ -194,6 +196,34 @@ def config_mode(p):
     if not ok:
         body["error"] = msg
     return body, 200
+
+
+_WHO = {"t": 0.0, "v": []}
+
+
+def _other_users():
+    """Other OS accounts logged in to this machine (`who`, cached 60 s). On a shared host any of them
+    can reach a loopback console unless HOUNDS_REQUIRE_TOKEN=1 — Settings warns. Names are shown only
+    to a browser on this machine. [] when `who` isn't there."""
+    import getpass
+    import subprocess
+    import time as _t
+    if not gates.client_is_loopback():
+        return []
+    if _t.time() - _WHO["t"] < 60:
+        return _WHO["v"]
+    _WHO["t"] = _t.time()
+    try:
+        out = subprocess.run(["who"], capture_output=True, text=True, timeout=3, stdin=subprocess.DEVNULL).stdout
+    except Exception:
+        _WHO["v"] = []
+        return []
+    try:
+        me = getpass.getuser()
+    except Exception:
+        me = ""
+    _WHO["v"] = sorted({ln.split()[0] for ln in out.splitlines() if ln.split() and ln.split()[0] != me})[:20]
+    return _WHO["v"]
 
 
 def set_env(p):
@@ -225,8 +255,18 @@ def set_env(p):
                 refused[k] = (f"{k} can't be changed from the browser — set {k} in the server's "
                               "environment / .env / hounds.config.json and restart.")
             continue
+        if f.get("bool"):
+            # One truth table with navi_cli._truthy (what every gate reads): anything it calls ON is
+            # stored as exactly "1" and must pass the guard below; only plain OFF values lower a gate.
+            if navi_cli._truthy(v):
+                v = "1"
+            elif v.lower() not in _OFF_VALUES:
+                invalid[k] = f"{k} must be on (1) or off (0)."
+                continue
+            if v == cur_raw or (navi_cli._truthy(v) and navi_cli._truthy(cur_raw)):
+                continue
         if f.get("guarded") and v != cur_raw:
-            lowering = bool(f.get("bool")) and v.lower() not in _ENABLE_VALUES
+            lowering = bool(f.get("bool")) and not navi_cli._truthy(v)
             if not lowering:
                 if not local:
                     refused[k] = (f"{k} can only be changed from this machine (a loopback browser) — "
@@ -441,7 +481,26 @@ def downloads_status(p):
     return downloads.status((p or {}).get("id") or None), 200
 
 
-ACTIONS = {"status": status, "downloads": downloads_status, "set_env": set_env, "config_mode": config_mode, "db_checks": db_checks,
+def sbom(p):
+    """Software bill of materials (read). installed=true → the versions present in THIS Python
+    (navi-pro, the web framework, CPython…); otherwise the declared ranges committed in sbom/.
+    format: cyclonedx (default) | spdx."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("_ens_sbom", os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "tools", "sbom.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    installed = (p or {}).get("installed") is True
+    cdx = mod.cyclonedx(installed=installed)
+    fmt = "spdx" if (p or {}).get("format") == "spdx" else "cyclonedx"
+    doc = mod.spdx(cdx) if fmt == "spdx" else cdx
+    ver = cdx["metadata"]["component"]["version"]
+    name = "navi-ensemble-%s%s.%s.json" % (ver, "-installed" if installed else "", "spdx" if fmt == "spdx" else "cdx")
+    return {"ok": True, "filename": name, "json": mod.dumps(doc), "version": ver,
+            "components": len(cdx["components"]), "services": len(cdx["services"])}, 200
+
+
+ACTIONS = {"status": status, "downloads": downloads_status, "sbom": sbom, "set_env": set_env, "config_mode": config_mode, "db_checks": db_checks,
            "navi_start": navi_start, "navi_poll": navi_poll, "navi_jobs": navi_jobs,
            "navi_rebuild": navi_rebuild, "asset_delta": asset_delta,
            "hx_status": hx_status, "hx_optimize": hx_optimize_run, "hx_cancel": hx_cancel,
