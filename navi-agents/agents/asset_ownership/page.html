@@ -67,7 +67,7 @@
 
   <section class="card" style="background:radial-gradient(120% 140% at 90% -20%,var(--amber-glow),transparent 60%),var(--panel)">
     <div class="toolbar"><div><div class="acode">Asset Ownership</div><h2 style="margin:0"><img class="bicon" src="/static/icons/asset_ownership.png?v=1" alt="" aria-hidden="true" draggable="false"> Asset Ownership</h2>
-      <p class="sub" style="margin:2px 0 0">Ownership from the <b>asset's</b> point of view: <b>who owns each asset</b>, how much of it is claimed, <b>what isn't owned</b>, and <b>what you're blind to</b> — plus your <b>crown jewels</b> (ACR&nbsp;≥&nbsp;9) and what the Ensemble already know about them. Three layers: <span class="mono">Business Owner</span> (leaders own groups/apps), <span class="mono">Owner</span> (Exposure Routes — routes &amp; paths), and a single <span class="mono">Asset Owner</span> who owns <b>every</b> open finding on an asset (or just the rest) — routes and paths are how findings get assigned.</p></div>
+      <p class="sub" style="margin:2px 0 0">Ownership from the <b>asset's</b> point of view: <b>who owns each asset</b>, how much of it is claimed, <b>what isn't owned</b>, and <b>what you're blind to</b> — plus your <b>crown jewels</b> (<span data-crown-txt>ACR ≥ 8</span>) and what the Ensemble already know about them. Three layers: <span class="mono">Business Owner</span> (leaders own groups/apps), <span class="mono">Owner</span> (Exposure Routes — routes &amp; paths), and a single <span class="mono">Asset Owner</span> who owns <b>every</b> open finding on an asset (or just the rest) — routes and paths are how findings get assigned.</p></div>
       <button class="btn run sm" id="load" data-run style="margin-left:auto">▶ Run</button></div>
     <div id="flash" class="flash"></div>
   </section>
@@ -96,7 +96,7 @@
   <!-- Crown jewels — what the Ensemble know -->
   <section class="card" id="cjCard" data-nav="Crown jewels" data-nav-icon="👑" style="display:none">
     <div class="toolbar" style="margin:0"><div><h2 style="margin:0;font-size:17px">👑 Crown jewels — what the Ensemble know</h2>
-      <p class="sub" style="margin:2px 0 0">Your most business-critical assets (ACR&nbsp;≥&nbsp;<span id="cjAcr">9</span>) — is each one <b>owned</b>, and what have the other specialists already found on it?</p></div>
+      <p class="sub" style="margin:2px 0 0">Your most business-critical assets (ACR&nbsp;≥&nbsp;<span id="cjAcr">8</span>) — is each one <b>owned</b>, and what have the other specialists already found on it?</p></div>
       <span class="chip" id="cjCount" style="margin-left:auto"></span></div>
     <div id="cjSum" class="cjsum"></div>
     <div id="cjBody" style="margin-top:2px"></div>
@@ -244,8 +244,8 @@ function renderPageGlance(k){
             mk(fnum(k.surface_owned),'owned through a route or path',{h:'/agents/exproute/page.html',n:k.surface_owned,sev:'info',u:'🧭 Exposure Routes →'}),
             mk(fnum(k.mitigated)+' / '+fnum(k.accepted)+' / '+fnum(k.ignored),'mitigated / accepted / ignored',{h:'/agents/exproute/page.html',n:(k.mitigated||0)+(k.accepted||0)+(k.ignored||0),u:'🧭 Exposure Routes →',t:'Findings whose route or path carries a disposition — they count as handled'})]},
     {title:'Risk without an owner',
-     hero:mk(fnum(k.blind),'blind spots · unclaimed crown / ACR ≥ 7',{j:'blindCard',n:k.blind,sev:bad(k.blind,'crit'),u:'claim them ↓'}),
-     chips:[mk(fnum(k.crown),'crown jewels · ACR ≥ '+k.crown_acr,{j:'cjCard',n:k.crown,sev:'med',u:'what the Ensemble know ↓',t:'ACR ≥ '+k.crown_acr+', or a Business Tier / Criticality tag of Crown Jewel, Mission Critical or Tier 1'}),
+     hero:mk(fnum(k.blind),'blind spots · unclaimed crown jewels or high ACR (≥ 7)',{j:'blindCard',n:k.blind,sev:bad(k.blind,'crit'),u:'claim them ↓'}),
+     chips:[mk(fnum(k.crown),'crown jewels · ACR ≥ '+k.crown_acr,{j:'cjCard',n:k.crown,sev:'med',u:'what the Ensemble know ↓',t:'ACR ≥ '+k.crown_acr+' — the crown-jewel line set in Settings → Crown jewels'}),
             mk(fnum(k.crown_no_owner),'crown jewels with no owner',{s:'crownnone',n:k.crown_no_owner,sev:bad(k.crown_no_owner,'crit'),u:'assign owners ↓'}),
             hv?mk(fnum(k.unowned_crit),'no owner · open critical findings',{s:'ucrit',n:k.unowned_crit,sev:bad(k.unowned_crit,'crit'),u:'assign owners ↓'}):noV('no owner · open critical findings'),
             hv?mk(fnum(k.unowned_kev),'no owner · CISA KEV finding',{s:'ukev',n:k.unowned_kev,sev:bad(k.unowned_kev,'crit'),u:'assign owners ↓',t:fnum(k.kev_finding_assets)+' assets have a known-exploited finding'}):noV('no owner · CISA KEV finding'),

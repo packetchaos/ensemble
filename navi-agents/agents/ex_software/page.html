@@ -123,7 +123,7 @@ function render(){ const r=LAST.res, k=r.kpi||{}, ranged=!!k.ranged, off=LAST.of
   if(ranged) h+=kpi(fnum(k.affected),'in the affected range','var(--crit)',STT.affected)+kpi(fnum(k.check),'in range · distro build','var(--high)',STT.check)
       +kpi(fnum(k.unknown),'no version to compare','var(--med)',STT.unknown)+kpi(fnum(k.clear),'not in range','var(--ok)',STT.clear);
   else h+=kpi(fnum(k.installs),'installs')+kpi(fnum(k.unknown),'without a version');
-  h+=kpi(fnum(k.crown),'crown jewels (ACR 9–10)'+(ranged?' · '+fnum(k.crown_hit)+' in range':''),ranged&&k.crown_hit?'var(--crit)':'');
+  h+=kpi(fnum(k.crown),'crown jewels ('+crownTxt()+')'+(ranged?' · '+fnum(k.crown_hit)+' in range':''),ranged&&k.crown_hit?'var(--crit)':'');
   $('kpi').innerHTML=h;
   $('legend').innerHTML=ranged?('Range <span class="mono">'+esc(r.ranges)+'</span> · <b>in range · distro</b> = a distro package: the vendor may have back-ported the fix without changing the version, so confirm with the distro advisory.'
     +(k.not_in_assets?' · '+fnum(k.not_in_assets)+' install(s) on assets no longer in the assets table.':'')):'Add an affected range (e.g. <span class="mono">&lt;2.4.60</span>) to sort these into in range / not in range.';

@@ -37,7 +37,7 @@
  ],
  "how": "The tag list comes live from `navi explore info tags`; preview and protection read your local navi.db. Changes run through `navi enrich acr` (set / inc / dec), behind the write gate and an explicit confirm. A new NO : UPDATE tag counts for navi after the next asset sync.",
  "who": "Vulnerability management leads whose priorities depend on criticality, and risk owners who know which assets actually matter.",
- "better": "Tag first, then calibrate: Linnaeus, Ownership and Agent Group Sync lay down the business tags Criticality Calibration calibrates against, and Automation Station keeps them current and can apply ACR rules on its schedule. Fenrir (crown jewels = ACR ≥ 7) and Exposure Score (crown jewels = ACR ≥ 9) both rank by the result.",
+ "better": "Tag first, then calibrate: Linnaeus, Ownership and Agent Group Sync lay down the business tags Criticality Calibration calibrates against, and Automation Station keeps them current and can apply ACR rules on its schedule. every specialist (crown jewels = ACR at or above the line in Settings, 8 by default) both rank by the result.",
  "different": [
   [
    "No surprises",

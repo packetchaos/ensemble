@@ -110,8 +110,8 @@ check(g["assets on EOL software"]["v"] == eolm["eol_assets"], "glance EOL == Cha
 fs = snapcache.Snapshots("fused")
 fsnap = json.load(__import__("gzip").open(os.path.join(snapcache.CACHE_DIR, by["fused_score"]["snap"]["file"]), "rt"))
 fk = fsnap["result"]["kpi"]
-check(g["avg exposure score / 100"]["v"] == fk["avg"] and g["crown jewels (ACR ≥ 9)"]["v"] == fk["crown"],
-      "glance avg / crown == the Nemesis snapshot (crown labelled with its ACR ≥ 9 rule)")
+check(g["avg exposure score / 100"]["v"] == fk["avg"] and g[__import__("core.crown", fromlist=["x"]).fill("crown jewels ({CROWN})")]["v"] == fk["crown"],
+      "glance avg / crown == the Nemesis snapshot (crown labelled with the one crown-jewel line, filled when served)")
 check(g["KEV-exploitable assets"]["v"] is None and "not in this release" in g["KEV-exploitable assets"]["u"],
       "a card whose hound isn't in the release shows — / 'not in this release'")
 if fk.get("stack"):

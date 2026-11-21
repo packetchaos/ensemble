@@ -97,6 +97,11 @@ def health() -> dict:
             "navi_cli_cwd": navi_cli._navi_cwd(),
             "enable_file": navi_cli._enable_file() or None, "llm": llm_ok,
             "llm_provider": llm_provider, "llm_model": llm_model, "llm_why": llm_why}
+    try:                                     # build 527: the one crown-jewel line, for every page's labels
+        from core import crown
+        info["crown"] = crown.definition()
+    except Exception:
+        pass
     try:
         from . import tagname as _tagname
         info["tag_prefix"] = _tagname.status()     # Settings → Test run (header chip)

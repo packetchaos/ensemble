@@ -85,7 +85,7 @@ check(rows["a7"]["has_owner"] and not rows["a7"]["unclaimed"] and rows["a7"]["te
 check(k["business_owned"] == 1 and k["no_business"] == 6, "business-owner layer coverage")
 check(k["asset_owned"] == 2 and k["asset_owned_complete"] == 1 and k["asset_owned_remainder"] == 1,
       "asset owner complete vs remainder")
-check(k["crown"] == 2 and k["crown_no_owner"] == 1, "crown jewels 2, one with no owner")
+check(k["crown"] == 3 and k["crown_no_owner"] == 1, "crown jewels 3 at the default ACR ≥ 8 line (a1 10, a2 9, a5 8), one with no owner")
 check(rows["a2"]["crit"] == 2 and rows["a2"]["kev"] is True, "a2: 2 open/reopened criticals + KEV")
 check(rows["a6"]["crit"] == 0 and rows["a6"]["kev"] is False, "fixed findings don't count")
 check(k["unowned_crit"] == 1 and k["unowned_kev"] == 1 and k["unowned_crit_findings"] == 2,

@@ -14,7 +14,7 @@ board — legacy live roll-up (computes from navi.db; kept for MCP / other calle
         no longer uses it).
 run   — legacy single-signal roll-up (same).
 """
-from core import insights, jobq
+from core import crown, insights, jobq
 
 
 def _submit(fn):
@@ -23,7 +23,7 @@ def _submit(fn):
 
 def scent(p):
     try:
-        return {"ok": True, "result": insights.scent(p or {}, submit=_submit)}, 200
+        return {"ok": True, "result": crown.fill(insights.scent(p or {}, submit=_submit))}, 200
     except Exception as e:
         return {"ok": False, "error": "%s: %s" % (type(e).__name__, e)}, 200
 
@@ -31,7 +31,7 @@ def scent(p):
 def board(p):
     """Legacy: the live Scent Board roll-up (queries navi.db). The page uses `scent`."""
     try:
-        return {"ok": True, "result": insights.scent_board()}, 200
+        return {"ok": True, "result": crown.fill(insights.scent_board())}, 200
     except Exception as e:
         return {"ok": False, "error": str(e)}, 200
 
@@ -39,7 +39,7 @@ def board(p):
 def run(p):
     """Legacy single-signal rollup (certs timeline, tiles) — still available."""
     try:
-        return {"ok": True, "result": insights.compute()}, 200
+        return {"ok": True, "result": crown.fill(insights.compute())}, 200
     except Exception as e:
         return {"ok": False, "error": str(e)}, 200
 

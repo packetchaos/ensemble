@@ -63,7 +63,7 @@ let CAPP=null, CAPP_PAGE=0, CUR_ROUTES=[], CUR_MATCHES=[], CUR_RP=0, CUR_MP=0, S
 const N=v=>(v==null?0:v).toLocaleString();
 /* metric-card filters on the candidate table */
 const FILTERS={ route:['From routes',c=>c.source==='route'], path:['From paths',c=>c.source==='path'],
-  crown:['On crown jewels (ACR ≥ 7)',c=>c.crown>0], unowned:['No owner on any of its assets',c=>c.assets>0&&c.unowned===c.assets],
+  crown:['On crown jewels ('+crownTxt()+')',c=>c.crown>0], unowned:['No owner on any of its assets',c=>c.assets>0&&c.unowned===c.assets],
   partown:['Some assets without an owner',c=>c.unowned>0], unnamed:['Not yet tagged Custom App',c=>!c.named], named:['Already tagged Custom App',c=>c.named],
   noassets:['No assets found',c=>!c.assets] };
 let PER=hPageSize('capp');   // 20/page by default, Rows selector up to 50 (shared by this page's lists)
@@ -128,7 +128,7 @@ function renderMetrics(){ if(!CAPP) return; const m=CAPP.metrics||{}, ct=CAPP.co
     {title:'Exposure', t:'An app is owned when its assets carry an Owner tag.',
      hero:{v:N(m.assets), l:'assets running custom software'+OF, u:`top candidate sits on ${N(m.top_assets)}`+(sc?' of this tag\'s assets':'')},
      bar:has?own:null,
-     chips:[m.has_acr?{v:N(m.crown_candidates), l:'apps on crown jewels', u:`${N(m.crown_assets)} crown-jewel asset(s) (ACR ≥ 7)`, sev:'crit', filter:'crown'}:null,
+     chips:[m.has_acr?{v:N(m.crown_candidates), l:'apps on crown jewels', u:`${N(m.crown_assets)} crown-jewel asset(s) (${crownTxt()})`, sev:'crit', filter:'crown'}:null,
             {v:N(m.unowned_candidates), l:'apps with no owner at all', u:`${N(m.unowned_assets)} of their assets${OF} carry no Owner tag`, sev:'high', filter:'unowned',
              t:'every asset the app sits on lacks an Owner tag — hand off to Exposure Routes (Exposure Routes)'},
             sc?null:{v:N(c.filter(x=>!x.assets).length), l:'candidates with no assets', u:'route plugins not found on any asset in navi.db', filter:'noassets'}],
@@ -159,7 +159,7 @@ function renderCapp(){if(!CAPP)return;const tb=document.querySelector('#cappTbl 
   const slice=cand.slice(CAPP_PAGE*PER,(CAPP_PAGE+1)*PER);
   tb.innerHTML=cand.length?slice.map(c=>`<tr><td><span class="dtype ${c.source==='route'?'t-app':'t-iot'}">${esc(c.source)}</span></td><td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.name)}"><b>${esc(c.name)}</b></td><td class="mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.source==='route'?N(c.evidence)+' finding(s) on the route'+(tagScope()?' (whole estate — the route has no per-asset rows)':''):N(c.evidence)+' asset(s) with this path token'+(tagScope()?' (of this tag)':''))}">${N(c.evidence)}</td>`+
   `<td class="mono">${N(c.assets)}</td>`+
-  `<td>${c.named?'<span class="pill" style="color:var(--ok)" title="a Custom App tag with this name exists">named</span> ':''}${c.crown?`<span class="pill" style="color:var(--crit)" title="${N(c.crown)} crown-jewel asset(s), ACR ≥ 7">👑 ${N(c.crown)}</span> `:''}${c.assets&&c.unowned===c.assets?'<span class="pill" style="color:#e0913a" title="none of its assets has an Owner tag">no owner</span>':(c.unowned?`<span class="pill" style="color:#c9a227" title="${N(c.unowned)} of ${N(c.assets)} assets have no Owner tag">${N(c.unowned)} unowned</span>`:'')}</td>`+
+  `<td>${c.named?'<span class="pill" style="color:var(--ok)" title="a Custom App tag with this name exists">named</span> ':''}${c.crown?`<span class="pill" style="color:var(--crit)" title="${N(c.crown)} crown-jewel asset(s), ${crownTxt()}">👑 ${N(c.crown)}</span> `:''}${c.assets&&c.unowned===c.assets?'<span class="pill" style="color:#e0913a" title="none of its assets has an Owner tag">no owner</span>':(c.unowned?`<span class="pill" style="color:#c9a227" title="${N(c.unowned)} of ${N(c.assets)} assets have no Owner tag">${N(c.unowned)} unowned</span>`:'')}</td>`+
   `<td class="mono" style="font-size:11px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.example)}">${esc(_shortPath(c.example))}</td><td><button class="btn sm" data-k="${esc(c.keyword)}" data-n="${esc(c.name)}">Search &amp; tag</button> <button class="btn ghost sm" data-ign="${esc(c.keyword||c.name)}" title="Hide from future runs">🚫 Ignore</button></td></tr>`).join(''):emptyMsg;
   tb.querySelectorAll('button[data-n]').forEach(x=>x.onclick=()=>{document.getElementById('cappPrompt').value='Tag my custom app '+x.dataset.n;cappSearch(x.dataset.n,x.dataset.k);});
   tb.querySelectorAll('button[data-ign]').forEach(x=>x.onclick=()=>ignAdd(x.dataset.ign));

@@ -5,7 +5,7 @@ from core.agents.base import Agent
 ENTRY_CAT = "Attack Path"
 
 
-def analyze(db_path=None, crown_acr=attackpath.CROWN_ACR):
+def analyze(db_path=None, crown_acr=None):
     return attackpath.analyze(db_path, crown_acr=crown_acr)
 
 
@@ -23,5 +23,5 @@ class AttackPathAgent(Agent):
         m = self.result.get("metrics", {})
         return {"paths": m.get("paths"), "entries": m.get("entries"), "targets": m.get("crown_reachable")}
 
-    def _run(self, db_path=None, crown_acr=attackpath.CROWN_ACR, **kwargs):
+    def _run(self, db_path=None, crown_acr=None, **kwargs):
         return analyze(db_path, crown_acr=crown_acr)

@@ -135,7 +135,7 @@ for a in hand:
     x, uu = by[a["user"]], [u for u in a["asset_uuids"] if u in TS]
     ok_hosts &= x["assets_n"] == len(uu)
     vals = [ACR.get(u, 0) for u in uu]
-    ok_acr &= x["max_acr"] == (max(vals) if vals else None) and x["crown_hosts"] == sum(1 for v in vals if v >= api.CROWN_ACR)
+    ok_acr &= x["max_acr"] == (max(vals) if vals else None) and x["crown_hosts"] == sum(1 for v in vals if v >= __import__("core.crown", fromlist=["x"]).threshold())
     want = [f for f in a["flags"] if not (f in identity.HOST_FLAGS and not (set(uu) & hsf.get(f, set())))
             and not (f == "privileged" and not x.get("privileged_hosts"))]
     ok_flags &= [f for f in x["flags"] if f != "privileged"] == [f for f in want if f != "privileged"]

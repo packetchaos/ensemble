@@ -55,6 +55,21 @@
   #dlTbl td{white-space:normal;vertical-align:top}
   #dlTbl td .mono{font-size:11.5px;word-break:break-all}
   #dlTbl a{color:var(--accent);text-decoration:none}
+  /* build 527: Settings as intent cards (the Scan Confirmation pattern) — pick what you want to set up */
+  .intents{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+  @media (max-width:900px){ .intents{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media (max-width:520px){ .intents{grid-template-columns:repeat(2,minmax(0,1fr))} .intent .d{display:none} }
+  .intent{display:block;text-align:left;border:1.5px solid var(--line);border-radius:12px;padding:12px 13px;background:var(--panel);cursor:pointer;color:var(--ink);font:inherit}
+  .intent:hover{border-color:color-mix(in srgb,var(--accent) 60%,var(--line))}
+  .intent.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel));box-shadow:0 0 0 1px var(--accent) inset}
+  .intent .t{font-weight:700;font-size:13.5px;display:block;margin-top:4px}
+  .intent .d{font-size:12px;color:var(--mut);display:block;margin-top:3px;line-height:1.35}
+  .intent .i{font-size:18px}
+  .intent .st{display:block;margin-top:6px;font-size:11.5px;color:var(--ink-3)}
+  section.card[data-g]:not(.gshow){display:none}
+  .moretoggle{margin-top:10px}
+  .crownrow{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-top:12px}
+  .crownrow .fld{width:110px;font-size:20px;font-weight:700;text-align:center}
   .trgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:14px;margin-top:12px}
   #trEx{word-break:break-word}
   #trPhrase.bad{border-color:var(--crit)}
@@ -70,30 +85,55 @@
 <div class="wrap">
   <header class="top">
     <div class="logo"><span class="hcrest brand" role="img" aria-label="navi Ensemble"></span></div>
-    <h1>Settings <small>ENVIRONMENT · DOWNLOADS · TEST RUN · NAVI.DB · CLI · USAGE</small></h1>
+    <h1>Settings <small>AI · SAFETY · CROWN JEWELS · NAVI.DB · DATA SOURCES · SBOM</small></h1>
     <div class="meta" id="meta"></div>
   </header>
 
-  <!-- ENV VARS -->
-  <section class="card">
-    <div class="toolbar"><div><h2 style="margin:0">🔑 Environment</h2>
-      <p class="sub" style="margin:2px 0 0">AI model, keys, write/email/remote-exec gates and paths. Changes take effect <b>live</b> the moment you save; the <b>storage</b> switch below decides whether they also survive a restart. A blank API-key field leaves the existing key unchanged.</p></div>
-      <button class="btn run" id="saveEnv" style="margin-left:auto">💾 Save</button></div>
+  <!-- build 527: what do you want to set up? — one card per job; only that job's sections show -->
+  <section class="card" id="setTop">
+    <div class="toolbar"><div><h2 style="margin:0">⚙ What do you want to set up?</h2>
+      <p class="sub" style="margin:2px 0 0">Pick one — only its settings show below. Everything saves <b>live</b>; the switch under the cards decides whether it also survives a restart.</p></div></div>
+    <div class="intents" id="intents" role="tablist" aria-label="Settings">
+      <button class="intent" data-g="ai" role="tab"><span class="i">🤖</span><span class="t">AI model</span><span class="d">Which model the Ensemble reasons with — provider, model, endpoint and key.</span><span class="st" id="stAi"></span></button>
+      <button class="intent" data-g="safety" role="tab"><span class="i">🔐</span><span class="t">Safety &amp; access</span><span class="d">What the console may do: tag writes, email, remote fixes, scans — and test runs.</span><span class="st" id="stSafety"></span></button>
+      <button class="intent" data-g="policy" role="tab"><span class="i">👑</span><span class="t">Crown jewels &amp; SLA</span><span class="d">What counts as a crown jewel on every page, and your remediation windows.</span><span class="st" id="stPolicy"></span></button>
+      <button class="intent" data-g="data" role="tab"><span class="i">🗄</span><span class="t">navi.db data</span><span class="d">Keep navi.db fresh: update tables, rebuild, optimize — and watch navi run.</span><span class="st" id="stData"></span></button>
+      <button class="intent" data-g="external" role="tab"><span class="i">⬇</span><span class="t">Outside data sources</span><span class="d">Public read-only feeds (CISA KEV, NVD, endoflife.date…) — ask first or auto-approve.</span><span class="st" id="stExt"></span></button>
+      <button class="intent" data-g="about" role="tab"><span class="i">ℹ</span><span class="t">Usage &amp; SBOM</span><span class="d">AI tokens used since start, and the software bill of materials.</span><span class="st" id="stAbout"></span></button>
+    </div>
     <div class="storebar" id="storeBar">
-      <span class="lbl">Storage</span>
+      <span class="lbl">Saving</span>
       <span class="miniseg" id="storeSeg">
         <button type="button" data-mode="file" title="Save to hounds.config.json and re-apply on every start">💾 Config file</button>
         <button type="button" data-mode="ephemeral" title="Keep values in memory only — nothing written to disk, forgotten on restart">⏳ Ephemeral</button>
       </span>
       <span class="sub" id="storeNote"></span>
     </div>
-    <div class="statline" id="statChips"></div>
-    <div class="envgrid" id="envGrid"></div>
     <div id="envFlash" class="flash" style="margin-top:10px"></div>
   </section>
 
+  <!-- AI MODEL -->
+  <section class="card" id="secAi" data-g="ai">
+    <div class="toolbar"><div><h2 style="margin:0">🤖 AI model</h2>
+      <p class="sub" style="margin:2px 0 0">Where the Ensemble's reasoning runs. A blank API-key field leaves the existing key unchanged.</p></div>
+      <button class="btn run" id="saveAi" style="margin-left:auto">💾 Save</button></div>
+    <div class="statline" id="aiChips"></div>
+    <div class="envgrid" id="envGridAi"></div>
+    <div id="aiFlash" class="flash" style="margin-top:10px"></div>
+  </section>
+
+  <!-- SAFETY GATES -->
+  <section class="card" id="secEnv" data-g="safety">
+    <div class="toolbar"><div><h2 style="margin:0">🔐 What the console may do</h2>
+      <p class="sub" style="margin:2px 0 0">Every write is off until you turn it on here. 🔒 Turning a gate on asks you to confirm and only works from this machine; turning one off always works.</p></div>
+      <button class="btn run" id="saveEnv" style="margin-left:auto">💾 Save</button></div>
+    <div class="statline" id="statChips"></div>
+    <div class="envgrid" id="envGrid"></div>
+    <div id="gateFlash" class="flash" style="margin-top:10px"></div>
+  </section>
+
   <!-- EXTERNAL DOWNLOADS -->
-  <section class="card" id="dlCard">
+  <section class="card" id="dlCard" data-g="external">
     <div class="toolbar"><div><h2 style="margin:0">⬇ External downloads <span id="dlChip" class="chip" style="margin-left:6px"></span></h2>
       <p class="sub" style="margin:2px 0 0">Some specialists enrich navi.db with a public, <b>read-only</b> data source from outside Tenable. By default each one stops at a <b>Human approval — external download</b> card before fetching. <b>Auto-approve downloads</b> skips that card: pressing <b>▶ Run</b> downloads straight away and the page shows a one-line <i>“Auto-approved download: &lt;url&gt; (Settings)”</i> note instead. Nothing runs on page open, tag writes stay gated, and offline every source still falls back to its bundled snapshot. Without approval the server uses the snapshot only — no network.</p></div>
       <button class="btn run" id="dlSave" style="margin-left:auto">💾 Save</button></div>
@@ -105,7 +145,7 @@
   </section>
 
   <!-- TEST RUN (core/tagname.py + NAVI_TAG_TEST_RUN / NAVI_TAG_PREFIX) -->
-  <section class="card" id="trCard">
+  <section class="card" id="trCard" data-g="safety">
     <div class="toolbar"><div><h2 style="margin:0">🧪 Test run <span id="trChip" class="chip" style="margin-left:6px"></span></h2>
       <p class="sub" style="margin:2px 0 0">Try the Ensemble without touching your real tag taxonomy. While <b>Test run</b> is on, every tag <b>category</b> a specialist creates gets your prefix phrase and a <span class="mono">-</span> — the value is never changed, and a category that already carries the prefix is left as is. Everything that reads tags back (What the Ensemble know, Done so far, Owner / SLA dispositions, Exposure Score…) recognises both the plain and the prefixed name. Clean up afterwards in <a href="/agents/tagremoval/page.html">Tag Removal</a> (its <b>test-run tags</b> filter). Removals and ACR on a category you type are always exact.</p></div>
       <button class="btn run" id="trSave" style="margin-left:auto">💾 Save</button></div>
@@ -121,8 +161,17 @@
     <div id="trFlash" class="flash" style="margin-top:10px"></div>
   </section>
 
+  <!-- NAVI.DB LOCATION -->
+  <section class="card" id="secDb" data-g="data">
+    <div class="toolbar"><div><h2 style="margin:0">📍 Which navi.db</h2>
+      <p class="sub" style="margin:2px 0 0">The database every page reads and navi writes. <span class="mono" id="dbNow"></span></p></div>
+      <button class="btn run sm" id="saveData" style="margin-left:auto">💾 Save</button></div>
+    <div class="envgrid" id="envGridData"></div>
+    <div id="dataFlash" class="flash" style="margin-top:10px"></div>
+  </section>
+
   <!-- NAVI.DB CHECKS -->
-  <section class="card" id="secTables">
+  <section class="card" id="secTables" data-g="data">
     <div class="toolbar"><div><h2 style="margin:0">🗄 navi.db tables</h2>
       <p class="sub" style="margin:2px 0 0">Is each table populated? <span class="dot ok" style="display:inline-block"></span> has rows · <span class="dot empty" style="display:inline-block"></span> exists but empty · <span class="dot missing" style="display:inline-block"></span> missing. Routes &amp; Paths aren't part of a normal full sync — update them here. <span class="mono" id="dbmeta"></span></p></div>
       <span style="margin-left:auto;display:flex;gap:6px">
@@ -133,7 +182,7 @@
   </section>
 
   <!-- REBUILD NAVI.DB + ASSET DELTA -->
-  <section class="card" id="secRebuild">
+  <section class="card" id="secRebuild" data-g="data">
     <div class="toolbar"><div><h2 style="margin:0">🧹 Rebuild navi.db</h2>
       <p class="sub" style="margin:2px 0 0">navi's asset sync only <b>adds and updates</b> — an asset that ages out of the pull window or falls off licensing is never deleted from navi.db. Specialists can keep tagging those stale assets, and because the next sync never brings them back, navi can't see (or remove) their tags. A rebuild <b>drops</b> the chosen tables, re-creates them and pulls <b>N days</b> fresh — <span class="mono" id="rbCmd">navi config update full -rebuild --days 90</span>. Local navi.db only; nothing in Tenable changes.</p></div></div>
     <div class="dkpis" id="rbDelta"><span class="sub">navi.db vs Tenable — loading…</span></div>
@@ -152,7 +201,7 @@
   </section>
 
   <!-- OPTIMIZE FOR NAVI ENSEMBLE -->
-  <section class="card" id="secHx">
+  <section class="card" id="secHx" data-g="data">
     <div class="toolbar"><div><h2 style="margin:0">⚡ Optimize navi.db for the Ensemble <span id="hxChip" class="chip" style="margin-left:6px;display:none"></span></h2>
       <p class="sub" style="margin:2px 0 0">Adds the Ensemble's indexes to navi.db (vulns by plugin and by asset; tags, compliance, certs and software by <span class="mono">asset_uuid</span>), builds two small summary tables (<span class="mono">hx_plugin</span>, <span class="mono">hx_asset</span>: one row per plugin and per asset) that the specialists read instead of the findings, runs a bounded <span class="mono">ANALYZE</span> and marks the vulns indexes <span class="mono">unordered</span> so <span class="mono">GROUP BY asset_uuid</span> never turns into hours of random reads — navi's own <b>⚙ Optimize indexes</b> (<span class="mono">navi config optimize</span>) doesn't index <span class="mono">asset_uuid</span>. It holds navi.db's write lock while building (≈ 1–1.7 h at 420M vulns), won't start while a navi job runs, and a re-run only refreshes the statistics (seconds).</p></div>
       <span style="margin-left:auto;display:flex;gap:6px">
@@ -165,8 +214,21 @@
     <div id="hxFlash" class="flash" style="margin-top:10px"></div>
   </section>
 
+  <!-- CROWN JEWELS (core/crown.py) -->
+  <section class="card" id="secCrown" data-g="policy">
+    <div class="toolbar"><div><h2 style="margin:0">👑 Crown jewels</h2>
+      <p class="sub" style="margin:2px 0 0">One definition for <b>every</b> page: an asset whose <b>Asset Criticality Rating (ACR)</b> is at or above this line is a crown jewel — CISA KEV, End of Life, Certificates, Attack Paths, Exposure Score, Ownership, SLA, Scan Health, the dashboards and the Ensemble Report all count the same assets. ACR comes from Tenable; set it per business tier in <a href="/agents/acr/page.html">Criticality Calibration</a>.</p></div></div>
+    <div class="crownrow envf">
+      <div><label class="lbl" for="crownInp">Crown jewel = ACR ≥<span id="crownSrc"></span></label>
+        <input class="fld" id="crownInp" type="number" min="1" max="10" step="1" inputmode="numeric" value="8"></div>
+      <button class="btn run" id="crownSave">💾 Save</button>
+      <span class="sub" id="crownNote">Default 8. Changing it rebuilds every cached result — re-run a specialist to see its new numbers.</span>
+    </div>
+    <div id="crownFlash" class="flash" style="margin-top:10px"></div>
+  </section>
+
   <!-- SLA POLICY -->
-  <section class="card" id="secSla">
+  <section class="card" id="secSla" data-g="policy">
     <div class="toolbar"><div><h2 style="margin:0">⏱ SLA policy <span id="slaFixChip" class="chip" style="margin-left:6px;display:none"></span></h2>
       <p class="sub" style="margin:2px 0 0">Per-severity remediation windows (days) that drive <b>SLA Tracker — SLA Adherence</b>. <b>Save</b> runs <span class="mono">navi config sla reset</span> (a local navi.db config write — not gated). Then <b>Build Fixed</b> and <b>Recalculate SLA</b> to stamp Pass/Fail verdicts — both stream in the CLI window below.</p></div></div>
     <div class="slagrid" id="slaGrid"></div>
@@ -179,7 +241,7 @@
   </section>
 
   <!-- LIVE CLI -->
-  <section class="card">
+  <section class="card" id="secCli" data-g="data policy">
     <div class="toolbar"><div><h2 style="margin:0">🖥 navi CLI <span id="cliStatus" class="chip" style="margin-left:6px;display:none"></span></h2>
       <p class="sub" style="margin:2px 0 0">Long <span class="mono">navi config update &lt;table&gt;</span> runs stream here. They run <b>in the background on the server</b> — a vulns sync can take hours, so you can close this tab or reload and the job keeps going. Come back and reattach from <b>Recent runs</b> below.</p></div>
       <button class="btn ghost sm" id="cliClear" style="margin-left:auto">Clear</button></div>
@@ -188,14 +250,14 @@
   </section>
 
   <!-- TOKEN USAGE -->
-  <section class="card">
+  <section class="card" id="secUsage" data-g="about">
     <div class="toolbar"><div><h2 style="margin:0">📊 API token usage</h2>
       <p class="sub" style="margin:2px 0 0">Anthropic tokens consumed by the editable-prompt AI since this server started (in-memory; resets on restart).</p></div>
       <button class="btn ghost sm" id="resetUsage" style="margin-left:auto">Reset</button></div>
     <div class="kpis" id="usageKpis"></div>
   </section>
 
-  <section class="card" id="secSbom">
+  <section class="card" id="secSbom" data-g="about">
     <div class="toolbar"><div><h2 style="margin:0">📦 Software bill of materials</h2>
       <p class="sub" style="margin:2px 0 0">Everything navi Ensemble is built on — the navi CLI and its dependencies, the optional web server and model packages, Python, the web fonts — and the outside services it talks to. <b>This install</b> records the versions actually present here; <b>declared</b> is the version ranges shipped in <span class="mono">sbom/</span>. CycloneDX 1.6 or SPDX 2.3, JSON.</p></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
@@ -230,13 +292,19 @@ function renderStat(){
   const s=STAT; if(!s)return;
   // a key pasted into a model field breaks every AI call — say so loudly
   { let mw=document.getElementById('modelWarn'); const msg=s.llm&&s.llm.model_warning;
-    if(msg){ if(!mw){ mw=document.createElement('div'); mw.id='modelWarn'; mw.className='flash crit show'; const sc=document.getElementById('statChips'); sc.parentNode.insertBefore(mw, sc.nextSibling); }
+    if(msg){ if(!mw){ mw=document.createElement('div'); mw.id='modelWarn'; mw.className='flash crit show'; const sc=document.getElementById('aiChips'); sc.parentNode.insertBefore(mw, sc.nextSibling); }
       mw.innerHTML='⚠ '+esc(msg); }
     else if(mw) mw.remove(); }
   const w=s.writes_enabled, em=s.email_enabled, ai=s.llm&&s.llm.available;
   const ssh=s.ssh||{};
   const sshGood = ssh.configured ? (ssh.plaintext_password ? null : true) : false;
   const sshTxt = ssh.configured ? (ssh.plaintext_password ? 'plaintext password ⚠' : (ssh.auth==='key'?'key file':(ssh.auth||'set'))) : 'not configured';
+  // build 527: each card shows only its own chips
+  document.getElementById('aiChips').innerHTML=
+    chip('AI', ai, ai?(esc(s.llm.provider||'?')+' · '+esc(s.llm.model||'')):esc((s.llm&&s.llm.why)||'no model'))
+    + (s.llm&&s.llm.base_url?'<span class="chip" title="Reasoning endpoint in use">🔌 '+esc(s.llm.base_url)+'</span>':'')
+    + chip('Max tokens', null, String(s.llm?s.llm.max_tokens:'—'));
+  const dn=document.getElementById('dbNow'); if(dn) dn.textContent='In use: '+(s.db_path||'—')+(s.navi_cwd?' · navi runs in '+s.navi_cwd:'');
   document.getElementById('statChips').innerHTML=
     chip('Tag writes', w, w?'enabled':'gated')
     + chip('Email', em, em?'enabled':'gated')
@@ -245,15 +313,14 @@ function renderStat(){
     + '<span class="chip" title="'+esc(ssh.message||'')+'" style="border-color:'+(sshGood===true?'var(--ok)':sshGood===false?'var(--crit)':'var(--cx-e7c66b)')+';color:'+(sshGood===true?'var(--ok)':sshGood===false?'var(--crit)':'var(--cx-e7c66b)')+'">SSH creds: '+esc(sshTxt)+'</span>'
     + ((s.other_users||[]).length && !s.token_required ? '<span class="chip" title="Other accounts logged in to this machine can reach a loopback console. Set HOUNDS_REQUIRE_TOKEN=1 and restart to require the access token here too." style="border-color:var(--cx-e7c66b);color:var(--cx-e7c66b)">⚠ Shared machine: '+esc(s.other_users.slice(0,3).join(', '))+(s.other_users.length>3?' +'+(s.other_users.length-3):'')+' logged in — no token required</span>' : '')
     + chip('navi CLI', s.navi_available, s.navi_available?(s.navi_path||'found'):'not found')
-    + chip('AI', ai, ai?(esc(s.llm.provider||'?')+' · '+esc(s.llm.model||'')):esc((s.llm&&s.llm.why)||'no model'))
-    + (s.llm&&s.llm.base_url?'<span class="chip" title="Reasoning endpoint in use">🔌 '+esc(s.llm.base_url)+'</span>':'')
-    + chip('Max tokens', null, String(s.llm?s.llm.max_tokens:'—'))
-    + '<span class="chip" title="navi.db in use">🗄 '+esc(s.db_path||'—')+'</span>'
-    + chip('navi runs in', !!s.navi_cwd, s.navi_cwd||'server dir — set NAVI_DB_PATH')
     + (s.navi_available?'':' <span class="chip" style="border-color:var(--cx-e7c66b);color:var(--cx-e7c66b)">'+esc(s.write_gate_reason||'')+'</span>');
+  renderCrown(); renderIntentStatus();
 }
 function renderEnv(){
-  const g=document.getElementById('envGrid'); g.innerHTML=STAT.env.filter(f=>!f.section).map(f=>{   // sectioned fields have their own card
+  // build 527: fields go to their card — group "ai" → AI model, "data" → Which navi.db, the rest → Safety
+  const grids={ai:'envGridAi', data:'envGridData', '':'envGrid'};
+  Object.keys(grids).forEach(grp=>{ const g=document.getElementById(grids[grp]); if(!g) return;
+  g.innerHTML=STAT.env.filter(f=>!f.section&&(f.group||'')===grp).map(f=>{   // sectioned fields have their own card
     let input;
     if(f.env_only){   // never settable over HTTP (server refuses it) — show it read-only
       input='<input class="fld" value="'+esc(f.value||'')+'" placeholder="(not set)" readonly disabled title="Set in the environment / hounds.config.json and restart">'; }
@@ -271,7 +338,7 @@ function renderEnv(){
     const guardNote = f.guarded ? ' <span class="sub">🔒 Turning this on / changing it asks you to confirm (and only works from this machine).</span>' : '';
     const keyNote = (f.key==='NAVI_LLM_BASE_URL'||f.key==='NAVI_LLM_PROVIDER') ? ' <b style="color:var(--cx-e7c66b)">Changing the endpoint/provider clears the stored model API key(s) unless you re-enter the key in the same save.</b>' : '';
     return '<div class="envf"><label class="lbl">'+esc(f.label)+srcBadge(f.source)+'</label>'+input+'<p class="help">'+f.help+shellNote+roNote+guardNote+keyNote+'</p></div>';
-  }).join('');
+  }).join(''); });
 }
 const SRC_LABEL={shell:'shell',config:'config file','.env':'.env',session:'this session',default:'default'};
 const SRC_TIP={shell:'Exported in the shell that started the server',config:'Saved in the config file',
@@ -286,7 +353,7 @@ function renderStore(){
   else t='Nothing is written to disk — values last until the server restarts. Switching here deleted any saved values.';
   if(c.error) t+=' <b style="color:var(--crit)">'+esc(c.error)+'</b>';
   note.innerHTML=t;
-  document.getElementById('saveEnv').textContent = c.mode==='file' ? '💾 Save' : '✓ Apply';
+  ['saveEnv','saveAi','saveData','crownSave'].forEach(id=>{ const b=document.getElementById(id); if(b) b.textContent = c.mode==='file' ? '💾 Save' : '✓ Apply'; });
 }
 document.querySelectorAll('#storeSeg button').forEach(b=>b.onclick=async()=>{
   const mode=b.dataset.mode; if(STAT&&STAT.config&&STAT.config.mode===mode) return;
@@ -375,19 +442,76 @@ document.getElementById('dlSave').onclick=async()=>{
     : (o.persisted ? ' — live now and saved to the config file' : ' — live now (ephemeral: gone on restart)');
   flash('dlFlash','✓ Auto-approve downloads '+(o.downloads&&o.downloads.auto_approve?'ON':'OFF')+where, o.store_error?'crit':'ok');
 };
-document.getElementById('saveEnv').onclick=async()=>{
-  const env={}; document.querySelectorAll('#envGrid [data-k]').forEach(el=>{ env[el.dataset.k]=el.value; });
-  flash('envFlash','<span class="spin"></span> applying…','run');
+async function saveGrid(gridId, fl){
+  const env={}; document.querySelectorAll('#'+gridId+' [data-k]').forEach(el=>{ env[el.dataset.k]=el.value; });
+  flash(fl,'<span class="spin"></span> applying…','run');
   const o=await postEnv(env);
-  if(!o||!o.ok){ flash('envFlash','✗ '+esc((o&&o.error)||'failed'),'crit'); return; }
+  if(!o||!o.ok){ flash(fl,'✗ '+esc((o&&o.error)||'failed'),'crit'); return; }
   STAT=o; renderStat(); renderEnv(); renderStore(); renderUsage(o.usage); renderDl(); renderTr();
   const ap=(o.applied||[]).filter(k=>!(o.cleared_keys||[]).includes(k));
-  if(o.warning && !ap.length){ flash('envFlash','⚠ '+esc(o.warning),'crit'); return; }
-  if(!ap.length){ flash('envFlash','Nothing changed.','run'); return; }
+  if(o.invalid&&Object.keys(o.invalid).length){ flash(fl,'✗ '+esc(Object.values(o.invalid).join(' ')),'crit'); return; }
+  if(o.warning && !ap.length){ flash(fl,'⚠ '+esc(o.warning),'crit'); return; }
+  if(!ap.length){ flash(fl,'Nothing changed.','run'); return; }
   const where = o.store_error ? ' — <b>'+esc(o.store_error)+'</b>'
     : (o.persisted ? ' — live now and saved to the config file' : ' — live now (ephemeral: gone on restart)');
-  flash('envFlash',(o.warning?'⚠ '+esc(o.warning)+'<br>':'')+'✓ applied '+esc(ap.join(', '))+where+(ap.some(k=>k==='ANTHROPIC_MODEL'||k==='ANTHROPIC_MAX_TOKENS')?' (model/cap changes apply to new calls)':''), o.store_error?'crit':'ok');
+  flash(fl,(o.warning?'⚠ '+esc(o.warning)+'<br>':'')+'✓ applied '+esc(ap.join(', '))+where+(ap.some(k=>k==='ANTHROPIC_MODEL'||k==='ANTHROPIC_MAX_TOKENS')?' (model/cap changes apply to new calls)':''), o.store_error?'crit':'ok');
+}
+document.getElementById('saveEnv').onclick=()=>saveGrid('envGrid','gateFlash');
+document.getElementById('saveAi').onclick=()=>saveGrid('envGridAi','aiFlash');
+document.getElementById('saveData').onclick=()=>saveGrid('envGridData','dataFlash');
+
+// ---- crown jewels (core/crown.py: NAVI_CROWN_ACR, default 8) ----
+function renderCrown(){
+  const c=(STAT&&STAT.crown)||{acr_min:8}, f=((STAT&&STAT.env)||[]).find(x=>x.section==='crown')||{};
+  const inp=document.getElementById('crownInp'); if(inp&&document.activeElement!==inp) inp.value=c.acr_min;
+  const sb=document.getElementById('crownSrc'); if(sb) sb.innerHTML=srcBadge(f.source);
+  window.__CROWN_ACR=c.acr_min; try{ localStorage.setItem('crownAcr',String(c.acr_min)); }catch(e){}
+}
+document.getElementById('crownSave').onclick=async()=>{
+  const v=String(document.getElementById('crownInp').value||'').trim();
+  if(!/^(10|[1-9])$/.test(v)){ flash('crownFlash','✗ Crown-jewel ACR must be a whole number from 1 to 10.','crit'); return; }
+  flash('crownFlash','<span class="spin"></span> applying…','run');
+  const o=await postEnv({NAVI_CROWN_ACR:v});
+  if(!o||!o.ok){ flash('crownFlash','✗ '+esc((o&&o.error)||'failed'),'crit'); return; }
+  STAT=o; renderStat(); renderEnv(); renderStore(); renderDl(); renderTr();
+  if(o.invalid&&o.invalid.NAVI_CROWN_ACR){ flash('crownFlash','✗ '+esc(o.invalid.NAVI_CROWN_ACR),'crit'); return; }
+  const n=(o.crown||{}).acr_min;
+  if(!(o.applied||[]).length){ flash('crownFlash','Nothing changed — crown jewels are ACR ≥ '+esc(n)+'.','run'); return; }
+  flash('crownFlash','✓ Crown jewels are now <b>ACR ≥ '+esc(n)+'</b> on every page'+(o.persisted?' (saved)':o.store_error?' — <b>'+esc(o.store_error)+'</b>':' (ephemeral: gone on restart)')+'. Cached results rebuild — re-run a specialist to see its new numbers.', o.store_error?'crit':'ok');
 };
+
+// ---- intents (the Scan Confirmation pattern): one job at a time ----
+const GROUPS=['ai','safety','policy','data','external','about'];
+function setGroup(g, scrollTo){
+  if(!GROUPS.includes(g)) g='ai';
+  document.querySelectorAll('#intents .intent').forEach(b=>{ const on=b.dataset.g===g; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); });
+  document.querySelectorAll('section.card[data-g]').forEach(c=>c.classList.toggle('gshow', c.dataset.g.split(' ').includes(g)));
+  try{ localStorage.setItem('settingsGroup', g); history.replaceState(null,'', scrollTo?('#'+scrollTo):('#g-'+g)); }catch(e){}
+  if(g==='about'&&!window.__usageLoaded&&STAT){ window.__usageLoaded=1; renderUsage(STAT.usage); }
+  const t=scrollTo&&document.getElementById(scrollTo);
+  if(t) setTimeout(()=>t.scrollIntoView({behavior:'smooth',block:'start'}),50);
+}
+document.querySelectorAll('#intents .intent').forEach(b=>b.onclick=()=>setGroup(b.dataset.g));
+function renderIntentStatus(){
+  const s=STAT; if(!s) return; const set=(id,t)=>{ const e=document.getElementById(id); if(e) e.textContent=t; };
+  const ai=s.llm&&s.llm.available;
+  set('stAi', ai?('✓ '+(s.llm.provider||'')+' · '+(s.llm.model||'')):'⚠ no model — the rule-based fallback is used');
+  const on=[s.writes_enabled&&'writes', s.email_enabled&&'email', s.rce_enabled&&'remote fixes', s.scan_launch_enabled&&'scans'].filter(Boolean);
+  set('stSafety', (on.length?'● on: '+on.join(', '):'○ every write gated')+((s.tag_prefix||{}).enabled?' · test run ON':''));
+  set('stPolicy', '👑 crown jewel = ACR ≥ '+((s.crown||{}).acr_min||8));
+  set('stData', '🗄 '+String(s.db_path||'—').split(/[\\/]/).pop()+(s.navi_available?'':' · navi CLI not found'));
+  set('stExt', (s.downloads||{}).auto_approve?'⚠ auto-approve ON':'✓ asks before downloading');
+  const u=s.usage||{}; set('stAbout', (u.total_tokens||0).toLocaleString()+' tokens this session');
+}
+function fromHash(first){ const h=(location.hash||'').slice(1);
+  const sec=h&&document.getElementById(h);                      // a deep link to a card (#secTables, #secHx, #secSla…)
+  if(sec&&sec.dataset&&sec.dataset.g){ setGroup(sec.dataset.g.split(' ')[0], h); return; }
+  if(/^g-/.test(h)){ setGroup(h.slice(2)); return; }
+  if(!first) return;
+  let g=null; try{ g=localStorage.getItem('settingsGroup'); }catch(e){}
+  setGroup(g||'ai'); }
+fromHash(true);
+window.addEventListener('hashchange', ()=>fromHash(false));
 
 // ---- test run (core/tagname.py: NAVI_TAG_TEST_RUN + NAVI_TAG_PREFIX) ----
 const TR_RE=/^[A-Za-z0-9 _]{1,24}$/;

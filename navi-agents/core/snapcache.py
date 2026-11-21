@@ -45,6 +45,8 @@ def db_signature(db_path=None) -> str:
             parts.append(f"{st.st_size}:{st.st_mtime_ns}")
         except OSError:
             parts.append("-")
+    from core import crown                   # build 527: a new crown-jewel line rebuilds every snapshot
+    parts.append(crown.sig())
     return "|".join(parts)
 
 

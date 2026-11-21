@@ -19,6 +19,7 @@ import re
 import urllib.request
 
 from core import db, downloads, tagscope
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 
 CSV_URL = ("https://raw.githubusercontent.com/center-for-threat-informed-defense/"
            "attack_to_cve/master/Att%26ckToCveMappings.csv")
@@ -160,7 +161,7 @@ def _hx_cve_assets(db_path=None, only=None, tag_key=None, tag_value=None) -> dic
 
 
 def _hx_high_acr_rows(db_path=None, cset=(), tag_key=None, tag_value=None):
-    """(asset_uuid, hostname, ip_address, acr, cves) for ACR > 7 assets carrying a plugin whose
+    """(asset_uuid, hostname, ip_address, acr, cves) for crown-jewel assets (core.crown) carrying a plugin whose
     CVEs are in the mapping — only those plugins' (plugin, asset) pairs, from the covering
     hx_v_plugin index, joined to `assets` by uuid; CVEs from hx_plugin."""
     want = {c.upper() for c in cset}
@@ -171,7 +172,7 @@ def _hx_high_acr_rows(db_path=None, cset=(), tag_key=None, tag_value=None):
     return db.query("SELECT DISTINCT a.uuid AS asset_uuid, a.hostname, a.ip_address, a.acr, p.cves "
                     "FROM hx_plugin p CROSS JOIN vulns v" + db.indexed_by("hx_v_plugin", db_path)
                     + " ON v.plugin_id = p.plugin_id CROSS JOIN assets a ON a.uuid = v.asset_uuid "
-                    "WHERE p.plugin_id IN (SELECT value FROM json_each(?)) AND CAST(a.acr AS REAL)>7" + frag,
+                    "WHERE p.plugin_id IN (SELECT value FROM json_each(?)) AND " + _crown.sql("a.acr") + frag,
                     (json.dumps(pids),) + tuple(fargs), path=db_path)
 
 
@@ -223,7 +224,7 @@ def build_plan(db_path=None, scope: str = "navidb", url: str = CSV_URL,
     keeps only CVEs present in navi.db; scope='all' is the full mapping.
 
     tag_key/tag_value (build 489): the plan over ONE tag's assets — "CVEs in navi.db" becomes
-    the CVEs on that tag's assets, and every asset count, technique, role and the ACR > 7 list
+    the CVEs on that tag's assets, and every asset count, technique, role and the crown-jewel list
     covers only those assets. With no tag the plan is exactly the whole-estate plan."""
     scoped = bool(tag_key and tag_value)
     mapping, source = fetch_mapping(url, csv_text=csv_text, allow_live=allow_live)
@@ -244,7 +245,7 @@ def build_plan(db_path=None, scope: str = "navidb", url: str = CSV_URL,
             if val and val.lower() != "nan":
                 actions.append({"cve": r["cve"], "category": "Mitre", "value": f"{label}: {val}",
                                 "role": label, "techniques": technique_ids(val)})
-    # assets with ACR > 7 that carry ATT&CK-mapped CVEs (aligns w/ the insights tile)
+    # crown jewels (core.crown — build 527) that carry ATT&CK-mapped CVEs (aligns w/ the insights tile)
     cset = {r["cve"] for r in mapping}
     high = {}
     vfrag, vargs = tagscope.sql(tag_key, tag_value, "v.asset_uuid")
@@ -252,7 +253,7 @@ def build_plan(db_path=None, scope: str = "navidb", url: str = CSV_URL,
         for r in (_hx_high_acr_rows(db_path, cset, tag_key, tag_value) if _hx(db_path) else
                   db.query("SELECT v.asset_uuid, a.hostname, a.ip_address, a.acr, v.cves "
                            "FROM vulns v LEFT JOIN assets a ON a.uuid=v.asset_uuid "
-                           "WHERE CAST(a.acr AS REAL)>7 AND TRIM(COALESCE(v.cves,''))<>''" + vfrag,
+                           "WHERE " + _crown.sql("a.acr") + " AND TRIM(COALESCE(v.cves,''))<>''" + vfrag,
                            tuple(vargs), path=db_path)):
             ms = [c.upper() for c in _CVE.findall(r.get("cves") or "") if c.upper() in cset]
             if not ms:

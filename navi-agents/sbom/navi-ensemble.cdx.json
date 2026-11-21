@@ -1,16 +1,16 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
-  "serialNumber": "urn:uuid:979e6341-6d5f-5947-abec-31460e2d4fa5",
+  "serialNumber": "urn:uuid:d79699f5-67d4-50da-8dd1-9ea11dba861d",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-11-21T16:23:42Z",
+    "timestamp": "2026-11-21T18:20:24Z",
     "tools": {
       "components": [
         {
           "type": "application",
           "name": "tools/sbom.py",
-          "version": "2.44.525"
+          "version": "2.44.528"
         }
       ]
     },
@@ -18,7 +18,7 @@
       "type": "application",
       "bom-ref": "navi-ensemble",
       "name": "navi Ensemble",
-      "version": "2.44.525",
+      "version": "2.44.528",
       "description": "Local web console of exposure-management specialists over navi.db (Tenable VM / Tenable One)",
       "supplier": {
         "name": "Casey Reid (packetchaos)"
@@ -30,7 +30,7 @@
           }
         }
       ],
-      "purl": "pkg:github/packetchaos/ensemble@2.44.525",
+      "purl": "pkg:github/packetchaos/ensemble@2.44.528",
       "externalReferences": [
         {
           "type": "vcs",

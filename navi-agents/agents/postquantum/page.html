@@ -97,9 +97,9 @@ const rows=()=> (R&&R.roadmap&&R.roadmap.rows)||[];
 const FILTERS={
   cert:['Quantum-vulnerable certificates',p=>p.brokenCerts>0], transport:['Quantum-weak transport',p=>p.transport.length>0],
   p2030:['Cert valid into 2030',p=>p.past2030], p2033:['Cert valid into 2033',p=>p.past2033],
-  legacy:['Legacy crypto stack',p=>p.agility==='Legacy'], crown:['Crown jewels (ACR ≥ 7)',p=>p.acr>=7],
-  crown2030:['Crown jewels with a cert valid into 2030',p=>p.acr>=7&&p.past2030], kex:['Classical-only key exchange',p=>new Set((R.metrics||{}).kex_uuids||[]).has(p.uuid)], kev:['Also carry a CISA KEV',p=>p.kev],
-  legacycrown:['Crown jewels on a legacy stack',p=>p.acr>=7&&p.agility==='Legacy'] };
+  legacy:['Legacy crypto stack',p=>p.agility==='Legacy'], crown:['Crown jewels ('+crownTxt()+')',p=>p.acr>=crownAcr()],
+  crown2030:['Crown jewels with a cert valid into 2030',p=>p.acr>=crownAcr()&&p.past2030], kex:['Classical-only key exchange',p=>new Set((R.metrics||{}).kex_uuids||[]).has(p.uuid)], kev:['Also carry a CISA KEV',p=>p.kev],
+  legacycrown:['Crown jewels on a legacy stack',p=>p.acr>=crownAcr()&&p.agility==='Legacy'] };
 
 async function run(){
   const b=document.getElementById('run'); b.disabled=true;
@@ -140,7 +140,7 @@ function renderMetrics(){
             {v:N(m.legacy), l:'legacy crypto stacks', u:'must upgrade before PQC', sev:'high', filter:'legacy'},
             {v:`${N(m.upgradable)} / ${N(m.ready)}`, l:'upgradable / PQC-ready stacks', u:'OpenSSH ≥ 9 · OpenSSL ≥ 3.2 = ready', zero:!(m.upgradable||m.ready), href:'#secAg'}]},
     {title:'Priority',
-     hero:{v:N(m.crown), l:'crown jewels exposed', u:'ACR ≥ 7', sev:'crit', filter:'crown'},
+     hero:{v:N(m.crown), l:'crown jewels exposed', u:crownTxt(m.crown_acr), sev:'crit', filter:'crown'},
      chips:[{v:N(m.crown_past2030), l:'crown jewels with a cert valid into 2030', u:'migrate before the deadline', sev:'high', filter:'crown2030'},
             {v:N(m.kev), l:'quantum-vulnerable and CISA KEV', u:'exploited today and next', sev:'crit', filter:'kev'},
             {v:N(m.legacy_crown), l:'crown jewels on a legacy stack', sev:'high', filter:'legacycrown'}]}
@@ -159,7 +159,7 @@ function renderRoad(){
   document.getElementById('roadCount').textContent=FILTER?`(${N(r.length)} of ${N(all.length)})`:`(${N(all.length)})`;
   setNavCount('secRoad', N(all.length));
   document.getElementById('tagShown').disabled=!r.length;
-  document.getElementById('tagCrown').disabled=!all.some(p=>p.acr>=7);
+  document.getElementById('tagCrown').disabled=!all.some(p=>p.acr>=crownAcr());
   hPaginate('roadTbl', r, p=>{
     const cert=p.brokenCerts?`<b>${N(p.brokenCerts)}</b> · ${esc((p.algoList||[]).join('/'))}${p.maxYears>=1?' · '+Math.round(p.maxYears)+' y':''}`:'<span class="sub">—</span>';
     const vp=p.past2033?'<span class="pill" style="color:var(--l-33)">2033</span>':p.past2030?'<span class="pill" style="color:var(--l-30)">2030</span>':'<span class="sub">—</span>';
@@ -261,7 +261,7 @@ function tagUuids(cat,val,uuids,btn,sel){
     ()=>`Tag ${tagCat(cat)} : ${val} on ${uu.length} asset${uu.length===1?'':'s'}${tagScopeNote()}?`);
 }
 document.getElementById('tagShown').onclick=function(){ tagUuids('PQC Priority','Migrate',roadShown().map(p=>p.uuid),this,{kind:'roadmap',filter:FILTER||null}); };
-document.getElementById('tagCrown').onclick=function(){ tagUuids('PQC Priority','Crown Jewel',rows().filter(p=>p.acr>=7).map(p=>p.uuid),this,{kind:'roadmap',filter:'crown'}); };
+document.getElementById('tagCrown').onclick=function(){ tagUuids('PQC Priority','Crown Jewel',rows().filter(p=>p.acr>=crownAcr()).map(p=>p.uuid),this,{kind:'roadmap',filter:'crown'}); };
 document.getElementById('acrHint').onclick=()=>flash('flash','⚖ To raise ACR, tag first, then add an <a href="/agents/contract/page.html">Automation Station</a> rule such as <b>PQC Priority : Crown Jewel → set ACR 9</b> or <b>PQC Harvest-Now : Priority → set ACR 9</b>. The contract applies it on its next armed cycle.','warn');
 document.getElementById('tagHn').onclick=function(){ tagUuids('PQC Harvest-Now','Priority',hnShown().map(h=>h.uuid),this,{kind:'harvest',hz:+document.getElementById('hz').value}); };
 document.getElementById('tagAg').onclick=function(){ if(AGT) tagUuids('PQC Agility',AGT,agShown().map(h=>h.uuid),this,{kind:'agility',tier:AGT}); };

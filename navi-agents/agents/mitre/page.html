@@ -72,9 +72,9 @@
     <div id="res"></div>
   </section>
 
-  <section class="card" id="secHigh" data-nav="High-risk assets (ACR > 7)" data-nav-icon="🔥">
-    <h2>High-risk assets (ACR &gt; 7) with ATT&amp;CK-mapped CVEs <span class="sub" id="highCount"></span></h2>
-    <p class="sub">The crown-jewel assets<span class="tsIn"></span> behind the “MITRE techniques on assets (ACR &gt; 7)” insight.</p>
+  <section class="card" id="secHigh" data-nav="Crown jewels" data-nav-icon="🔥">
+    <h2>Crown jewels (<span data-crown-txt>ACR ≥ 8</span>) with ATT&amp;CK-mapped CVEs <span class="sub" id="highCount"></span></h2>
+    <p class="sub">The crown-jewel assets<span class="tsIn"></span> behind the “MITRE techniques on crown jewels” insight — the line is set in Settings → Crown jewels.</p>
     <table id="highTbl"><thead><tr><th>Host</th><th>IP</th><th>ACR</th><th>Mapped CVEs</th></tr></thead>
       <tbody><tr><td colspan="4" class="sub">Build the plan to load…</td></tr></tbody></table>
   </section>
@@ -258,7 +258,7 @@ document.getElementById('apply').onclick=async()=>{
   scroll();
 };
 mountAgentHeader({icon:'🎯',name:'MITRE ATT&CK Tagging',sub:'tags assets by the ATT&CK impact of their CVEs'});
-mountTagScope({agent:'mitre', note:'the CVEs, techniques and ACR > 7 list are those on the tagged assets; 🏷️ Tag assets tags only them'});
+mountTagScope({agent:'mitre', note:'the CVEs, techniques and crown-jewel list are those on the tagged assets; 🏷️ Tag assets tags only them'});
 mountSectionNav();
 // ⛶ full screen + 📧 picture & list (Notify & Report) on the ATT&CK map
 hWidget('secMatrix',{title:'MITRE ATT&CK matrix', visual:()=>document.getElementById('mx'),

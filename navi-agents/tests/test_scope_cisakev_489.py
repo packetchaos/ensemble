@@ -161,7 +161,7 @@ for phase in ("vulns scan (no state column)", "hx_summary + state + fixed"):
     check(sc["summary"]["kev_assets"] == len(xa_t) and sc["summary"]["kev_findings"] == xf_t,
           f"scoped xref assets / findings = hand count ({len(xa_t)} / {xf_t})")
     check(all(c["assets"] == len(per_t[c["cve"]]) for c in sc["kev"]["cves"]), "each CVE's asset count is over the tag only")
-    check(m["crown_assets"] == sum(1 for u in ka_t if ACR.get(u, 0) > kev.CROWN_ACR), "crown jewels counted over the tag")
+    check(m["crown_assets"] == sum(1 for u in ka_t if ACR.get(u, 0) >= __import__("core.crown", fromlist=["x"]).threshold()), "crown jewels counted over the tag")
     check(all(r["asset_uuid"] in TAG for r in sc["kev"]["crown"]), "every crown-jewel row is in the tag")
     check(sum(d["assets"] for d in sc["dates"]) <= sum(d["assets"] for d in est["dates"]), "dates added: no more than the estate")
     check(m["catalog_total"] == est["kev"]["metrics"]["catalog_total"], "the catalog itself is not scoped")

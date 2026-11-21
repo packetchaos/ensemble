@@ -41,7 +41,7 @@ _CVE = re.compile(r"CVE-\d{4}-\d{3,}", re.I)
 _KEEP = ("cveID", "vendorProject", "product", "vulnerabilityName", "dateAdded", "dueDate",
          "knownRansomwareCampaignUse", "forensicTriage", "cwes")
 OPEN_STATES = ("open", "reopened")
-CROWN_ACR = 7          # ACR > 7 = crown jewel (same line the Mitre / Insights tiles use)
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 
 _CACHE = {"t": 0.0, "v": None}
 _TTL = float(os.environ.get("NAVI_KEV_CACHE_S", "21600"))      # 6 h — CISA updates ~daily
@@ -232,7 +232,7 @@ def analyze(db_path=None, json_text: str = "", force: bool = False, keep_uuids: 
                     host[a["uuid"]] = (a.get("hostname") or "").strip() or a.get("ip_address") or a["uuid"]
         except Exception:
             pass
-    crown = {u for u in all_assets if acr.get(u, 0) > CROWN_ACR}
+    crown = {u for u in all_assets if acr.get(u, 0) >= _crown.threshold()}
 
     # ---- per-CVE rows
     cves = []
@@ -303,7 +303,7 @@ def analyze(db_path=None, json_text: str = "", force: bool = False, keep_uuids: 
     vendors = sorted(({**{k: x for k, x in v.items() if k != "assets"}, "assets": len(v["assets"])} for v in vend.values()),
                      key=lambda v: (-v["assets"], -v["cves"]))
 
-    # ---- crown jewels (ACR > 7) carrying KEV
+    # ---- crown jewels (core.crown) carrying KEV
     crown_rows = []
     for u in crown:
         mine = [c for c in cves if u in per[c["cve"]]["assets"]]

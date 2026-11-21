@@ -66,12 +66,12 @@ PRESETS = [
        "SELECT COUNT(DISTINCT v.asset_uuid) AS \"KEV-exposed assets\" FROM vulns v "
        "WHERE $__open(v) AND $__kev(v) AND $__scope(v.asset_uuid)",
        _FIND_DRILL.format(w="$__open(v) AND $__kev(v) AND $__scope(v.asset_uuid)")),
-    _p("Program", "crown_jewels", "Crown jewels (ACR ≥ 9)",
+    _p("Program", "crown_jewels", "Crown jewels ({CROWN})",
        "Assets rated 9 or 10 for business criticality.", "kpi",
        "SELECT COUNT(*) AS \"Crown jewels\" FROM assets a WHERE $__crown(a) AND $__scope(a.uuid)",
        _ASSET_DRILL.format(w="$__crown(a) AND $__scope(a.uuid)"), w=2),
     _p("Program", "crown_kev", "Crown jewels with KEV",
-       "Crown jewels (ACR ≥ 9) carrying an open KEV finding — fix these first.", "kpi",
+       "Crown jewels ({CROWN}) carrying an open KEV finding — fix these first.", "kpi",
        "SELECT COUNT(*) AS \"Crown jewels with KEV\" FROM assets a WHERE $__crown(a) AND $__scope(a.uuid) "
        "AND a.uuid IN (SELECT v.asset_uuid FROM vulns v WHERE $__open(v) AND $__kev(v))",
        _ASSET_DRILL.format(w="$__crown(a) AND $__scope(a.uuid) AND a.uuid IN "
@@ -226,7 +226,7 @@ ANALYTICS = [
        "JOIN $__asset_facts() af ON af.asset_uuid=pa.asset_uuid WHERE $__scope(pa.asset_uuid) GROUP BY af.os_family "
        "ORDER BY \"Unowned\" DESC", w=6, h=4, label_col="os_family"),
     _p("Ownership analytics", "crown_unowned_route", "Crown jewels on an unowned route",
-       "Crown jewels (ACR ≥ 9) where at least one route is neither owned nor decided.", "kpi",
+       "Crown jewels ({CROWN}) where at least one route is neither owned nor decided.", "kpi",
        "SELECT COUNT(DISTINCT ra.asset_uuid) AS \"Crown jewels\" FROM $__route_assets() ra JOIN $__asset_facts() af "
        "ON af.asset_uuid=ra.asset_uuid WHERE af.crown=1 AND ra.owned=0 AND ra.decided=0 AND $__scope(ra.asset_uuid)",
        "SELECT af.host, af.ip, af.acr, ra.route, ra.route_type, ra.asset_uuid FROM $__route_assets() ra JOIN "
@@ -312,7 +312,8 @@ def builtin():
     for d in specialists():
         out[d["ref"]] = d
     out[TEXT["ref"]] = TEXT
-    return out
+    from core import crown                      # build 527: titles / notes carry the live crown-jewel line
+    return crown.fill(out)
 
 
 def summary(d):

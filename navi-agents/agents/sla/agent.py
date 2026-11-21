@@ -103,7 +103,7 @@ def config_signature(db_path=None, sig=None) -> str:
     if k not in _CFG_MEM:
         _CFG_MEM.clear()
         _CFG_MEM[k] = _json.dumps({"th": _read_thresholds(db_path), "engine": _sla.ENGINE_VERSION,
-                                   "crown": _sla.CROWN_ACR, "due": list(_sla.DUE_WINDOWS)},
+                                   "crown": __import__("core.crown", fromlist=["threshold"]).threshold(), "due": list(_sla.DUE_WINDOWS)},
                                   sort_keys=True)
     return _CFG_MEM[k]
 

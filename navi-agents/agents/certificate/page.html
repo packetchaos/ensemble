@@ -66,7 +66,7 @@
   </section>
 
   <section class="card" id="secCrown" data-nav="Crown jewels" data-nav-icon="👑">
-    <h2>Crown jewels with expired or failing certificates (ACR &gt; 7) <span class="sub" id="crownCount"></span></h2>
+    <h2>Crown jewels with expired or failing certificates (<span data-crown-txt>ACR ≥ 8</span>) <span class="sub" id="crownCount"></span></h2>
     <p class="sub">Your most critical assets with a certificate that has expired or fails in the next 12 months, highest ACR first.</p>
     <table id="crownTbl"><thead><tr><th>Host</th><th>IP</th><th>ACR</th><th>Expired</th><th>Failing</th><th>Soonest failure</th><th>Common names</th></tr></thead><tbody></tbody></table>
   </section>
@@ -149,7 +149,7 @@ function renderMetrics(){
      chips:[{v:N(m.due90), l:'failing within 90 days', u:as(m.due90_assets), sev:'high', filter:'due90'},
             {v:N(m.failing), l:'failing within 12 months', u:as(m.failing_assets), sev:'low', filter:'failing'}]},
     {title:'Risk context',
-     hero:m.has_acr?{v:N(m.crown_assets), l:'crown jewels affected', u:`ACR > 7 · ${N(m.crown_expired_assets)} with an expired cert`, sev:'crit', filter:'crown'}
+     hero:m.has_acr?{v:N(m.crown_assets), l:'crown jewels affected', u:`${crownTxt()} · ${N(m.crown_expired_assets)} with an expired cert`, sev:'crit', filter:'crown'}
                   :{v:N(m.cert_rows), l:'certificates '+(SC()?'on this tag':'in navi.db'), u:`on ${as(m.cert_assets)} · ${N(m.common_names)} common names`+(m.unparsed?` · ${N(m.unparsed)} unreadable date${m.unparsed===1?'':'s'}`:''), href:'#secCerts'},
      chips:[{v:N(m.weak_inscope), l:'expired/failing certs with weak crypto', u:`SHA-1 / MD5 or RSA < 2048 · ${N(m.weak)} ${allCerts()}`, sev:'info', filter:'weak'},
             {v:N(m.self_signed_inscope), l:'expired/failing certs that are self-signed', u:`${N(m.self_signed)} ${allCerts()}`, sev:'low', filter:'self'},
@@ -221,7 +221,7 @@ function renderCrown(){
   const row=a=>`<tr><td><a class="plink" href="/agents/argos/page.html?target=${encodeURIComponent(a.asset_uuid)}">${esc(a.host)}</a></td><td class="mono">${esc(a.ip||'')}</td>`+
     `<td><b style="color:var(--crit)">${esc(String(a.acr))}</b></td><td>${a.expired?`<b style="color:var(--st-exp)">${N(a.expired)}</b>`:'0'}</td><td>${N(a.failing)}</td>`+
     `<td>${a.soonest==null?'—':N(a.soonest)+' d'}</td><td>${(a.cns||[]).map(c=>`<span class="tagval">${esc(c)}</span>`).join(' ')}</td></tr>`;
-  const empty='<tr><td colspan="7" class="sub">'+((M.metrics||{}).has_acr?'No crown-jewel (ACR &gt; 7) assets'+esc(tagScopeNote())+' have an expired or failing certificate.':'navi.db has no ACR column on assets — run a navi update with ACR.')+'</td></tr>';
+  const empty='<tr><td colspan="7" class="sub">'+((M.metrics||{}).has_acr?'No crown-jewel ('+esc(crownTxt())+') assets'+esc(tagScopeNote())+' have an expired or failing certificate.':'navi.db has no ACR column on assets — run a navi update with ACR.')+'</td></tr>';
   TCR=hDrill({api:API, table:'crownTbl', run:RUN, section:'crown', cols:7, row, empty});
 }
 

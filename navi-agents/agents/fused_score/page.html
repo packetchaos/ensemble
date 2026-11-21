@@ -255,6 +255,15 @@ function chips(a){const c=[];
 function actStats(){ const a=((DATA.kpi||{}).act||{})[String(THR)]||{n:0,unowned:0,owned:0,crown_kev:0,blind:0}; return a; }
 function actSet(){ let s=ROWS.filter(a=>a.score>=THR); if(!s.length&&!actStats().n) s=ROWS.slice(0,Math.min(10,ROWS.length)); return s; }
 function actN(){ const st=actStats(); return st.n||actSet().length; }
+/* build 528: ONE view of the act-now set for the glance card AND the Act now section, so they can't
+   disagree. over = assets at/above the line exist (whole-scope counts from the server); otherwise the
+   section lists the worst 10 and both places say so — with that list's own counts. */
+function actView(){ const st=actStats(), S=actSet(), over=!!st.n;
+  return {over, n:st.n||0, listed:S.length,
+          unowned: over?st.unowned:S.filter(a=>a.unowned).length,
+          owned: over?(st.owned||0):S.filter(a=>!a.unowned).length,
+          crown_kev: over?st.crown_kev:S.filter(a=>a.crown&&a.kev).length,
+          blind: over?st.blind:S.filter(a=>a.blind).length}; }
 
 /* ---- 📊 at a glance (shared renderGlance template): headline numbers + the old glance charts ---- */
 function renderMetrics(){
@@ -273,10 +282,12 @@ function renderMetrics(){
           {v:N(k.elevated), l:'ELEVATED 40–59', u:`${pct(k.elevated,n)}% of assets`, sev:'med', filter:'band:ELEVATED'},
           {v:N((k.low||0)+(k.clean||0)), l:'LOW < 40', u:`${N(k.clean)} score 0`, sev:'low', filter:'band:LOW'}]},
   {title:'Act now ≥ '+THR, t:'Who owns the act-now set.',
-   hero:{v:N(st.n), l:'act now ≥ '+THR, u:`${N(st.unowned)} unowned · ${N(st.crown_kev)} crown+KEV · ${N(st.blind)} blind`, sev:'crit', href:'#sec-act'},
-   bar:st.n?nz([{label:'owned',value:st.owned||0,color:'ok'},{label:'no owner',value:st.unowned||0,color:'s5'}]):null},
+   hero:(()=>{ const v=actView();
+     return {v:N(v.n), l:'act now ≥ '+THR, sev:'crit', href:'#sec-act',
+       u:(v.over?'':`none yet — the worst ${N(v.listed)} are listed: `)+`${N(v.unowned)} unowned · ${N(v.crown_kev)} crown+KEV · ${N(v.blind)} blind`}; })(),
+   bar:(()=>{ const v=actView(); return (v.n||v.listed)?nz([{label:'owned',value:v.owned,color:'ok'},{label:'no owner',value:v.unowned,color:'s5'}]):null; })()},
   {title:'Convergence', t:'Where several specialists land on the same asset (whole estate; click to filter).',
-   hero:conv(k.crown_kev,'crown jewel + KEV',`of ${N(k.crown)} crown jewels`,'crownkev','crit','ACR ≥ 9 with a CISA KEV finding'),
+   hero:conv(k.crown_kev,'crown jewel + KEV',`of ${N(k.crown)} crown jewels`,'crownkev','crit',crownTxt()+' with a CISA KEV finding'),
    chips:[conv(k.kev_unowned,'KEV with no owner',`of ${N(k.kev)} KEV assets`,'kevunowned','crit','KEV finding and no Owner tag — nobody is on the hook'),
           conv(k.kev_exposed,'KEV + internet-exposed','reachable and exploited in the wild','kevexposed','crit'),
           conv(k.eol_crown,'EOL on a crown jewel','no patch is coming','eolcrown','high'),
@@ -411,12 +422,13 @@ function renderLB(){
 }
 
 /* ---- act now ---- */
-function drawAct(){ const S=actSet(), st=actStats(), n=actN(), over=!!st.n;
- const u=over?st.unowned:S.filter(a=>a.unowned).length, ck=over?st.crown_kev:S.filter(a=>a.crown&&a.kev).length, bl=over?st.blind:S.filter(a=>a.blind).length;
- document.getElementById('anN').textContent=N(n);
- document.getElementById('anSub').innerHTML=(over?`assets ≥ ${THR} across ${inScope()}`:`no asset ≥ ${THR} yet — showing the worst ${S.length}`)+` · <b style="color:#a78bfa">${N(u)} unowned</b> · <b style="color:#e6c34a">${N(ck)} crown+KEV</b>`+(bl?` · <b style="color:var(--med)">${N(bl)} blind</b>`:'');
+function drawAct(){ const S=actSet(), n=actN(), V=actView(), over=V.over;
+ const u=V.unowned, ck=V.crown_kev, bl=V.blind;
+ // the big number is the same as the glance card: how many assets are over the line (0 when none are)
+ document.getElementById('anN').textContent=N(V.n);
+ document.getElementById('anSub').innerHTML=(over?`assets ≥ ${THR} across ${inScope()}`:`no asset ≥ ${THR} yet — the worst ${S.length} are listed instead`)+` · <b style="color:#a78bfa">${N(u)} unowned</b> · <b style="color:#e6c34a">${N(ck)} crown+KEV</b>`+(bl?` · <b style="color:var(--med)">${N(bl)} blind</b>`:'');
  document.getElementById('actbtns').innerHTML=
-  `<button class="abtn hot" data-a="tag">🏷️ Tag Priority : P1 <b>${N(n)}</b></button>`+
+  `<button class="abtn hot" data-a="tag">🏷️ Tag Priority : P1 <b>${N(n)}</b>${over?'':' <span style="font-weight:400">(the worst '+N(n)+')</span>'}</button>`+
   `<a class="abtn" href="/agents/asset_ownership/page.html">🏷️ Tag owners <b>${N(u)}</b></a>`+
   `<a class="abtn" href="/agents/email/page.html">📧 Email owners <b>${N(Math.max(0,n-u))}</b></a>`+
   `<a class="abtn" href="/agents/acr/page.html">⚖ Raise ACR <b>${N(ck)}</b></a>`+

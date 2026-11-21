@@ -5,7 +5,7 @@
  "tagline": "See the chains an attacker would follow — and break them first.",
  "lore": "Fenrir, the great wolf the gods chained until he broke free at Ragnarök — here he traces how a breach slips its chains: foothold → lateral move → crown jewel.",
  "problem": "Vulnerability lists, identity issues and failed controls live in separate silos, so nobody sees that an exploitable box sits one hop from a crown-jewel server. Teams face thousands of findings with no view of which chain actually gets an attacker to what matters.",
- "does": "Fenrir chains the weaknesses Tenable already found — remote exploits, default credentials, open unauthenticated services, local privilege escalation, accounts reused across hosts, NTLM relay, domain-controller flaws and failed controls like LAPS, SMB signing and LLMNR — into ranked routes to every crown jewel (ACR ≥ 7), then finds the fixes that cut the most exposure.",
+ "does": "Fenrir chains the weaknesses Tenable already found — remote exploits, default credentials, open unauthenticated services, local privilege escalation, accounts reused across hosts, NTLM relay, domain-controller flaws and failed controls like LAPS, SMB signing and LLMNR — into ranked routes to every crown jewel (ACR at or above the line in Settings, 8 by default), then finds the fixes that cut the most exposure.",
  "glance": {
   "caption": "Fenrir's At a glance: how many crown jewels are reachable and how (entry points, multi-step chains, KEV, reused accounts, failed controls, privilege escalation, NTLM relay) and Fix first — the exposure cut by the best fixes, plus how many hosts were scanned without credentials."
  },

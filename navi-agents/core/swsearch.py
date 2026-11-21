@@ -27,6 +27,7 @@ OR'd; inside a clause, constraints separated by spaces or commas are AND'd. A co
   "<2.4.60"      ">=2.0 <2.17.1; >=2.18 <2.18.2"      "3.0.2"
 """
 import functools
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 import re
 
 from core import db
@@ -358,8 +359,8 @@ def search(q="", product="", version="", ranges=None, exact=False, path=None):
         for v, us in p["versions"].items():
             k = (p["name"], v)
             allv[k] = (len(us), _status_of(p, v))
-    crown = sum(1 for r in rows if (acr(r["asset_uuid"]) or 0) >= 9)
-    crown_hit = sum(1 for r in rows if (acr(r["asset_uuid"]) or 0) >= 9 and r["status"] in ("affected", "check"))
+    crown = sum(1 for r in rows if _crown.is_crown(acr(r["asset_uuid"])))
+    crown_hit = sum(1 for r in rows if _crown.is_crown(acr(r["asset_uuid"])) and r["status"] in ("affected", "check"))
     kpi = {"assets": len(rows), "products": len(prods), "versions": len(allv),
            "installs": sum(len(r["installs"]) for r in rows), "records": records,
            "affected": cnt["affected"], "check": cnt["check"], "unknown": cnt["unknown"], "clear": cnt["clear"],

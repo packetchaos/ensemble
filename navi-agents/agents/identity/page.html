@@ -132,7 +132,7 @@ const FILTERS={
   privileged:['Privileged accounts',x=>has(x,'privileged')], nonexp:['Passwords never expire',x=>has(x,'non-expiring pw')],
   reused:['Account reuse (≥ 5 hosts)',isReused], kev:['On a CISA KEV host',x=>x.klass!=='machine'&&has(x,'on KEV host')],
   crit:['On a host with critical findings',x=>x.klass!=='machine'&&has(x,'on critical host')],
-  crown:['On a crown-jewel host (ACR ≥ 7)',x=>x.klass!=='machine'&&x.crown_hosts>0],
+  crown:['On a crown-jewel host ('+crownTxt()+')',x=>x.klass!=='machine'&&x.crown_hosts>0],
   privexp:['Privileged on an exploitable host',x=>x.klass!=='machine'&&has(x,'privileged')&&(has(x,'on KEV host')||has(x,'on critical host'))],
   ssh:['On hosts accepting SSH passwords',x=>has(x,'ssh password auth')], dflt:['Default / blank credentials',x=>has(x,'default/blank cred')||has(x,'default secret')],
   ad:['AD attack path',x=>has(x,'AD attack path')] };
@@ -187,7 +187,7 @@ function renderMetrics(){
     {title:'Priority',
      hero:{v:N(m.priv_exploitable), l:'privileged on an exploitable host', u:'KEV or critical finding on the same host', filter:'f:privexp'},
      chips:[{v:N(m.on_kev), l:'identities on a CISA KEV host', u:`${N(sig['on KEV host'])} KEV hosts`, sev:'crit', filter:'f:kev'},
-            {v:N(m.crown_ids), l:'identities on crown jewels', u:`ACR ≥ 7 · ${N(m.crown_priv)} privileged`, sev:'crit', filter:'f:crown'},
+            {v:N(m.crown_ids), l:'identities on crown jewels', u:`${crownTxt()} · ${N(m.crown_priv)} privileged`, sev:'crit', filter:'f:crown'},
             {v:N(m.on_crit), l:'identities on a critical host', sev:'high', filter:'f:crit'}],
      ranked:{title:'Most common risk flags', sev:'crit', items:top.map(([f,n])=>({label:f, value:n, t:f+': '+N(n)+' identities carrying this flag'})), empty:'No risk flags.'}}
   ], {active, onFilter:(f,_el,on)=>{

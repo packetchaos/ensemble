@@ -831,6 +831,16 @@ function focusRow(tableSel, text){
 }
 
 async function jget(u){ const r = await fetch(u); return r.json(); }
+/* ===== Crown jewels (build 527) — ONE definition on every page: ACR ≥ the line in Settings → Crown
+   jewels (default 8; core/crown.py). crownAcr() → the number, crownTxt() → "ACR ≥ 8". The value comes
+   from /api/health (cached per browser so a label never waits on it); every specialist also returns its
+   own crown_acr with its numbers. */
+function crownAcr(){ let v=window.__CROWN_ACR; if(v==null){ try{ v=parseInt(localStorage.getItem('crownAcr'),10); }catch(e){} }
+  return (v>=1&&v<=10)?v:8; }
+function crownTxt(n){ return 'ACR ≥ '+((n>=1&&n<=10)?n:crownAcr()); }
+(function(){ try{ fetch('/api/health').then(r=>r.json()).then(h=>{ const c=h&&h.crown&&h.crown.acr_min;
+  if(c>=1&&c<=10){ window.__CROWN_ACR=c; try{ localStorage.setItem('crownAcr',String(c)); }catch(e){}
+    document.querySelectorAll('[data-crown-txt]').forEach(el=>{ el.textContent=crownTxt(c); }); } }).catch(()=>{}); }catch(e){} })();
 async function jpost(u, b){
   // build 489: a tag-scoped page (mountTagScope) adds {tag_scope:{key,value}} to every POST to
   // its OWN specialist; the launcher refuses it on an action that doesn't declare tag_scope, so no
@@ -1185,12 +1195,12 @@ const AGENT_INTRO = {
  asset_ownership:{does:"Ownership answers ownership from the asset's side. For every asset he shows who owns it at three layers — Business Owner, the route and path owners from Exposure Routes, and a single Asset Owner — how much of it is claimed, and what is left blind. You assign owners in plain English, preview the match, then tag.",caps:[
    "<b>Three ownership layers<\/b> — Business Owner (accountable leader), Owner (route / path owners from Exposure Routes) and Asset Owner (one owner for the whole asset, or for whatever is left).",
    "<b>Coverage per asset<\/b> — how much of each asset is claimed, which assets are fully claimed, and which have no owner at any layer.",
-   "<b>Crown jewels first<\/b> — assets with ACR ≥ 9 or a crown-jewel tag, unclaimed first, with what the other specialists already know about each one.",
+   "<b>Crown jewels first<\/b> — crown jewels (ACR at or above the line in Settings, 8 by default), unclaimed first, with what the other specialists already know about each one.",
    "<b>Risk without an owner<\/b> — unclaimed crown jewels, open critical and CISA KEV findings on unowned assets, and assets no specialist has signaled on.",
    "<b>Owners in plain English<\/b> — \"assign Jane Smith to production\" — Ownership reads each asset's tags, previews who matches, and tags them on approval.",
    "<b>Built for large estates<\/b> — the per-asset table pages and searches on the server; owner tagging runs as a background job, so 150,000 assets tag as easily as 50.",
    "<b>By tag<\/b> — run over one tag's assets (\"who owns MY assets?\"): every count, crown jewel, blind spot and owner covers only that tag, each asset's ownership is unchanged, and owner tags written from that view go only onto its assets. Switch between the whole estate and your last 5 tags without re-running."]},
- attackpath:{does:"Fenrir chains the weaknesses Tenable already found — remote exploits, default credentials, open unauthenticated services, local privilege escalation, accounts reused across hosts, NTLM relay, domain-controller flaws and failed controls like LAPS, SMB signing and LLMNR — into ranked routes to every crown jewel (ACR ≥ 7), then finds the fixes that cut the most exposure.",caps:[
+ attackpath:{does:"Fenrir chains the weaknesses Tenable already found — remote exploits, default credentials, open unauthenticated services, local privilege escalation, accounts reused across hosts, NTLM relay, domain-controller flaws and failed controls like LAPS, SMB signing and LLMNR — into ranked routes to every crown jewel (ACR at or above the line in Settings, 8 by default), then finds the fixes that cut the most exposure.",caps:[
    "<b>Chained steps with evidence<\/b> — exploit → privilege escalation → credential harvest → lateral move → crown jewel; every step names its finding and its ATT&amp;CK technique.",
    "<b>Failed controls as enablers<\/b> — failed compliance checks (LAPS, SMB signing, LLMNR, WDigest, LSASS protection, sudo, empty passwords) become the steps they make possible.",
    "<b>Honest credential pivots<\/b> — an account present on several hosts is a pivot; navi.db can't show a shared password, so Fenrir doesn't claim one — except local Administrator where LAPS has failed.",
@@ -1405,7 +1415,7 @@ const AGENT_INTRO = {
    "<b>ATT&amp;CK matrix<\/b> — techniques and tactics your findings enable, by mapping type; full screen and email from the widget.",
    "<b>Mitre tags<\/b> — Mitre : Primary Impact: &lt;technique&gt;, Secondary Impact: &lt;technique&gt; and Exploit Technique: &lt;technique&gt; on the assets carrying each CVE, via navi's tag-by-CVE.",
    "<b>Honest coverage<\/b> — not every CVE has a mapped technique; an unmapped CVE simply gets no Mitre tag.",
-   "<b>By tag<\/b> — run over one tag's assets (an owner, a tier, an environment): the ATT&amp;CK exposure, matrix, planned tags and ACR &gt; 7 list cover only that tag, and tags written from that view land only on its assets. Switch between the whole estate and your last 5 tags without re-running."]},
+   "<b>By tag<\/b> — run over one tag's assets (an owner, a tier, an environment): the ATT&amp;CK exposure, matrix, planned tags and crown-jewel list cover only that tag, and tags written from that view land only on its assets. Switch between the whole estate and your last 5 tags without re-running."]},
  postquantum:{does:"Heimdall finds the quantum-vulnerable surface three ways — certificates (RSA, ECC and DSA are all vulnerable to Shor's algorithm, whatever the key length), on-the-wire transport crypto from TLS and SSH plugins, and Tenable's Post-Quantum Cipher Analysis plugins — scores crypto agility from OpenSSH and OpenSSL versions, and ranks a migration roadmap by ACR and CISA KEV against the CNSA 2.0 deadlines.",caps:[
    "<b>Certificate quantum risk<\/b> — every certificate by algorithm family, with how many are still valid at each CNSA 2.0 / NIST milestone and the long-lived harvest-now set.",
    "<b>Transport crypto<\/b> — TLS and SSH key exchange without ML-KEM or a hybrid group, SHA-1 MACs and deprecated protocol versions.",
@@ -1426,7 +1436,7 @@ const AGENT_INTRO = {
    "<b>One credentialed rule<\/b> — credentialed = the scan-information plugin reports credentialed checks, or a valid-credentials plugin is present; blind = scanned without credentials. Every specialist in the Ensemble uses this rule.",
    "<b>Why a host is blind<\/b> — credential failed, insufficient privilege, intermittent, or no credentials at all — and credentialed hosts that still have a credential issue.",
    "<b>Freshness<\/b> — scanned in the last 7 days, 8–30, 31–90, over 90, never, or date unknown; network vs agent scans.",
-   "<b>Crown-jewel blind spots<\/b> — crown jewels (ACR ≥ 7) that are uncredentialed or failed, or not scanned in over 90 days.",
+   "<b>Crown-jewel blind spots<\/b> — crown jewels (ACR at or above the line in Settings, 8 by default) that are uncredentialed or failed, or not scanned in over 90 days.",
    "<b>Performance and scanners<\/b> — average scan time, slow scans, slow scanners, policies and scans; scanner load; scanners on an old plugin feed; safe-checks scans.",
    "<b>Scan Health tags<\/b> — Cred Failure, Insufficient Privilege, Intermittent Auth, Uncredentialed, Patch Assessment Failed, Stale Scan 30d+ / 90d+, Never Scanned, Slow Scan, Crown Jewel Blind Spot, and by scanner, policy or scan.",
    "<b>By tag<\/b> — run over one tag's assets: credential health, freshness, blind spots and scanner / policy load are rebuilt for just those assets, and Scan Health tags written from that view stay inside the tag. Switch between the whole estate and your last 5 tags without re-running."]},

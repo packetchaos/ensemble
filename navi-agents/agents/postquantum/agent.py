@@ -26,6 +26,7 @@ Each asset's crypto risk is weighted by its ACR and CISA-KEV status so the
 highest-value, most-exposed assets rise to the top of the migration queue.
 """
 import re
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 from datetime import datetime, timezone
 
 from core import db, navi_cli, tagscope
@@ -525,10 +526,10 @@ def overview(db_path=None, scope=None) -> dict:
         "oldtls_assets": sig.get("TLS deprecated version (1.0/1.1)", {}).get("assets", 0),
         "legacy": ag.get("tiers", {}).get("Legacy", 0), "upgradable": ag.get("tiers", {}).get("Upgradable", 0),
         "ready": ag.get("tiers", {}).get("PQC-ready", 0),
-        "crown": sum(1 for p in rows if p["acr"] >= 7),
-        "crown_past2030": sum(1 for p in rows if p["acr"] >= 7 and p.get("past2030")),
+        "crown": sum(1 for p in rows if _crown.is_crown(p["acr"])), "crown_acr": _crown.threshold(),
+        "crown_past2030": sum(1 for p in rows if _crown.is_crown(p["acr"]) and p.get("past2030")),
         "kev": sum(1 for p in rows if p["kev"]),
-        "legacy_crown": sum(1 for p in rows if p["acr"] >= 7 and p["agility"] == "Legacy"),
+        "legacy_crown": sum(1 for p in rows if _crown.is_crown(p["acr"]) and p["agility"] == "Legacy"),
         "top_score": rows[0]["score"] if rows else None,
     }
     return {"ok": True, "surface": surf, "cert": cert, "transport": trans, "roadmap": road,
@@ -672,11 +673,11 @@ ROAD_FILTERS = {
     "p2030": lambda p, kex: p.get("past2030"),
     "p2033": lambda p, kex: p.get("past2033"),
     "legacy": lambda p, kex: p["agility"] == "Legacy",
-    "crown": lambda p, kex: p["acr"] >= 7,
-    "crown2030": lambda p, kex: p["acr"] >= 7 and p.get("past2030"),
+    "crown": lambda p, kex: _crown.is_crown(p["acr"]),
+    "crown2030": lambda p, kex: _crown.is_crown(p["acr"]) and p.get("past2030"),
     "kex": lambda p, kex: p["uuid"] in kex,
     "kev": lambda p, kex: p["kev"],
-    "legacycrown": lambda p, kex: p["acr"] >= 7 and p["agility"] == "Legacy",
+    "legacycrown": lambda p, kex: _crown.is_crown(p["acr"]) and p["agility"] == "Legacy",
 }
 _KEX_SIGNALS = ("TLS classical-only key exchange", "SSH classical-only key exchange", "TLS no post-quantum ciphers")
 

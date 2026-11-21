@@ -37,7 +37,7 @@ Rules:
     $__open(v)          vulns alias v is an OPEN (open/reopened), non-info finding. Use it for any "finding" count.
     $__kev(v)           the finding is a CISA Known Exploited Vulnerability.
     $__cred(v)          the row proves a credentialed scan (scan-coverage questions).
-    $__crown(a)         assets alias a is a crown jewel (ACR >= 9).
+    $__crown(a)         assets alias a is a crown jewel (ACR at or above the Settings line, default 8).
     $__tag(col, 'Cat')  an asset's value for tag category 'Cat' (NULL when untagged) — any tag dimension:
                         Business Tier, Environment, Owner, a customer category… GROUP BY it for "by <tag>".
     $__certdate(c.not_valid_after)  a certificate date as YYYY-MM-DD.

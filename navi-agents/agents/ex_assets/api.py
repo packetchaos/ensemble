@@ -13,7 +13,7 @@ software — {product, version?}: the assets with one Mimir product (or one of i
 """
 import time
 
-from core import evidence as EV, payload, search, software as SW
+from core import crown, evidence as EV, payload, search, software as SW
 
 SECTIONS = {"assets": {"sorts": {}, "flags": set()}}
 CSV_COLS = ["hostname", "ip_address", "operating_system", "acr", "aes", "last_found", "uuid"]
@@ -39,7 +39,7 @@ def evidence(p):
     key = (p or {}).get("key")
     if not isinstance(key, str) or key not in EV.EVIDENCE:
         return {"ok": False, "error": "unknown evidence %r" % (key,), "keys": sorted(EV.EVIDENCE)}, 400
-    meta = dict(EV.EVIDENCE[key], key=key)
+    meta = dict(crown.fill(EV.EVIDENCE[key]), key=key)
     t0 = time.time()
     uu = EV.uuids(key)
     rows = sorted(EV.asset_rows(uu), key=lambda r: (-_acr(r), str(r.get("hostname") or "~").lower(), r.get("uuid") or ""))

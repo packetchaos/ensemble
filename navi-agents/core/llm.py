@@ -709,7 +709,7 @@ ASSET_OWNER_SYSTEM = (
     "'owns the rest'.\n"
     "MODE (asset layer only): 'complete' = owns every route & path; 'remainder' = owns only the "
     "routes/paths not already owned ('the rest'); otherwise null.\n"
-    "FILTER selects assets by attributes AND tags: {\"crown\":bool (ACR>=9 or a crown-jewel tag), "
+    "FILTER selects assets by attributes AND tags: {\"crown\":bool (a crown jewel: ACR at or above the Settings line, default 8), "
     "\"acr_min\":int, \"acr_max\":int, \"cloud\":bool, \"tags\":[{\"key\":..,\"value\":..}] (match the "
     "asset's tags; omit value to require the key), \"host_like\":[substrings]}. Use ONLY tag keys/"
     "values that appear in the schema.\n"

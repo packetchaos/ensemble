@@ -850,7 +850,7 @@ def _attackpath_full():
     m = import_module("agents.attackpath.api")
     had, saved = hasattr(m.AGENT, "result"), getattr(m.AGENT, "result", None)
     try:
-        return m.AGENT.run(crown_acr=7.0)
+        return m.AGENT.run(crown_acr=None)      # the crown-jewel line from Settings (core.crown)
     finally:
         if had:
             m.AGENT.result = saved

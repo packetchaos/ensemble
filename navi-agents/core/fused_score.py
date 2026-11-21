@@ -26,7 +26,7 @@ import sqlite3
 
 from core import db, hx_summary, tagname
 
-CROWN_ACR = 9
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 
 # factor metadata for the UI: id, label, Hound, max points. Sum(max) == 100.
 FACTORS = [
@@ -446,7 +446,7 @@ def _row_signals(r, epss_map):
               else "certfail" if (int(r["certfail"] or 0) or int(r["expiring"] or 0)) else None)
     return {
         "uuid": r["uuid"], "host": (str(r["host"] or "").strip() or str(r["ip"] or "").strip() or r["uuid"]), "ip": r["ip"],
-        "acr": acr, "aes": _fnum(r["aes"]), "crown": bool(acr is not None and acr >= CROWN_ACR),
+        "acr": acr, "aes": _fnum(r["aes"]), "crown": _crown.is_crown(acr),
         "kev": int(r["kev"] or 0), "vpr": _fnum(r["vpr"]) or 0.0, "epss": epss_map.get(r["uuid"], 0.0),
         "eol": 1 if (int(r["veol"] or 0) or int(r["eoltag"] or 0)) else 0,
         "vol": int(r["vol"] or 0), "sla": int(r["slabr"] or 0), "blind": int(r["blind"] or 0),

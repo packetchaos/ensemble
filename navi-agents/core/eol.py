@@ -198,7 +198,7 @@ def _cols(table, path=None):
         return set()
 
 
-CROWN_ACR = 7
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 
 
 def analyze(db_path=None, groups=None, keep_uuids=False, scope=None):
@@ -289,7 +289,7 @@ def analyze(db_path=None, groups=None, keep_uuids=False, scope=None):
                     crit_a[r["asset_uuid"]] = int(r["crit"])
         except Exception:
             pass
-    crown = {u for u in eol_assets if acr.get(u, 0) > CROWN_ACR}
+    crown = {u for u in eol_assets if acr.get(u, 0) >= _crown.threshold()}
 
     # ---- products
     prods = {}

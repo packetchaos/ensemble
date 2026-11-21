@@ -16,25 +16,19 @@ Three ownership layers, read off tags:
                          Setting it *closes* the asset: 100% claimed. Written by the
                          "one owner owns everything / the rest" toggle.
 
-Crown jewels = ``assets.acr >= CROWN_ACR`` (9) or an explicit crown-jewel business
-tag. All reads are read-only; every write goes through the gated navi tag path.
+Crown jewels = core.crown (build 527: ACR ≥ the Settings line, default 8 — one definition on
+every page). All reads are read-only; every write goes through the gated navi tag path.
 """
 import re
 
 from core import db, hx_summary, navi_cli, tagname, tagscope
 from core import cloud as _cloud
 
-CROWN_ACR = 9
-_CROWN_TAG_VALUES = {"crown jewel", "crown-jewel", "mission critical", "mission-critical",
-                     "tier 1", "tier-1", "tier1"}
-# build 523: only a BUSINESS designation makes a crown jewel — a tier / criticality tag. Other
-# specialists' own labels that happen to say "Crown Jewel" (Post-Quantum's `PQC Priority: Crown
-# Jewel`, Scan Health's `Crown Jewel Blind Spot`) are their findings, not your crown jewels.
-_CROWN_TAG_KEYS = {"business tier", "asset tier", "tier", "crown jewel", "criticality",
-                   "business criticality"}
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 BUSINESS_OWNER_KEY = "Business Owner"
 ASSET_OWNER_KEY = "Asset Owner"
 DISPOSITIONS = ("Ignored", "Accepted", "Mitigated")
+HIGH_ACR = 7          # blind spots: an unclaimed crown jewel, or any unclaimed asset rated this high
 
 # tag keys that are ownership bookkeeping, not a Hound "signal"
 _OWNER_KEYS = {"Owner", BUSINESS_OWNER_KEY, ASSET_OWNER_KEY}
@@ -264,14 +258,9 @@ def _nk(s):
 #  Per-asset ownership rollup                                                  #
 # --------------------------------------------------------------------------- #
 def _is_crown(a):
-    """ACR ≥ CROWN_ACR, or a business tier / criticality tag of Crown Jewel / Mission Critical /
-    Tier 1. Build 523: no longer ANY tag whose value reads "Crown Jewel" — that counted Post-Quantum's
-    roadmap label (PQC Priority: Crown Jewel) and showed ACR 7–8 assets as crown jewels under an
-    "ACR ≥ 9" heading."""
-    if a.get("acr") is not None and a["acr"] >= CROWN_ACR:
-        return True
-    tm = a.get("_tagmap", {})
-    return any(_nk(v) in _CROWN_TAG_VALUES for k in _CROWN_TAG_KEYS for v in tm.get(k, []))
+    """The one crown-jewel definition (core.crown, build 527): ACR ≥ the Settings line. Other
+    specialists' labels that read "Crown Jewel" (PQC Priority, Scan Health) never count."""
+    return _crown.is_crown(a.get("acr"))
 
 
 def _asset_ownership(a, groups):
@@ -513,7 +502,7 @@ def _rollup(db_path, emit, scope=None):
         if any(_nk(k) == "cisa kev" or "kev" in _nk(k) for k in sig):
             K["kev"] += 1
         # blind spots — unclaimed crown jewels or unclaimed high-ACR assets
-        is_blind = bool(own["unclaimed"] and (is_crown or (a.get("acr") or 0) >= 7))
+        is_blind = bool(own["unclaimed"] and (is_crown or (a.get("acr") or 0) >= HIGH_ACR))
         if row["surface"] > 0:
             K["with_surface"] += 1
             K["surf_total"] += row["surface"]
@@ -580,7 +569,7 @@ def _rollup(db_path, emit, scope=None):
         "crown_business_owned": K["crown_biz"],
         "kev_assets": K["kev"], "blind": K["blind"],
         "blind_no_signal": K["no_signal"], "cred_fail": K["cred_fail"],
-        "crown_acr": CROWN_ACR,
+        "crown_acr": _crown.threshold(),
         # --- "At a glance" (build 441) — all derived from the rollup above ---
         "owned": K["owned"], "owned_pct": pct(K["owned"], n),
         "no_owner": n - K["owned"], "no_owner_pct": pct(n - K["owned"], n),

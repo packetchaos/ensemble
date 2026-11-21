@@ -182,7 +182,7 @@ function renderMetrics(){
             {v:String(d1(t.mttr_median)), l:'median days to fix (MTTR)', u:t.fixed?`mean ${d1(t.mttr_mean)} across ${N(t.fixed)} fixes`:'', t:`${d1(t.mttr_median)} median days to fix (MTTR)${t.fixed?` — mean ${d1(t.mttr_mean)} across ${N(t.fixed)} fixes`:''} · fix date − first found, closed findings. Fix date from `+src, sev:'info', zero:!t.fixed, href:'#secRem'},
             {v:lf?((lf.fixed-lf.new)>=0?'−':'+')+N(Math.abs(lf.fixed-lf.new)):'—', l:'backlog change, last full month', u:lf?`${lf.month}: ${N(lf.new)} new · ${N(lf.fixed)} fixed`:'', t:(lf?`${lf.month}: ${N(lf.new)} new · ${N(lf.fixed)} fixed · `:'')+'new findings (first found) minus fixed findings in the last complete month — reconstructed from finding dates', sev:lf&&lf.fixed>=lf.new?'ok':'high', zero:!lf, href:'#secTrend'}]},
     {title:'Where the breaches are', t:'Bar: how late the breaches are — age − SLA days, open breaches.',
-     hero:{v:cr.available?N(cr.breached):'—', l:'breaches on crown jewels (ACR ≥ 7)', u:cr.available?`on ${N(cr.assets_breached)} of ${N(cr.assets)} crown-jewel assets with open findings`:'no ACR values in navi.db', sev:'crit', zero:cr.available?!cr.breached:true, href:'#secWorst'},
+     hero:{v:cr.available?N(cr.breached):'—', l:'breaches on crown jewels ('+crownTxt(cr.acr_min)+')', u:cr.available?`on ${N(cr.assets_breached)} of ${N(cr.assets)} crown-jewel assets with open findings`:'no ACR values in navi.db', sev:'crit', zero:cr.available?!cr.breached:true, href:'#secWorst'},
      bar:any?nz((m.overdue_buckets||[]).map((b,i)=>({label:b.label, value:b.n, color:BCK[i]}))):null,
      chips:[{v:bo.length?N(bo[0].breached):'—', l:`worst ${DASH.tag_key||'owner'} by breaches`, u:bo.length?`${short(bo[0].seg,32)} · ${bo[0].breach_pct}% of its open findings`:(m.has_owner_key?'no breaches':'no “'+(DASH.tag_key||'Owner')+'” tags'), sev:'info', zero:!bo.length, href:'#secOwners'},
             {v:wa?N(wa.breached):'—', l:'worst asset by breaches', u:wa?`${short(wa.hostname||wa.ip||wa.asset_uuid,30)}${wa.acr!=null?' · ACR '+wa.acr:''}`:'', sev:'high', zero:!wa, href:'#secWorst'},
@@ -200,7 +200,7 @@ function renderDefs(){
     <li><b>Age</b> = now − first found. <b>Past SLA (breached)</b> = an open or reopened finding whose age is greater than its severity’s SLA days.</li>
     <li><b>Due within N days</b> = open, not yet breached, SLA days − age ≤ N. <b>Approaching</b> (legacy) = age over 80% of the window.</li>
     <li><b>Days to fix</b> = fix date − first found, on closed findings. Fix date is ${src}. <b>Fixed within SLA</b> is that number ≤ SLA days — our math; <b>navi verdict</b> is navi’s own Pass/Fail from <span class="mono">sla calculate</span>.</li>
-    <li><b>Crown jewels</b> = assets with ACR ≥ ${m.crown?m.crown.acr_min:7}. Findings on <b>Ignored / Accepted / Mitigated</b> routes &amp; paths are excluded from every number${m.totals&&m.totals.excluded?' ('+N(m.totals.excluded)+' open finding(s) now)':''}.</li>
+    <li><b>Crown jewels</b> = assets with ${crownTxt(m.crown?m.crown.acr_min:null)} (Settings → Crown jewels). Findings on <b>Ignored / Accepted / Mitigated</b> routes &amp; paths are excluded from every number${m.totals&&m.totals.excluded?' ('+N(m.totals.excluded)+' open finding(s) now)':''}.</li>
     <li>Numbers are as of <b>${esc(m.as_of||'—')}</b> (UTC) over navi.db as last synced.</li></ul></details>`;
 }
 
@@ -345,7 +345,7 @@ function render(){
     w+=wa.length?('<div style="overflow-x:auto"><table id="waTbl"><thead><tr><th>Asset</th><th>ACR</th><th>Open</th><th>Past SLA</th><th>Critical</th><th>Max days over</th></tr></thead><tbody>'
       +wa.map(r=>`<tr><td title="${esc(r.asset_uuid)}">${esc(short(r.hostname||r.ip||r.asset_uuid,34))}${r.hostname&&r.ip?' <span class="sub">'+esc(r.ip)+'</span>':''}</td><td class="mono">${r.acr!=null?r.acr:'—'}</td><td class="mono">${N(r.open)}</td><td class="mono">${N(r.breached)}</td><td class="mono">${N(r.crit_breached)}</td><td class="mono">${d1(r.max_over)}</td></tr>`).join('')+'</tbody></table></div>'):'<p class="sub">No open breaches.</p>';
     w+='</div><div style="margin-top:14px"><p class="seclbl">worst plugins by open breaches</p><div class="sevchips" id="sevChips"></div><div id="wpBox"></div></div>';
-    w+='<p class="seclbl" style="margin-top:14px">crown jewels · ACR ≥ '+(cr.acr_min||7)+'</p>'
+    w+='<p class="seclbl" style="margin-top:14px">crown jewels · '+crownTxt(cr.acr_min)+'</p>'
       +(cr.available?(`<p style="margin:0 0 6px;font-size:13px"><b>${N(cr.breached)}</b> open breach${cr.breached==1?'':'es'} on <b>${N(cr.assets_breached)}</b> crown-jewel asset${cr.assets_breached==1?'':'s'} (of <b>${N(cr.assets)}</b> with open findings · <b>${N(cr.open)}</b> open findings)</p>`
         +sbar(SEV.map(([k,l,c])=>({l:l,n:(cr.by_sev||{})[k]||0,c:c}))))
         :'<p class="sub">navi.db has no ACR values (assets.acr) — sync assets from Tenable One to rank crown jewels.</p>');

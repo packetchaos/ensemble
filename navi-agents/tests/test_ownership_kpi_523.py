@@ -37,9 +37,9 @@ CREATE TABLE vuln_route(app_name TEXT, plugin_list TEXT, route_id TEXT);
 CREATE TABLE vuln_paths(asset_uuid TEXT, plugin_id TEXT, path TEXT);
 """)
 c.executemany("INSERT INTO assets VALUES (?,?,?,?)", [
-    ("p1", "pqc", "10.0.0.1", "8"),      # PQC's own "Crown Jewel" label only -> NOT a crown jewel
+    ("p1", "pqc", "10.0.0.1", "7"),      # PQC's own "Crown Jewel" label only -> NOT a crown jewel
     ("s1", "scan", "10.0.0.2", "7"),     # Scan Health "Crown Jewel Blind Spot" -> NOT a crown jewel
-    ("b1", "tier", "10.0.0.3", "5"),     # Business Tier: Crown Jewel -> crown jewel
+    ("b1", "tier", "10.0.0.3", "5"),     # Business Tier tag only -> 527: NOT a crown jewel (ACR is the one rule)
     ("h1", "hi", "10.0.0.4", "9"),       # ACR 9 -> crown jewel
     ("big", "big", "10.0.0.5", "4"),     # 2,000 findings, 1,999 owned -> NOT fully claimed
     ("all", "all", "10.0.0.6", "4"),     # 3 findings, all owned -> fully claimed
@@ -61,10 +61,10 @@ from core import asset_ownership as ao  # noqa: E402
 r = ao.overview(DB)
 k = r["kpi"]
 rows = {a["uuid"]: a for a in r["assets"]}
-check({a["uuid"] for a in r["crown_jewels"]} == {"b1", "h1"} and k["crown"] == 2,
-      "crown jewels are ACR >= 9 or a Business Tier tag — not PQC / Scan Health labels (%s)"
+check({a["uuid"] for a in r["crown_jewels"]} == {"h1"} and k["crown"] == 1,
+      "crown jewels are ACR at or above the line (build 527, default 8) — no tag makes one (%s)"
       % sorted(a["uuid"] for a in r["crown_jewels"]))
-check(not rows["p1"]["crown"] and not rows["s1"]["crown"], "…the PQC- and Scan-Health-labelled assets aren't flagged 👑")
+check(not rows["p1"]["crown"] and not rows["s1"]["crown"] and not rows["b1"]["crown"], "…the PQC- and Scan-Health-labelled assets aren't flagged 👑")
 check(rows["big"]["surface"] == 2000 and rows["big"]["claimed_pct"] < 100, "1,999 of 2,000 owned is not shown as 100 %% (%s)"
       % rows["big"]["claimed_pct"])
 check(rows["all"]["claimed_pct"] == 100.0, "every finding owned is 100 %")

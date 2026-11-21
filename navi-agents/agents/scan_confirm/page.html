@@ -423,7 +423,7 @@ function renderPlan(o){
   if(s && !rq.credential_uuid){ $('notes').innerHTML+='<div class="sugg" style="color:inherit">🔑 Local checks need a login — <b>'+esc(s.name||'')+'</b> ('+esc(s.type||'')+') fits: '+esc(s.why)+'. <button class="btn sm" id="takeCred">Use it and re-check</button></div>';
     $('takeCred').onclick=()=>{ $('cred').value=s.uuid; $('plan').click(); }; }
   $('callouts').innerHTML=((o.public_targets||[]).length?'<div class="notes"><div>⚠ <b>Public addresses</b>: '+esc(o.public_targets.slice(0,10).join(', '))+(o.public_targets.length>10?' …':'')+' — make sure you own them and the scanner can reach them.</div></div>':'')
-    +((o.crown||[]).length?'<div class="notes"><div>⚠ <b>Crown jewels</b> (ACR ≥ 9): '+esc(o.crown.slice(0,10).join(', '))+(o.crown.length>10?' …':'')+'</div></div>':'');
+    +((o.crown||[]).length?'<div class="notes"><div>⚠ <b>Crown jewels</b> ('+esc(crownTxt())+'): '+esc(o.crown.slice(0,10).join(', '))+(o.crown.length>10?' …':'')+'</div></div>':'');
   const pf=o.preflight||[], bad=pf.filter(c=>c.level==='fail'), warn=pf.filter(c=>c.level==='warn');
   $('pfSum').className='pfsum '+(bad.length?'fail':warn.length?'warn':'ok');
   $('pfSum').innerHTML=bad.length?'✗ '+bad.length+' check'+(bad.length===1?'':'s')+' must pass before launch:'+bad.map(c=>'<div style="font-weight:400;margin-top:3px">· '+esc(c.msg)+(c.id==='P4'?' · <a href="/agents/scan_eval/page.html">Scan Health</a>':'')+'</div>').join('')
@@ -457,7 +457,7 @@ $('launch').onclick=async()=>{
     lines.push('Targets: '+o.targets+(o.scans.length>1?' ('+o.scans.map(s=>s.targets).join(' + ')+' per scan)':''));
     lines.push('Scanner: '+(o.scanner_name||rq.scanner_id), 'Login: '+(rq.credential_uuid?(o.credential_name||'credential set'):'uncredentialed'));
     if(o.public_targets&&o.public_targets.length) lines.push('⚠ PUBLIC addresses: '+o.public_targets.slice(0,8).join(', ')+(o.public_targets.length>8?' …':''));
-    if(o.crown&&o.crown.length) lines.push('⚠ CROWN JEWELS (ACR ≥ 9): '+o.crown.slice(0,8).join(', ')+(o.crown.length>8?' …':''));
+    if(o.crown&&o.crown.length) lines.push('⚠ CROWN JEWELS ('+crownTxt()+'): '+o.crown.slice(0,8).join(', ')+(o.crown.length>8?' …':''));
   }
   lines.push('', rq.verify===false?'One-off: navi.db isn\'t updated, no verdicts.':'Then: wait, sync navi.db, and give a result per host × plugin.');
   lines.push('','navi commands:'); o.scans.slice(0,4).forEach(s=>lines.push('navi '+s.argv.join(' ').slice(0,150))); if(o.scans.length>4) lines.push('… +'+(o.scans.length-4)+' more');

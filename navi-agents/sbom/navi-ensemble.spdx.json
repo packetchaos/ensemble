@@ -2,12 +2,12 @@
   "spdxVersion": "SPDX-2.3",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "name": "navi Ensemble 2.44.525 SBOM",
-  "documentNamespace": "https://github.com/packetchaos/ensemble/sbom/2.44.525/979e6341-6d5f-5947-abec-31460e2d4fa5",
+  "name": "navi Ensemble 2.44.528 SBOM",
+  "documentNamespace": "https://github.com/packetchaos/ensemble/sbom/2.44.528/d79699f5-67d4-50da-8dd1-9ea11dba861d",
   "creationInfo": {
-    "created": "2026-11-21T16:23:42Z",
+    "created": "2026-11-21T18:20:24Z",
     "creators": [
-      "Tool: tools/sbom.py-2.44.525",
+      "Tool: tools/sbom.py-2.44.528",
       "Person: Casey Reid (packetchaos)"
     ]
   },
@@ -15,7 +15,7 @@
     {
       "SPDXID": "SPDXRef-navi-ensemble",
       "name": "navi Ensemble",
-      "versionInfo": "2.44.525",
+      "versionInfo": "2.44.528",
       "supplier": "Person: Casey Reid (packetchaos)",
       "downloadLocation": "https://github.com/packetchaos/ensemble",
       "filesAnalyzed": false,
@@ -27,7 +27,7 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:github/packetchaos/ensemble@2.44.525"
+          "referenceLocator": "pkg:github/packetchaos/ensemble@2.44.528"
         }
       ]
     },

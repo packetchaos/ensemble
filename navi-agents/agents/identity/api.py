@@ -28,7 +28,7 @@ def _agent():
     return AGENT
 
 
-CROWN_ACR = 7
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 RISK = ("privileged", "non-expiring pw", "ssh password auth", "weak pw policy", "guest enabled",
         "default/blank cred", "AD attack path", "default secret", "write (private)",
         "never changed pw", "never logged in")
@@ -63,7 +63,7 @@ def _enrich(res, k=None, v=None):
     for a in accts:
         vals = [acr.get(u, 0) for u in a.get("asset_uuids") or []]
         a["max_acr"] = max(vals) if vals else None
-        a["crown_hosts"] = sum(1 for v in vals if v >= CROWN_ACR)
+        a["crown_hosts"] = sum(1 for v in vals if v >= _crown.threshold())
         a["reused"] = max([int(re.search(r"×(\d+)", f).group(1)) for f in a.get("flags", [])
                            if f.startswith("account reuse ×")] or [0])
         a["risky"] = [f for f in a.get("flags", []) if f not in identity.INFO_FLAGS]

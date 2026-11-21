@@ -119,7 +119,7 @@ const ATLAS_ORDER=['Reconnaissance','Resource Development','Initial Access','ML 
 const FILTERS={ content:['Found beyond the Tenable AI plugins',x=>x.content_only], exposed:['Exposed AI endpoint',x=>(x.exposed||[]).length>0],
   unauth:['Unauthenticated endpoint',x=>x.unauth], shadow:['Shadow egress',x=>x.shadow], kev:['Also carries a CISA KEV',x=>x.risk&&x.risk.kev],
   crit:['Critical findings',x=>x.risk&&x.risk.crit], eol:['End-of-life software',x=>x.risk&&x.risk.eol], mitre:['ATT&CK-mapped',x=>x.risk&&x.risk.mitre],
-  under:['ACR below the role suggestion',x=>x.underrated], crown:['Crown jewels (ACR ≥ 7)',x=>(x.acr||0)>=7], tagged:['Already tagged by the Ensemble',x=>(x.ai_tags||[]).length>0],
+  under:['ACR below the role suggestion',x=>x.underrated], crown:['Crown jewels ('+crownTxt()+')',x=>(x.acr||0)>=crownAcr()], tagged:['Already tagged by the Ensemble',x=>(x.ai_tags||[]).length>0],
   untagged:['Not tagged yet',x=>!(x.ai_tags||[]).length] };
 /* FP suppression + egress allowlist persist in this browser */
 function fpLoad(){ try{return JSON.parse(localStorage.getItem('aiFP')||'{}');}catch(e){return {};} }
@@ -209,7 +209,7 @@ function renderMetrics(){
             {v:N(m.atlas_techniques), l:'MITRE ATLAS techniques implied', u:`across ${N(m.atlas_tactics)} tactics · ${N(DATA.mitreCount)} assets ATT&CK-tagged`, sev:'info', href:'#secAtlas'}]},
     {title:'Governance',
      hero:{v:N(m.underrated), l:'below the suggested ACR', u:`of ${N(m.acr_rated)} rated · fix in ACR alignment`, sev:'high', filter:'f:under'},
-     chips:[{v:N(m.crown), l:'AI crown jewels', u:'ACR ≥ 7', sev:'crit', filter:'f:crown'},
+     chips:[{v:N(m.crown), l:'AI crown jewels', u:crownTxt(m.crown_acr), sev:'crit', filter:'f:crown'},
             {v:m.acr_median!=null?String(m.acr_median):'—', l:'median ACR of AI assets', zero:false},
             {v:N((DATA.asset_count||0)-(m.tagged||0)), l:'not tagged yet', u:'tag by role or all at once', filter:'f:untagged'}]}
   ], {active, onFilter:(f,_el,on)=>{

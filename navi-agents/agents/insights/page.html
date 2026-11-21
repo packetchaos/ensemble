@@ -293,7 +293,7 @@ function boardHtml(){
       :ph('The Exposure Score snapshot isn\'t in this release, so there is no fused score to show','fused_score'))+
   sec('secWhere','Where it concentrates','🧭','Where is it concentrated?','Across specialists (how much of the estate each one lights up) and on assets (the worst hosts and which specialists fire on them).',
     `<div class="g2"><div class="panel"><h3 class="ct">Footprint by specialist</h3><p class="ctsub">bar = assets the specialist flags, of ${fmt(T)} · solid = crown jewels among them (each by its specialist's own ACR rule)</p><div class="fp" id="fp"></div></div>
-     <div class="panel"><h3 class="ct">The worst assets — who's barking</h3><p class="ctsub">fused score, and each specialist's points on that host · 👑 = crown jewel (ACR ≥ 9) · click a host → Asset Dossier</p><div class="scroll" id="mx"></div></div></div>`)+
+     <div class="panel"><h3 class="ct">The worst assets — who's barking</h3><p class="ctsub">fused score, and each specialist's points on that host · 👑 = crown jewel (${crownTxt()}) · click a host → Asset Dossier</p><div class="scroll" id="mx"></div></div></div>`)+
   sec('secConverge','Converging','🔗','What\'s converging across specialists?','One specialist is a finding. Several on the same asset is a story. These are the overlaps no single specialist can see.',
     `<div class="g2"><div class="panel"><h3 class="ct">Signal stack</h3><p class="ctsub">assets by how many specialists fire on them · click → Exposure Score</p><div id="hist"></div></div>
      <div class="panel"><h3 class="ct">Overlap map</h3><p class="ctsub" id="cobasis"></p><div class="scroll" id="cowrap"></div></div></div>

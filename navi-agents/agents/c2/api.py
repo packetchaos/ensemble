@@ -7,6 +7,7 @@ workflow — Linux-only host discovery, the destructive-command force step, arme
 canary-first batches with an abort switch, and vuln→host patch derivation.
 """
 import base64
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 import hashlib
 import json
 import os
@@ -90,7 +91,7 @@ def _hosts_raw(db_path=None):
         out.append({"uuid": r.get("uuid"), "ip": (r.get("ip") or "").strip(),
                     "hostname": r.get("hostname") or "", "os": r.get("os") or "",
                     "os_class": _classify_os(r.get("os")), "acr": acrn,
-                    "crown": (acrn is not None and acrn >= 9)})
+                    "crown": _crown.is_crown(acrn)})
     return out
 
 
@@ -156,7 +157,7 @@ def _host(r):
     return {"uuid": r.get("uuid"), "ip": (r.get("ip") or "").strip(),
             "hostname": r.get("hostname") or "", "os": r.get("os") or "",
             "os_class": _classify_os(r.get("os")), "acr": acrn,
-            "crown": (acrn is not None and acrn >= 9)}
+            "crown": _crown.is_crown(acrn)}
 
 
 def _os_stats(db_path=None):

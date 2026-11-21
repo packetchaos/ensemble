@@ -32,6 +32,7 @@ ingestion check → verdicts. Runs, scans, verdicts and an append-only, hash-cha
 live in tag_jobs.db (beside the Tagging / ACR / C2 logs).
 """
 import ast
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 import datetime
 import hashlib
 import ipaddress
@@ -231,7 +232,7 @@ def _acr(v):
 def _info(r, ip, host):
     a = _acr(r.get("acr"))
     return {"ip": ip or "", "host": host or "", "agent": bool(r.get("agent_uuid")), "acr": a,
-            "crown": a is not None and a >= 9}
+            "crown": _crown.is_crown(a)}
 
 
 def public_targets(targets):

@@ -52,7 +52,7 @@
     <div class="toolbar"><div><div class="acode">Fenrir</div><h2 style="margin:0"><img class="bicon" src="/static/icons/attackpath.png?v=1" alt="" aria-hidden="true" draggable="false"> Attack Paths</h2>
       <p class="sub" style="margin:2px 0 0">Fenrir shows how the weaknesses Tenable already found <b>chain together</b> to reach your crown jewels: remotely exploitable vulnerabilities, local privilege escalation, credentials shared across hosts, NTLM relay, domain-controller flaws, and <b>failed compliance controls</b> (LAPS, SMB signing, LLMNR, WDigest, sudo…) that make each step easier. Then it finds the <b>fixes that break the most paths</b>. Everything comes from navi.db; reachability is <b>inferred</b> (no flow data), and every step shows its evidence. Tags <b>the assets</b> <span class="tagval">Attack Path : Entry Point | Pivot | Target | Choke Point</span>; writes are gated and tracked in the <a href="/web/tags-log.html">Tagging log</a>.</p></div>
       <span style="margin-left:auto;display:flex;gap:6px;align-items:center"><label class="sub" for="crownAcr">Crown jewels</label>
-        <select id="crownAcr" class="fld" style="padding:6px;border-radius:7px"><option value="5">ACR ≥ 5</option><option value="6">ACR ≥ 6</option><option value="7" selected>ACR ≥ 7</option><option value="8">ACR ≥ 8</option><option value="9">ACR ≥ 9</option><option value="10">ACR = 10</option></select>
+        <select id="crownAcr" class="fld" style="padding:6px;border-radius:7px" title="Default: the crown-jewel line from Settings → Crown jewels. The others are a what-if for this run only."><option value="" selected id="crownDef">Settings (ACR ≥ 8)</option><option value="5">ACR ≥ 5</option><option value="6">ACR ≥ 6</option><option value="7">ACR ≥ 7</option><option value="8">ACR ≥ 8</option><option value="9">ACR ≥ 9</option><option value="10">ACR = 10</option></select>
         <button class="btn run sm" id="run" data-run>▶ Run</button></span></div>
     <div id="flash" class="flash"></div>
   </section>
@@ -138,7 +138,8 @@ const FILTERS={ kev:['Uses a CISA KEV',p=>p.uses.kev], cred:['Uses account reuse
 async function run(){
   const b=document.getElementById('run'); b.disabled=true;
   flash('flash','<span class="spin"></span> building the attack graph from vulnerabilities, compliance results and identities…','run');
-  let o; try{ o=await API.post('run',{crown_acr:+document.getElementById('crownAcr').value}); }catch(e){ o={ok:false,error:e.message}; }
+  const _ca=document.getElementById('crownAcr').value;   // '' = the Settings line (core.crown)
+  let o; try{ o=await API.post('run',_ca?{crown_acr:+_ca}:{}); }catch(e){ o={ok:false,error:e.message}; }
   b.disabled=false;
   if(!o||!o.ok||!o.result){ flash('flash','✗ '+esc((o&&(o.error||o.message))||'failed'),'crit'); return; }
   R=o.result; FILTER=null; SCOPE='all'; HL=null; SEL=null;
@@ -473,5 +474,6 @@ hWidget('secMap',{title:'Attack map — attacker → crown jewels', visual:()=>d
 try{ hMailAuto(); }catch(e){}
 jget('/api/health').then(h=>{WRITES=!!h.writes_enabled;}).catch(()=>{});
 /* no auto-run — user clicks ▶ Run */
+try{ const _cd=document.getElementById('crownDef'); if(_cd) _cd.textContent='Settings ('+crownTxt()+')'; }catch(e){}
 </script>
 </body></html>

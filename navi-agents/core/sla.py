@@ -410,7 +410,7 @@ from core import qprofile as _qp
 _NORM = "julianday(substr(replace(replace(%s,'T',' '),'Z',''),1,19))"
 _QUOTED = _re.compile(r"'([^']*)'")
 DUE_WINDOWS = (7, 14, 30)
-CROWN_ACR = 7.0
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 TREND_MONTHS = 24
 OVERDUE_BUCKETS = ((30, "1–30 d over"), (90, "31–90 d over"), (180, "91–180 d over"),
                    (None, "> 180 d over"))
@@ -709,7 +709,7 @@ def compute(path=None, tag_key=None, tag_value=None, top=12, now_jd=None, rdy=No
                         pname[pid] = pn
                     p[4] += 1
                 ai = ainfo.get(au)
-                crown_hit = has_acr and ai is not None and ai[2] is not None and ai[2] >= CROWN_ACR
+                crown_hit = has_acr and ai is not None and ai[2] is not None and ai[2] >= _crown.threshold()
                 if crown_hit:
                     crown["open"] += 1
                     crown["assets"].add(au)
@@ -916,7 +916,7 @@ def compute(path=None, tag_key=None, tag_value=None, top=12, now_jd=None, rdy=No
                        "mttr_median": rnd1(_median(all_durs)), "excluded": excluded if EX else 0},
             "overdue_buckets": [{"label": lbl, "n": n} for (_, lbl), n in zip(OVERDUE_BUCKETS, over_b)],
             "oldest_breach": ob,
-            "crown": {"available": has_acr, "acr_min": CROWN_ACR, "assets": len(crown["assets"]),
+            "crown": {"available": has_acr, "acr_min": _crown.threshold(), "assets": len(crown["assets"]),
                       "open": crown["open"], "breached": crown["breached"],
                       "assets_breached": len(crown["assets_breached"]),
                       "by_sev": crown["by_sev"]},

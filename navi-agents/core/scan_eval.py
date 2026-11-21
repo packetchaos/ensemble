@@ -72,7 +72,7 @@ STATUS_ORDER = ["failed", "insufficient", "intermittent", "uncredentialed", "ok"
 FRESH_BUCKETS = [("0-7", 0, 7), ("8-30", 8, 30), ("31-90", 31, 90), ("90+", 91, 10 ** 6)]
 SLOW_SEC = 3600            # an asset scan over an hour is "slow"
 FEED_LAG_DAYS = 7          # scanner feed this far behind the newest feed seen = outdated
-CROWN_ACR = 7
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 ROW_CAP = 20000            # asset rows returned to the page (metrics + tags always use every asset)
 
 
@@ -249,7 +249,7 @@ def evaluate(db_path=None, keep_uuids=False, all_rows=False, scope=None):
             "scanner": rec.get("scanner") or "", "policy": rec.get("policy") or "", "scan": rec.get("scan") or "",
             "type": ("Agent" if rec.get("agent") else ("Network" if rec else "")),
             "dur": round(rec["dur"], 1) if rec.get("dur") is not None else None,
-            "crown": acr is not None and acr >= CROWN_ACR})
+            "crown": _crown.is_crown(acr)})
     assets.sort(key=lambda x: (STATUS_ORDER.index(x["status"]), -(x["acr"] or 0), x["host"]))
 
     def ids(pred):

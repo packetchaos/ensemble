@@ -112,7 +112,7 @@ for s in R["transport"]["signals"]:
     hand = {r[0] for r in c.execute(sig["sql"]) if r[0]} & TAG
     check(set(s["uuids"]) == hand, f"signal '{s['key']}': {len(hand)} tagged asset(s)")
 check({r["uuid"] for r in R["roadmap"]["rows"]} == exposed_all & TAG, "roadmap rows = the estate's rows ∩ tag")
-check(m["crown"] == sum(1 for r in est_road["rows"] if r["uuid"] in TAG and r["acr"] >= 7), "crown jewels counted over the tag")
+check(m["crown"] == sum(1 for r in est_road["rows"] if r["uuid"] in TAG and r["acr"] >= __import__("core.crown", fromlist=["x"]).threshold()), "crown jewels counted over the tag")
 check(m["exposed_pct"] == (round(100.0 * R["assets"] / m["assets_total"], 1) if m["assets_total"] else None),
       "exposed % is of the tag's assets")
 
@@ -182,7 +182,7 @@ try:
                            "uuids": [outsider, "evil"], "select": {"kind": "roadmap"}})
     check(o["ok"] and TAGGED[-1][2] == exposed_all & TAG and outsider not in TAGGED[-1][2] and o["scope"],
           "tag shown (no filter): the tag's roadmap, browser UUIDs ignored")
-    for f, fn in (("crown", lambda p: p["acr"] >= 7), ("cert", lambda p: p["brokenCerts"] > 0),
+    for f, fn in (("crown", lambda p: p["acr"] >= __import__("core.crown", fromlist=["x"]).threshold()), ("cert", lambda p: p["brokenCerts"] > 0),
                   ("legacy", lambda p: p["agility"] == "Legacy"), ("kev", lambda p: p["kev"]),
                   ("kex", lambda p: p["uuid"] in set(m["kex_uuids"]))):
         want = {p["uuid"] for p in road if fn(p)}

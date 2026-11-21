@@ -24,6 +24,7 @@ the Ensemble recorded (ACR log) or an asset someone protected with NO : UPDATE; 
 is reported as "no recorded change" — Tenable-calculated as far as navi can tell.
 """
 import os
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 
 from . import db
 
@@ -310,7 +311,10 @@ def _compute(path=None) -> dict:
                            "pct": _pct(aes_b[k], total)} for k, l, a, b in AES_BANDS],
                 "top": top, "bottom": bottom},
         # the two calibration questions a VM lead asks first
-        "crown_exposed": acr_b["critical"]["aes"]["high"],            # ACR 9–10 AND AES High → fix first
+        # build 527: crown jewels = core.crown (ACR ≥ the Settings line, default 8) — not the 9–10 band
+        "crown_acr": _crown.threshold(),
+        "crown": sum(by_val[v] for v in range(_crown.threshold(), 11)),
+        "crown_exposed": sum(vd[v]["aes"]["high"] for v in range(_crown.threshold(), 11)),   # crown AND AES High
         "low_but_exposed": acr_b["low"]["aes"]["high"],               # ACR 1–3 AND AES High → rated right?
         "changed": dict(ch, default=max(0, with_acr - ch["either"]),
                         changed_pct=_pct(ch["either"], with_acr), default_pct=_pct(max(0, with_acr - ch["either"]), with_acr)),

@@ -110,6 +110,8 @@ def _db_sig():
             out.append((st.st_size, st.st_mtime_ns))
         except (OSError, TypeError):
             out.append(None)
+    from core import crown                   # build 527: a new crown-jewel line drops every cached answer
+    out.append(crown.sig())
     return tuple(out)
 
 

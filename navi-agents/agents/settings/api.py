@@ -13,38 +13,38 @@ Four jobs:
 import os
 import urllib.parse
 
-from core import cli_jobs, config_store, db, downloads, gates, hx_optimize, llm, navi_cli, security, tagname
+from core import cli_jobs, config_store, crown, db, downloads, gates, hx_optimize, llm, navi_cli, security, tagname
 
 # Environment variables surfaced on the page. secret=True → value is masked and never
 # echoed back; an empty submit for a secret means "leave unchanged" (don't wipe it).
 _ENV_FIELDS = [
     # ---- reasoning layer: BRING YOUR OWN MODEL (see BYO_MODEL.md) ----
-    {"key": "NAVI_LLM_PROVIDER", "label": "Model provider", "choices": list(llm.PROVIDERS),
+    {"key": "NAVI_LLM_PROVIDER", "group": "ai", "label": "Model provider", "choices": list(llm.PROVIDERS),
      "help": "Where the Ensemble's reasoning runs. anthropic = Claude API · openai = ANY "
              "/chat/completions endpoint (OpenAI, OpenRouter, vLLM, LM Studio, Groq…) · "
              "ollama = fully local, no key, nothing leaves the machine · bedrock = AWS "
              "Bedrock Converse (needs boto3). Blank = auto-detect from whichever key is set."},
-    {"key": "NAVI_LLM_MODEL", "label": "Model",
+    {"key": "NAVI_LLM_MODEL", "group": "ai", "label": "Model",
      "help": "Model id for the chosen provider — e.g. claude-haiku-4-5-20251001, gpt-4o-mini, "
              "llama3.1, qwen2.5:14b, anthropic.claude-3-5-haiku-20241022-v1:0. "
              "Blank = that provider's default."},
-    {"key": "NAVI_LLM_BASE_URL", "label": "Endpoint (base URL)", "guarded": True,   # prompts carry navi.db data
+    {"key": "NAVI_LLM_BASE_URL", "group": "ai", "label": "Endpoint (base URL)", "guarded": True,   # prompts carry navi.db data
      "help": "Override the endpoint. openai → include the version path "
              "(e.g. http://localhost:1234/v1). ollama → http://127.0.0.1:11434. "
              "Blank = the provider's default."},
-    {"key": "NAVI_LLM_API_KEY", "label": "Model API key", "secret": True,
+    {"key": "NAVI_LLM_API_KEY", "group": "ai", "label": "Model API key", "secret": True,
      "help": "Key for the chosen provider (ANTHROPIC_API_KEY / OPENAI_API_KEY still work). "
              "Ollama needs none; Bedrock uses your AWS credentials."},
-    {"key": "NAVI_LLM_MAX_TOKENS", "label": "Max output tokens", "num": True,
+    {"key": "NAVI_LLM_MAX_TOKENS", "group": "ai", "label": "Max output tokens", "num": True,
      "help": "Ceiling on reasoning output tokens for EVERY agent (default 8000). "
              "Lower it for small local models."},
-    {"key": "AWS_REGION", "label": "AWS region (Bedrock)",
+    {"key": "AWS_REGION", "group": "ai", "label": "AWS region (Bedrock)",
      "help": "Region for the Bedrock Converse API, e.g. us-east-1. Credentials come from the "
              "normal AWS chain (env, profile, SSO, instance/task role)."},
-    {"key": "ANTHROPIC_API_KEY", "label": "Anthropic API key (legacy)", "secret": True,
+    {"key": "ANTHROPIC_API_KEY", "group": "ai", "label": "Anthropic API key (legacy)", "secret": True,
      "help": "Still honoured when the provider is anthropic. Create at "
              "platform.claude.com/settings/keys (starts sk-ant-)."},
-    {"key": "ANTHROPIC_MODEL", "label": "Anthropic model (legacy)",
+    {"key": "ANTHROPIC_MODEL", "group": "ai", "label": "Anthropic model (legacy)",
      "help": "Back-compat alias for the model when provider=anthropic. NAVI_LLM_MODEL wins."},
     {"key": "NAVI_ALLOW_WRITES", "label": "Allow tag writes", "bool": True, "guarded": True,
      "help": "1 = Execute-tags / ACR writes actually run; 0 = gated (planned only)."},
@@ -78,10 +78,13 @@ _ENV_FIELDS = [
     {"key": tagname.ENV_PHRASE, "label": "Prefix phrase", "section": "testrun",
      "help": "Default Hounds. 1–24 letters, digits, spaces or _; the '-' separator is added "
              "for you. Reads recognise both the plain and the prefixed name."},
-    {"key": "NAVI_DB_PATH", "label": "navi.db path", "guarded": True,
+    {"key": crown.ENV, "label": "Crown-jewel ACR", "num": True, "section": "crown",
+     "help": "An asset with an ACR at or above this is a crown jewel — on EVERY page (default %d). "
+             "Whole numbers 1–10. Changing it rebuilds every cached result." % crown.DEFAULT},
+    {"key": "NAVI_DB_PATH", "group": "data", "label": "navi.db path", "guarded": True,
      "help": "Absolute path to navi's database (must be an existing SQLite file). Blank = the "
              "bundled sample. Changing it needs a local (loopback) browser and a confirmation."},
-    {"key": "NAVI_CWD", "label": "navi working dir", "env_only": True,
+    {"key": "NAVI_CWD", "group": "data", "label": "navi working dir", "env_only": True,
      "help": "Directory navi runs in (holds navi.db). Blank = auto-detected next to the db. "
              "Read-only here: set it in the environment / hounds.config.json and restart."},
 ]
@@ -186,6 +189,7 @@ def status(p):
             "usage": llm.usage(),
             "downloads": downloads.status(),
             "tag_prefix": tagname.status(),
+            "crown": crown.definition(),
             "config": config_store.info()}, 200
 
 
@@ -280,6 +284,12 @@ def set_env(p):
                     if not good:
                         invalid[k] = f"NAVI_DB_PATH {why}: {v}"
                         continue
+        if k == crown.ENV:
+            good, n, err = crown.valid(v)
+            if not good:
+                invalid[k] = err
+                continue
+            v = "" if n in (None, crown.DEFAULT) else str(n)      # the default = unset
         if k == "NAVI_ALERT_EMAIL" and v:
             norm, err = navi_cli.clean_recipients(v)
             if err:

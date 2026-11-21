@@ -9,7 +9,7 @@ A widget's SQL is ordinary read-only SQLite over navi.db plus these macros, expa
     $__open(alias)     open_finding: state open/reopened, severity not info  (vulns row)
     $__kev(alias)      kev finding: the plugin names a CISA KEV catalog CVE, or carries the KEV xref
     $__cred(alias)     credentialed_asset proof row (core/credstate's one definition)
-    $__crown(alias)    crown_jewel: ACR ≥ 9                                   (assets row)
+    $__crown(alias)    crown_jewel: ACR ≥ the Settings line (core.crown, default 8)  (assets row)
     $__certdate(col)   a certificate date ('Apr 03 16:07:23 2027 GMT' or ISO) → 'YYYY-MM-DD'
 
 The scope is boolean over the tags table — OR within a category, AND across categories, NOT for
@@ -28,7 +28,7 @@ import threading
 
 from core import credstate, db
 
-CROWN_ACR = 9                      # crown_jewel: ACR ≥ 9 (Ownership's line, the review's definition)
+from core import crown as _crown   # build 527: crown_jewel = ACR ≥ the Settings line (default 8), on every page
 MAX_TERMS = 12
 MAX_VALUES = 50
 MAX_LEN = 200
@@ -50,7 +50,7 @@ DEFS = {
                "Blind = scanned but not credentialed."},
     "crown_jewel": {
         "label": "Crown jewel",
-        "doc": f"An asset whose Asset Criticality Rating (ACR) is {CROWN_ACR} or higher."},
+        "doc": "An asset whose Asset Criticality Rating (ACR) is at or above the crown-jewel line in Settings (default 8)."},
     "route_assets": {
         "label": "Route × asset",
         "doc": "One row per exposure route and asset with an open, non-info finding of one of the route's "
@@ -163,7 +163,8 @@ def scope_count(scope, path=None) -> int | None:
 def fingerprint(path=None) -> str:
     """A short hash of navi.db's identity (path + mtime/size + hx fingerprint) — changes on every sync."""
     try:
-        return hashlib.sha1(str(credstate._fp(path)).encode()).hexdigest()[:16]
+        from core import crown               # build 527: the crown-jewel line is part of every widget's answer
+        return hashlib.sha1((str(credstate._fp(path)) + crown.sig()).encode()).hexdigest()[:16]
     except Exception:
         return ""
 
@@ -310,7 +311,7 @@ def _asset_facts(f, path):
     return (f"(SELECT _a.uuid AS asset_uuid, {host} AS host, {ip} AS ip, {osf} AS os_family, "
             f"COALESCE(NULLIF(_d1.v,''), NULLIF(_d2.v,''), CASE WHEN _d3.v IS NOT NULL AND _d3.v<>'' THEN "
             f"upper(substr(_d3.v,1,1))||substr(_d3.v,2) END, 'Unclassified') AS device_type, "
-            f"{acr} AS acr, CASE WHEN {acr} >= {CROWN_ACR} THEN 1 ELSE 0 END AS crown, "
+            f"{acr} AS acr, CASE WHEN {acr} >= {_crown.threshold()} THEN 1 ELSE 0 END AS crown, "
             f"CASE WHEN _ow.asset_uuid IS NULL THEN 0 ELSE 1 END AS has_owner_tag "
             f"FROM assets _a "
             f"LEFT JOIN (SELECT asset_uuid, MIN(tag_value) AS v FROM tags WHERE tag_key='Device Type' GROUP BY asset_uuid) _d1 "
@@ -381,7 +382,7 @@ def expand(sql, scope=None, path=None):
         if name == "crown":
             a = _alias(arg, name)
             use("crown_jewel")
-            return f"(CAST(COALESCE(NULLIF({a}acr,''),0) AS REAL) >= {CROWN_ACR})"
+            return _crown.sql(a + "acr")
         if name == "certdate":
             return _certdate(arg)
         if name == "tag":

@@ -509,10 +509,9 @@ _MAN = None
 FACTOR_AGENT = {"expl": "cisakev", "aes": "fused_score", "sev": "fused_score", "crit": "acr", "path": "attackpath",
                 "ident": "identity", "comp": "compliance", "was": "was", "eol": "eol", "exp": "iot_squad", "ai": "ai",
                 "cry": "certificate", "sla": "sla", "vol": "fused_score", "own": "asset_ownership", "mit": "mitre"}
-# Crown-jewel rules differ between hounds — every crown number is labelled with its owner's rule.
-CROWN_RULE = {"fused_score": "ACR ≥ 9", "asset_ownership": "ACR ≥ 9", "postquantum": "ACR ≥ 7", "ai": "ACR ≥ 7",
-              "certificate": "ACR > 7", "eol": "ACR > 7", "attackpath": "ACR ≥ 7", "scan_eval": "ACR ≥ 7",
-              "cisakev": "ACR > 7"}
+# Build 527: one crown-jewel rule for every hound (core.crown) — each crown number still shows it.
+CROWN_RULE = {a: "{CROWN}" for a in ("fused_score", "asset_ownership", "postquantum", "ai", "certificate",
+                                     "eol", "attackpath", "scan_eval", "cisakev")}   # build 527: ONE rule
 
 
 def _P(a, sec=""):
@@ -890,14 +889,14 @@ def scent_digest(db_path=None):
             {"v": None, "l": "% audit checks passing", "u": "no audit data in navi.db →", "href": _P("compliance"),
              "sev": None, "zero": True, "agent": "compliance"}]},
         {"group": "Where it concentrates", "cards": [
-            card("fused_score", fk.get("crown", 0), "crown jewels (ACR ≥ 9)", _EV("crown"), None, "🧾 the assets · Exposure Score →"),
+            card("fused_score", fk.get("crown", 0), "crown jewels ({CROWN})", _EV("crown"), None, "🧾 the assets · Exposure Score →"),
             card("eol", eolm.get("eol_assets", 0), "assets on EOL software", _EV("eol"), "warn", "🧾 the assets · Charon →"),
             card("certificate", cert.get("expired_assets", 0), "assets with expired certs",
                  _V("certificate", "view", "expired", "secCerts"), "warn", "🧾 the expired certs · Certania →"),
             card("postquantum", pq.get("exposed", 0), "quantum-vulnerable assets", _EV("pq"), None, "🧾 the assets · Heimdall →")]},
         {"group": "Converging", "cards": [
-            card("fused_score", fk.get("crown_kev", 0), "crown jewels (ACR ≥ 9) with KEV", _EV("crown_kev"), "crit", "🧾 the assets →"),
-            card("fused_score", fk.get("crown_blind", 0), "crown jewels (ACR ≥ 9) blind", _EV("crown_blind"), "crit", "🧾 the assets →"),
+            card("fused_score", fk.get("crown_kev", 0), "crown jewels ({CROWN}) with KEV", _EV("crown_kev"), "crit", "🧾 the assets →"),
+            card("fused_score", fk.get("crown_blind", 0), "crown jewels ({CROWN}) blind", _EV("crown_blind"), "crit", "🧾 the assets →"),
             card("fused_score", lit4, "assets lit by ≥ 4 specialists", _EV("lit4"), "warn", "🧾 the assets →")]},
         {"group": "Blind spots", "cards": [
             # scanned without a credentialed login (core.credstate — the same set Chronos filters)
@@ -947,7 +946,7 @@ def scent_digest(db_path=None):
         footprint.append(fpr("ai", "AI workloads", ai_r.get("asset_count", 0), ai.get("crown"), "secAssets"))
     if have["cisakev"]:
         footprint.append(fpr("cisakev", "CISA KEV exploitable", kevs.get("kev_assets", 0),
-                             fk.get("crown_kev") if fk else None, "secCves", "ACR ≥ 9 (Exposure Score)"))
+                             fk.get("crown_kev") if fk else None, "secCves", "{CROWN} (Exposure Score)"))
     if have["iot_squad"]:
         footprint.append(fpr("iot_squad", "IoT / OT devices", iot_n, None, ""))
     if have["mitre"]:
@@ -955,7 +954,7 @@ def scent_digest(db_path=None):
     if have["attackpath"]:
         footprint.append(fpr("attackpath", "Crown jewels reachable", apm.get("crown_reachable", 0),
                              apm.get("crown_reachable", 0), "secPaths",
-                             "ACR ≥ %g" % float(ap_r.get("crown_acr") or 7)))
+                             "ACR ≥ %g" % float(ap_r.get("crown_acr") or 8)))
     if have["was"] and was.get("available") and was.get("apps"):
         footprint.append(fpr("was", "Web apps (WAS)", was.get("apps", 0), None, ""))
     quiet = [f["label"] for f in footprint if not f["n"]]          # hounds that flag nothing here
@@ -992,7 +991,7 @@ def scent_digest(db_path=None):
 
     def cv(text, n, sev, owner_sec, fix_agent, fix_sec, b="acr"):
         return {"text": text, "n": n, "sev": sev, "a": fix_agent, "b": b,
-                "rule": "ACR ≥ 9 · Exposure Score" if "rown" in text else "Exposure Score",
+                "rule": "{CROWN} · Exposure Score" if "rown" in text else "Exposure Score",
                 "href": _P("fused_score", owner_sec), "fix_href": _P(fix_agent, fix_sec)}
     convergence = [c for c in [
         cv("Crown jewels with a KEV-exploitable finding", fk.get("crown_kev", 0), "crit", "sec-act", "cisakev", "secCrown"),
@@ -1044,7 +1043,7 @@ def scent_digest(db_path=None):
                 "codename": _name(agent), "note": note if have.get(agent) else "not in this release"}
     tiles = [
         tile("Scans stale > 30 d", se.get("stale_30"), "scan_eval", "secAssets"),
-        tile("Crown jewels blind (ACR ≥ 7)", se.get("crown_blind"), "scan_eval", "secAssets"),
+        tile("Crown jewels blind ({CROWN})", se.get("crown_blind"), "scan_eval", "secAssets"),
         tile("Identity hosts uncredentialed", idm.get("blind"), "identity", "secCov"),
         tile("Shadow AI destinations", ai.get("shadow_dests"), "ai", "secEgress"),
         tile("Unnamed custom apps", capp.get("unnamed"), "customapp", "secCand"),
@@ -1066,7 +1065,7 @@ def scent_digest(db_path=None):
     nxt = []
     if fk:
         nxt.append(nx("fused_score", "Act on the critical set", act.get("n", 0), "assets ≥ 80",
-                      "%d crown jewels (ACR ≥ 9) with KEV · %d blind" % (act.get("crown_kev", 0), act.get("blind", 0)),
+                      "%d crown jewels ({CROWN}) with KEV · %d blind" % (act.get("crown_kev", 0), act.get("blind", 0)),
                       _P("fused_score", "sec-act"), "crit"))
     if have["attackpath"] and fix:
         nxt.append(nx("attackpath", "Break the attack path", fix.get("cuts", 0), "fix",
@@ -1080,7 +1079,7 @@ def scent_digest(db_path=None):
                       "%s — %s years past EOL" % (eolp.get("product", ""), eolp.get("years_past", "?")),
                       _P("eol", "secProd"), "warn"))
     if have["asset_ownership"]:
-        nxt.append(nx("asset_ownership", "Claim unowned crown jewels", own.get("crown_unclaimed", 0), "crown jewels (ACR ≥ 9)",
+        nxt.append(nx("asset_ownership", "Claim unowned crown jewels", own.get("crown_unclaimed", 0), "crown jewels ({CROWN})",
                       "%s%% of the estate is unclaimed" % own.get("unclaimed_pct", 0), _P("asset_ownership"), "warn"))
     if have["scan_eval"]:
         nxt.append(nx("scan_eval", "Fix failing scan credentials", g(se, "status", "failed", default=0), "assets",
@@ -1109,7 +1108,7 @@ def scent_digest(db_path=None):
         story += [{"t": "%s are KEV-exploitable" % format(kevs.get("kev_assets", 0), ","), "href": _P("cisakev", "secCves"),
                    "sev": "crit"}]
         if fk:
-            story += [{"t": ", and "}, {"t": "%s crown jewels (ACR ≥ 9)" % fk.get("crown_kev", 0),
+            story += [{"t": ", and "}, {"t": "%s crown jewels ({CROWN})" % fk.get("crown_kev", 0),
                                          "href": _P("fused_score", "sec-act"), "sev": "crit"}, {"t": " carry one. "}]
         else:
             story += [{"t": ". "}]

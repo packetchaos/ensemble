@@ -5,7 +5,7 @@ card opens has the card's count (as of now; the card is as of the last release):
 
   kev          CISA KEV — cisakev summary: an asset with a CISA-KNOWN-EXPLOITED finding
   score60      Nemesis — every asset scoring ≥ 60 (the whole estate, not the leaderboard's top rows)
-  crown        Nemesis — crown jewels (ACR ≥ 9)
+  crown        Nemesis — crown jewels ({CROWN})
   crown_kev    Nemesis — crown jewels with KEV
   crown_blind  Nemesis — crown jewels scanned without a credentialed login (core.credstate)
   lit4         Nemesis — assets lit by ≥ 4 hounds' signals
@@ -23,11 +23,11 @@ EVIDENCE = {
             "why": "assets with a finding CISA lists as known-exploited (CISA-KNOWN-EXPLOITED cross-reference)"},
     "score60": {"label": "Assets scored ≥ 60", "agent": "fused_score", "hound": "Exposure Score",
                 "why": "every asset whose fused exposure score is 60 or more — act on these first"},
-    "crown": {"label": "Crown jewels (ACR ≥ 9)", "agent": "fused_score", "hound": "Exposure Score",
-              "why": "assets with an Asset Criticality Rating of 9 or 10"},
-    "crown_kev": {"label": "Crown jewels (ACR ≥ 9) with KEV", "agent": "fused_score", "hound": "Exposure Score",
+    "crown": {"label": "Crown jewels ({CROWN})", "agent": "fused_score", "hound": "Exposure Score",
+              "why": "assets at or above the crown-jewel line in Settings ({CROWN})"},
+    "crown_kev": {"label": "Crown jewels ({CROWN}) with KEV", "agent": "fused_score", "hound": "Exposure Score",
                   "why": "crown jewels carrying a known-exploited (CISA KEV) finding"},
-    "crown_blind": {"label": "Crown jewels (ACR ≥ 9), blind", "agent": "fused_score", "hound": "Exposure Score",
+    "crown_blind": {"label": "Crown jewels ({CROWN}), blind", "agent": "fused_score", "hound": "Exposure Score",
                     "why": "crown jewels scanned without a credentialed login (19506 / 141118 / 110095) — risk you can't see"},
     "lit4": {"label": "Assets lit by ≥ 4 specialists", "agent": "fused_score", "hound": "Exposure Score",
              "why": "assets where four or more specialists' signals converge (KEV, crown, EOL, crypto, compliance, SLA, blind, unowned, AI, identity, path)"},

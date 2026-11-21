@@ -32,6 +32,7 @@ re-reads the tag's members from navi.db and drops anything outside it; `acr_role
 ACR by tag) is refused for a role whose AI ACR Raise tag holds an asset outside the scope.
 """
 from core import activity, ai_assets, navi_cli, db, hx_summary, payload, tagname, tagscope
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 from core.gates import confirmed
 
 AGENT = None
@@ -174,7 +175,7 @@ def _enrich(res, scope=(None, None)):
         "atlas_techniques": len(atlas), "atlas_tactics": len(set(atlas.values())),
         "underrated": sum(1 for x in assets if x["underrated"]),
         "acr_rated": len(rated), "acr_median": sorted(rated)[len(rated) // 2] if rated else None,
-        "crown": sum(1 for x in rated if x >= 7),
+        "crown": sum(1 for x in rated if x >= _crown.threshold()), "crown_acr": _crown.threshold(),
         "tagged": sum(1 for x in assets if x["ai_tags"]),
         # roles whose AI ACR Raise tag (or its test-run name) is in navi.db — enables "Set ACR"
         "roles_tagged": sorted({t.split(" : ", 1)[1] for x in assets for t in x["ai_tags"]
@@ -201,7 +202,7 @@ def _asset_flags(x):
          "unauth" if x.get("unauth") else None, "shadow" if x.get("shadow") else None,
          "kev" if rk.get("kev") else None, "crit" if rk.get("crit") else None, "eol" if rk.get("eol") else None,
          "mitre" if rk.get("mitre") else None, "under" if x.get("underrated") else None,
-         "crown" if (x.get("acr") or 0) >= 7 else None, "tagged" if x.get("ai_tags") else "untagged"]
+         "crown" if _crown.is_crown(x.get("acr")) else None, "tagged" if x.get("ai_tags") else "untagged"]
     for t in x.get("atlas") or []:
         f.append("tech:" + str(t.get("id")))
         f.append("tactic:" + str(t.get("tactic") or "Other"))

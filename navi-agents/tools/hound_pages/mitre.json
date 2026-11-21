@@ -32,7 +32,7 @@
   ],
   [
    "By tag",
-   "run over one tag's assets (an owner, a tier, an environment): the ATT&CK exposure, matrix, planned tags and ACR > 7 list cover only that tag, and tags written from that view land only on its assets. Switch between the whole estate and your last 5 tags without re-running."
+   "run over one tag's assets (an owner, a tier, an environment): the ATT&CK exposure, matrix, planned tags and crown-jewel list cover only that tag, and tags written from that view land only on its assets. Switch between the whole estate and your last 5 tags without re-running."
   ]
  ],
  "how": "MITRE ATT&CK Map reads CVEs from your local navi.db and joins the public mapping. Tags use `navi enrich tag --cve` — the CVE picks the assets — with the category fixed to Mitre, behind the write gate and a confirm.",

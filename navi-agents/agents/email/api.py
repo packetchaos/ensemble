@@ -20,6 +20,7 @@ Read-only composition, double-gated send:
                accountability ledger — who was notified, when).
 """
 import datetime
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 import re
 
 from core import brand, db, tagname
@@ -393,10 +394,11 @@ def _kev_message(domain, to):
     if n > 60:
         lines.append(f"… and {n-60} more.")
     # graphic: KEV assets by ACR band
-    band = {"Crown-jewel (9-10)": 0, "High (7-8)": 0, "Medium (4-6)": 0, "Low (1-3)": 0}
+    cj = "Crown jewel (%s)" % _crown.label()             # build 527: the Settings line, not a fixed 9
+    band = {cj: 0, "High (7+)": 0, "Medium (4-6)": 0, "Low (1-3)": 0}
     for u in kev:
         a = _flt(meta.get(u, {}).get("acr"))
-        band["Crown-jewel (9-10)" if a >= 9 else "High (7-8)" if a >= 7 else "Medium (4-6)" if a >= 4 else "Low (1-3)"] += 1
+        band[cj if _crown.is_crown(a) else "High (7+)" if a >= 7 else "Medium (4-6)" if a >= 4 else "Low (1-3)"] += 1
     kpairs = [(k, v) for k, v in band.items() if v]
     kct, kch = _chart_block(kpairs, "KEV assets by criticality (ACR)")
     if kct:

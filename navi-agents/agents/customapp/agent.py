@@ -191,7 +191,7 @@ class CustomAppAgent(Agent):
                            "paths": len(paths), "candidates": len(kept), "hidden": hidden}}
 
 
-CROWN_ACR = 7
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 
 
 def _nk(s):
@@ -210,7 +210,7 @@ def _route_plugins(db_path=None) -> dict:
 def _enrich(cands, tok_assets, db_path=None, scope=None) -> dict:
     """Per-candidate visibility: the assets it sits on (paths: assets with that path token;
     routes: assets with any of the route's plugins — one linear scan, no LIKE joins), how
-    many are crown jewels (ACR ≥ 7) or have no Owner tag at all, and whether the app is
+    many are crown jewels (core.crown — ACR ≥ the Settings line) or have no Owner tag at all, and whether the app is
     already named (a `Custom App` tag with that value). Mutates the candidates; returns the
     page metrics."""
     route_pl = {}
@@ -247,7 +247,7 @@ def _enrich(cands, tok_assets, db_path=None, scope=None) -> dict:
         "SELECT DISTINCT tag_value FROM tags WHERE " + tagname.sql_lit("tag_key", "Custom App") + ";", db_path)}
     all_assets, crown_assets, unowned_assets = set(), set(), set()
     for c, aset in zip(cands, asets):
-        cr = {a for a in aset if (acr.get(a) or 0) >= CROWN_ACR}
+        cr = {a for a in aset if (acr.get(a) or 0) >= _crown.threshold()}
         uo = aset - owned_assets
         c["assets"] = len(aset)
         c["crown"] = len(cr)

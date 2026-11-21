@@ -58,7 +58,7 @@ import re
 
 from core import db
 
-CROWN_ACR = 7
+from core import crown as _crown   # build 527: the default line is the one crown-jewel definition (Settings, default 8)
 MAX_FIX_CANDIDATES = 60
 MAX_ENTRIES = 60          # entry states searched individually (strongest first)
 PATHS_PER_TARGET = 5      # diverse routes per crown jewel
@@ -237,7 +237,7 @@ def _likelihood(f):
 
 
 # =========================================================================== load
-def _load(path=None, crown_acr=CROWN_ACR):
+def _load(path=None, crown_acr=None):
     acols = _cols("assets", path)
     sel = [c if c in acols else f"NULL AS {c}" for c in ("uuid", "hostname", "ip_address", "acr")] + \
         [c for c in ("operating_system", "fqdn", "url", "network") if c in acols]
@@ -617,7 +617,8 @@ def _path(prev, node, stop=None):
 
 
 # =========================================================================== analyze
-def analyze(db_path=None, crown_acr=CROWN_ACR, max_paths=200):
+def analyze(db_path=None, crown_acr=None, max_paths=200):
+    crown_acr = _crown.threshold() if crown_acr is None else crown_acr
     assets, _ = _load(db_path, crown_acr)
     shared = _accounts(assets, db_path)
     crown = [u for u, a in assets.items() if a["acr"] >= crown_acr]

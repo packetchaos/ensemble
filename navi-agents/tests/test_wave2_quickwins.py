@@ -324,7 +324,7 @@ check(json.dumps(cres[PLAIN], sort_keys=True, default=str) == json.dumps(cres[ID
 con = sqlite3.connect(PLAIN)
 tom = {r[0] for r in con.execute("SELECT DISTINCT asset_uuid FROM vulns WHERE plugin_id IN ('11001','19999')")}
 own = {r[0] for r in con.execute("SELECT asset_uuid FROM tags WHERE tag_key='Owner'")}
-crown = {r[0] for r in con.execute("SELECT uuid FROM assets WHERE acr<>'' AND CAST(acr AS REAL)>=7")}
+crown = {r[0] for r in con.execute("SELECT uuid FROM assets WHERE acr<>'' AND CAST(acr AS REAL)>=%d" % __import__("core.crown", fromlist=["x"]).threshold())}
 con.close()
 tc = next((x for x in cres[PLAIN]["candidates"] if x["name"] == "Apache Tomcat"), None)
 check(tc is not None and tc["assets"] == len(tom) and tc["unowned"] == len(tom - own) and tc["crown"] == len(tom & crown),

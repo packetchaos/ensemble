@@ -17,6 +17,7 @@ navi.db has never seen are WARNED about (shown in the confirm), not refused — 
 outside inventory is a feature the owner asked for.
 """
 import ipaddress
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 import json
 import re
 
@@ -175,7 +176,7 @@ def lookup(target, db_path=None):
         acr = None
     return {"uuid": r.get("uuid"), "ip": r.get("ip") or "", "hostname": r.get("hostname") or "",
             "os": r.get("os") or "", "os_class": c2api._classify_os(r.get("os")), "acr": acr,
-            "crown": acr is not None and acr >= 9}
+            "crown": _crown.is_crown(acr)}
 
 
 def expand(items, cap=CIDR_CAP, db_path=None) -> dict:

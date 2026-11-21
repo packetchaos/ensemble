@@ -56,7 +56,7 @@
 
   <section class="card" id="secProd" data-nav="EOL products" data-nav-icon="📦">
     <h2>End-of-life products on <span id="prodWhere">your assets</span> <span class="sub" id="prodCount"></span></h2>
-    <p class="sub">Every EOL product navi.db sees<span id="prodScope"></span>, longest out of support first. <b>Crown</b> = assets with ACR &gt; 7. <b>KEV</b> = assets that also carry a CISA Known Exploited Vulnerability. <b>Critical</b> = assets with at least one critical finding.</p>
+    <p class="sub">Every EOL product navi.db sees<span id="prodScope"></span>, longest out of support first. <b>Crown</b> = crown jewels (<span data-crown-txt>ACR ≥ 8</span>, set in Settings). <b>KEV</b> = assets that also carry a CISA Known Exploited Vulnerability. <b>Critical</b> = assets with at least one critical finding.</p>
     <div class="toolbar"><span id="filt"></span></div>
     <table id="pTbl"><thead><tr><th>Product</th><th>Type</th><th>EOL date</th><th>Past EOL</th><th>Assets</th><th>Crown</th><th>KEV</th><th>Critical</th><th>Plugins</th></tr></thead><tbody></tbody></table>
   </section>
@@ -70,7 +70,7 @@
   </section>
 
   <section class="card" id="secCrown" data-nav="Crown jewels on EOL" data-nav-icon="👑">
-    <h2>Crown jewels on end-of-life software (ACR &gt; 7)<span id="crownScope"></span> <span class="sub" id="crownCount"></span></h2>
+    <h2>Crown jewels on end-of-life software (<span data-crown-txt>ACR ≥ 8</span>)<span id="crownScope"></span> <span class="sub" id="crownCount"></span></h2>
     <p class="sub">Your most critical assets running software that no longer gets security fixes, highest ACR first.</p>
     <table id="cTbl"><thead><tr><th>Host</th><th>ACR</th><th>EOL products</th><th>EOL OS</th><th>CISA KEV</th><th>Critical findings</th></tr></thead><tbody></tbody></table>
   </section>
@@ -117,7 +117,7 @@ function renderMetrics(){
      hero:{v:N(m.eol_assets), l:'assets on EOL software'+(tagScope()?' in this tag':''), u:(m.has_state?'open findings only':'')+(tagScope()?(m.has_state?' · ':'')+'of '+N((RES.scope||{}).assets)+' tagged '+tagScopeLabel():''), t:'distinct assets with at least one Unsupported / End-of-Life plugin finding', href:'#secProd'},
      chips:[{v:N(m.products), l:'EOL products', u:`${N(m.plugins)} plugin${m.plugins===1?'':'s'}`, href:'#secProd'},
             {v:N(m.findings), l:'EOL findings'},
-            {v:N(m.crown_assets), l:'crown jewels on EOL', u:'ACR > 7', sev:'crit', filter:'crown'}]},
+            {v:N(m.crown_assets), l:'crown jewels on EOL', u:crownTxt(), sev:'crit', filter:'crown'}]},
     {title:'Why it matters',
      hero:{v:N(m.kev_assets), l:'EOL assets with a CISA KEV', u:'known-exploited and unpatchable in place', sev:'crit', filter:'kev'},
      bar:[{label:'EOL operating system', value:m.os_assets||0, color:'var(--k-os)'},{label:'EOL applications only', value:m.app_assets||0, color:'var(--k-app)'}],
@@ -204,7 +204,7 @@ function renderCrown(){
   const cr=V.crown||[]; document.getElementById('crownCount').textContent=`(${N(cr.length)})`; setNavCount('secCrown', N(cr.length));
   hPaginate('cTbl', cr, a=>`<tr><td><a class="plink" href="/agents/argos/page.html?target=${encodeURIComponent(a.asset_uuid)}">${esc(a.host||a.asset_uuid)}</a></td><td><b style="color:var(--crit)">${esc(String(a.acr))}</b></td>`+
     `<td>${(a.products||[]).map(p=>`<span class="tagval">${esc(p)}</span>`).join(' ')}</td><td>${a.os?'<span class="kind os">EOL OS</span>':'—'}</td><td>${a.kev?'<b style="color:var(--crit)">yes</b>':'—'}</td><td>${N(a.critical)}</td></tr>`,
-    {cols:6, empty:'<tr><td colspan="6" class="sub">No crown-jewel (ACR &gt; 7) assets run end-of-life software.</td></tr>'});
+    {cols:6, empty:'<tr><td colspan="6" class="sub">No crown-jewel ('+esc(crownTxt())+') assets run end-of-life software.</td></tr>'});
 }
 
 function renderScopeText(){

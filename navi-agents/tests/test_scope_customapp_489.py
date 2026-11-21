@@ -32,6 +32,7 @@ os.environ.update({"NAVI_DB_PATH": DB, "NAVI_CACHE_DIR": os.path.join(TMP, "cach
                    "HOUNDS_CONFIG": os.path.join(TMP, "cfg.json"), "NAVI_TAGLOG_DB": os.path.join(TMP, "t.db"),
                    "CUSTOMAPP_IGNORE_PATH": os.path.join(TMP, "ignore.json")})
 os.environ.pop("NAVI_ALLOW_WRITES", None)
+os.environ["NAVI_CROWN_ACR"] = "7"   # build 527: the golden values were taken at the old ACR ≥ 7 crown line
 fails = []
 
 

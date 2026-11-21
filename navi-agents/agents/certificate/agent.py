@@ -18,7 +18,7 @@ import statistics
 from core import db, tagname
 from core.agents.base import Agent
 
-CROWN_ACR = 7
+from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
 _EC = re.compile(r"ecdsa|elliptic|\bec\b", re.I)
 _WEAK_SIG = re.compile(r"md5|sha-?1(?!\d)", re.I)
 
@@ -232,7 +232,7 @@ class CertificateAgent(Agent):
                     acr = float(r.get("acr") or 0)
                 except (TypeError, ValueError):
                     acr = 0.0
-                crown = acr > CROWN_ACR
+                crown = _crown.is_crown(acr)
                 iso = d.isoformat()
                 days_left = (d - today).days
                 status = "expired" if d < today else "failing"

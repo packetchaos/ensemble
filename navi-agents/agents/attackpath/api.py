@@ -18,10 +18,11 @@ VALUES = {"Entry Point", "Target", "Pivot", "Choke Point"}
 
 
 def run(p):
-    try:
-        acr = float(p.get("crown_acr") or 7)
+    from core import crown
+    try:   # build 527: no override → the one crown-jewel line from Settings (core.crown, default 8)
+        acr = float(p.get("crown_acr")) if p.get("crown_acr") not in (None, "") else float(crown.threshold())
     except (TypeError, ValueError):
-        acr = 7.0
+        acr = float(crown.threshold())
     acr = min(10.0, max(1.0, acr))
     res = AGENT.run(crown_acr=acr)
     runid = _publish(res)
