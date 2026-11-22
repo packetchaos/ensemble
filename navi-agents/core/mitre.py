@@ -11,6 +11,7 @@ this module fetches the CSV and builds the plan (+ metrics and the ATT&CK view).
 Default scope is the CVEs actually present in navi.db (bounded, MCP/CLI-friendly).
 The full mapping is thousands of CVEs — per the skill that's a CLI bulk job.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import csv
 import io
 import json
@@ -19,7 +20,7 @@ import re
 import urllib.request
 
 from core import db, downloads, tagscope
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 
 CSV_URL = ("https://raw.githubusercontent.com/center-for-threat-informed-defense/"
            "attack_to_cve/master/Att%26ckToCveMappings.csv")
@@ -184,8 +185,8 @@ def cve_assets(db_path=None, only=None, tag_key=None, tag_value=None) -> dict:
     if _hx(db_path):
         try:
             return _hx_cve_assets(db_path, None if only is None else set(only), tag_key, tag_value)
-        except Exception:
-            pass                                    # fall back to the row scan below
+        except Exception as _e:
+            _swallowed(_e)                                    # fall back to the row scan below
     try:
         for row in db.query("SELECT asset_uuid, cves FROM vulns WHERE TRIM(COALESCE(cves,''))<>''" + frag,
                             tuple(fargs), path=db_path):
@@ -194,8 +195,8 @@ def cve_assets(db_path=None, only=None, tag_key=None, tag_value=None) -> dict:
                 if only is not None and c not in only:
                     continue
                 out.setdefault(c, set()).add(row.get("asset_uuid"))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return out
 
 
@@ -205,14 +206,14 @@ def navi_cves(db_path=None) -> set:
     if _hx(db_path):
         try:
             return set().union(*_hx_plugin_cves(db_path).values())
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     try:
         for row in db.query("SELECT cves FROM vulns WHERE TRIM(COALESCE(cves,''))<>''", path=db_path):
             for c in _CVE.findall(row.get("cves") or ""):
                 out.add(c.upper())
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return out
 
 
@@ -263,8 +264,8 @@ def build_plan(db_path=None, scope: str = "navidb", url: str = CSV_URL,
                 "host": (r.get("hostname") or "").strip() or r.get("ip_address", ""),
                 "ip": r.get("ip_address"), "acr": r.get("acr"), "cves": set()})
             a["cves"].update(ms)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     high_acr = [{**a, "cves": sorted(a["cves"])} for a in high.values()]
     high_acr.sort(key=lambda x: -(float(x["acr"]) if x["acr"] else 0))
 

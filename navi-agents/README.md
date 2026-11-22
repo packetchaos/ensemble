@@ -44,10 +44,11 @@ gives you a **blank page**, because the browser can't load the app's `/static`
 assets or reach the `/api` backend. Always use `http://localhost:8000`.
 
 `run.py` needs nothing but **Python 3.10+**. It builds a sample dataset on first
-run, uses FastAPI/uvicorn if they're installed, else Flask, and otherwise falls back to a
-zero-dependency stdlib server.
+run and starts the zero-dependency stdlib server — the reference server, whatever is installed
+(build 529). `python3 run.py fastapi` / `flask` remain opt-in alternatives behind the same
+security policy.
 
-The header shows the version, e.g. **v2.44.528** — `MAJOR.<specialists>.<build>`, where the middle
+The header shows the version, e.g. **v2.44.529** — `MAJOR.<specialists>.<build>`, where the middle
 number is the count of specialists the server discovered (`core/version.py`).
 
 **Point at your real tenant** (live data + tagging):
@@ -104,7 +105,7 @@ shows where its current value came from.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `NAVI_ALLOW_WRITES` | `0` | Master gate for **all** writes (tag / ACR / remove / email / push). Must be truthy **and** each action passes `confirm`. (Or drop an empty `ALLOW_WRITES` file in the repo root.) `NAVI_MCP_ALLOW_WRITES` is honoured as an alias. |
+| `NAVI_ALLOW_WRITES` | `0` | Master gate for **all** writes (tag / ACR / remove / email / push). Must be truthy **and** each action passes `confirm`. (Or drop an empty `ALLOW_WRITES` file in the repo root — yours, `chmod 600`; build 529 ignores one owned by another user or group/world-writable.) `NAVI_MCP_ALLOW_WRITES` is honoured as an alias. |
 | `NAVI_EMAIL` | `0` | **Separate** opt-in required by Notify & Report / Alerts on top of writes — enables `navi action mail`. (Or an empty `ALLOW_EMAIL` file.) Aliases: `NAVI_MCP_ALLOW_EMAIL`, `NAVI_MAIL`. SMTP must also be set out-of-band via `navi config smtp`. |
 | `NAVI_REMOTE_CODE_EXECUTION` | `0` | **Separate** opt-in required by Remote Remediation on top of writes — enables `navi action push` (SSH RCE) to a single Linux host. (Or an empty `ALLOW_REMOTE_EXEC` file.) Aliases: `NAVI_MCP_ALLOW_REMOTE_CODE_EXECUTION`, `NAVI_RCE`. The highest-risk gate in the console. |
 | `NAVI_ALERT_EMAIL` | — | Recipient for Alerts / Automation Station's per-cycle change email. Falls back to `NAVI_EMAIL_TO`. |
@@ -323,7 +324,7 @@ box that turns a plain-English question into one read-only SQL query on that tab
 
 ```
 .
-├── run.py                  cross-platform launcher (stdlib, or FastAPI/Flask if installed)
+├── run.py                  cross-platform launcher (stdlib by default; FastAPI/Flask on request)
 ├── app_stdlib.py           zero-dependency server
 ├── app_fastapi.py          uvicorn server         (optional)
 ├── app_flask.py            flask server           (optional)
@@ -380,6 +381,7 @@ server (stdlib, Flask, FastAPI) applies to every request:
 | **Bind address** | `127.0.0.1` — only this machine can connect | `HOUNDS_BIND=0.0.0.0` (or a specific IP) opts in to LAN access; startup prints a loud warning |
 | **Host allowlist** (every request, GET too) | `localhost`, `127.0.0.1`, `[::1]` on any port; anything else → `403`. This is what defeats DNS rebinding | `HOUNDS_ALLOWED_HOSTS=hounds.lan,10.0.0.5` adds names/IPs. With a non-loopback `HOUNDS_BIND` the bound IP and this machine's hostname/IPs are added |
 | **Access token** | not needed on loopback | With a non-loopback bind every `/api` call needs this launch's token. It is printed **once**, in the startup URL (`http://host:port/?token=…`); opening that URL swaps it for an `HttpOnly; SameSite=Strict` cookie. Scripts send `X-Hounds-Token: <token>`. A new token is generated on every start. `HOUNDS_REQUIRE_TOKEN=1` demands it on loopback too (shared jump boxes, where other local users can reach 127.0.0.1) |
+| **Remote writes** (build 529) | every action that changes something outside the console — Tenable tags / ACR, email, remote execution, scan launch / delete, armed Automation Station runs, any `confirm:true` payload — answers `403 remote_refused` unless the browser is on this machine. A LAN browser can still read, preview (dry runs), stop work and edit local app state | `HOUNDS_REMOTE_WRITES=1` in the environment (never from the browser) lets remote browsers through to the normal write gates |
 | **POST guard** | JSON `Content-Type` required; a present `Origin` must be same-origin with an allowed host; `Origin: null` and `Sec-Fetch-Site: cross-site` refused | — |
 | **Response headers** | `X-Frame-Options: SAMEORIGIN`, `Content-Security-Policy: frame-ancestors 'self'` (the console embeds its own pages, never anyone else's), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` | — |
 | **Static files** | only page assets (`.html .css .js .json .md .csv .txt .pdf`, images, fonts) under `/agents/`, `/web/`, `/static/` — never `.py` source, `__pycache__` or dotfiles | — |

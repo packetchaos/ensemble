@@ -139,7 +139,7 @@ def os_plan(p):
            for v, c in cohorts.items()]
     out.sort(key=lambda x: -x["count"])
     if p.get("_with_uuids") is not True:
-        # build 464: counts only — a cohort is tagged by KEY {plan:{…the same inputs…, value}}
+        # counts only — a cohort is tagged by KEY {plan:{…the same inputs…, value}}
         # and the server rebuilds its uuids (_plan_uuids); no uuid arrays reach the page
         out = [{k: v for k, v in c.items() if k != "uuids"} for c in out]
     return _scoped({"ok": True, "prompt": prompt, "threshold": thr, "families": sorted(fams),
@@ -319,7 +319,7 @@ def os_breakdown(p):
     only = (p or {}).get("all") is not True
     scope = _scope(p)
     res = _classify.os_breakdown(only_untagged=only, scope=scope) if scope else _classify.os_breakdown(only_untagged=only)
-    # build 464: counts only — no uuid arrays (138k uuids, twice, was 11 MB). A tag sends the
+    # counts only — no uuid arrays (138k uuids, twice, was 11 MB). A tag sends the
     # KEY {os:{family, version?, all?}} and the server rebuilds the exact set (_os_uuids).
     out = dict(res)
     out["families"] = [{**{k: v for k, v in f.items() if k != "uuids"},
@@ -379,7 +379,7 @@ def tag(p):
     else:
         kw = {"scope": scope} if scope else {}
         m = _topology.members(cls=p.get("cls"), sub=p.get("sub"), software=p.get("software"),
-                              version=p.get("version"), subnet=p.get("subnet"), cap=None, **kw)   # unbounded (build 464)
+                              version=p.get("version"), subnet=p.get("subnet"), cap=None, **kw)   # unbounded
         uuids = [a["uuid"] for a in m.get("assets", []) if a.get("uuid")]
     uuids = _in_scope(uuids, scope)
     if not uuids:

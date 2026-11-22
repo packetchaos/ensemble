@@ -17,7 +17,7 @@ navi.db has never seen are WARNED about (shown in the confirm), not refused — 
 outside inventory is a feature the owner asked for.
 """
 import ipaddress
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 import json
 import re
 

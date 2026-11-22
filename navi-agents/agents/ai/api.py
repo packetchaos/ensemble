@@ -31,8 +31,9 @@ drill / counts / the tag writes only accept a run of the SAME scope. Every scope
 re-reads the tag's members from navi.db and drops anything outside it; `acr_roles` (navi sets
 ACR by tag) is refused for a role whose AI ACR Raise tag holds an asset outside the scope.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 from core import activity, ai_assets, navi_cli, db, hx_summary, payload, tagname, tagscope
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 from core.gates import confirmed
 
 AGENT = None
@@ -49,12 +50,12 @@ def _agent():
 ATLAS_CATEGORY = "AI ATLAS"          # the only category tag_atlas writes
 ATLAS_TACTIC_PREFIX = "Tactic : "    # tactic-level values: AI ATLAS : Tactic : <tactic>
 AI_CATS = ("AI", "AI Role", "AI Exposed", "AI Priority", "AI Egress", "AI ATLAS", "AI Software", "AI ACR Raise")
-TAG_HOUND = "ai_tag"                 # result-store name of tag-view runs (build 489)
+TAG_HOUND = "ai_tag"                 # result-store name of tag-view runs
 TAG_RUNS_PER_SCOPE = payload.KEEP_RUNS
 GONE = "this run is no longer on the server — press ▶ Run again"
 
 
-# ── tag filter (build 489) ───────────────────────────────────────────────────────────────────
+# ── tag filter ───────────────────────────────────────────────────────────────────
 def _hound(k):
     """The result-store name a view's runs live under: the whole estate's stay "ai"."""
     return TAG_HOUND if k else "ai"
@@ -125,15 +126,15 @@ def _enrich(res, scope=(None, None)):
                     acr[r["uuid"]] = float(r.get("acr") or 0) or None
                 except (TypeError, ValueError):
                     pass
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         try:
             frag, args = tagname.sql_in("tag_key", *AI_CATS)     # + test-run names
             for r in db.query(f"SELECT asset_uuid, tag_key, tag_value FROM tags WHERE asset_uuid IN ({inl}) "
                               f"AND {frag}", args):
                 tags.setdefault(r["asset_uuid"], []).append(f"{r.get('tag_key')} : {r.get('tag_value')}")
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     fw = {}
     for x in assets:
         u = x["asset_uuid"]
@@ -281,8 +282,8 @@ def _publish(res, scope=(None, None)):
     if sk:
         try:
             _prune_tag_runs()
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     for d in dests.values():
         d["assets"] = len(d.pop("_u"))
     for d in tech.values():

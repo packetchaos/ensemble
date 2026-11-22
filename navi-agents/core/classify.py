@@ -14,6 +14,7 @@ Two distinct layers — the same split the IoT squad uses (detect → HITL tag �
    device signals) reframed as suggestions: "Windows Server 2022 — 40 assets [Tag]".
    You approve, it writes the scheme tags (gated), and classify() then reflects them.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import re
 
 from core import db, hx_summary, software as _sw, tagname, tagscope
@@ -46,11 +47,11 @@ _IOT_TYPES = [
     ("UPS / Power", ("apc ", "eaton ups", "vertiv", "tripp lite", "cyberpower")),
     ("VoIP", ("yealink", "polycom", "grandstream", "cisco ip phone", "sip phone")),
 ]
-# ---- Device Type vocabulary (build 473) — the options the page offers, and how a Device Type
+# ---- Device Type vocabulary — the options the page offers, and how a Device Type
 # tag maps to a class. (label, class, keywords matched in a tag value, lower-case). A Server /
 # Desktop / Laptop tag keeps the OS class when the asset also has an OS tag; otherwise it is
 # its own Server / Workstation class. Old values (e.g. "NAS", "VoIP") keep matching.
-# Build 499: the offered set is DEVICE_TYPE_LABELS below (PC / VDI / Server-on-prem / printer /
+# the offered set is DEVICE_TYPE_LABELS below (PC / VDI / Server-on-prem / printer /
 # camera + network gear). Every other label here is still RECOGNISED — existing tags keep their
 # class — but is no longer offered as a choice.
 DEVICE_TYPES = [
@@ -126,7 +127,7 @@ def device_type(value):
     return None
 
 
-# Build 500 — vendor / product → Device Type. The IoT Discovery Squad tags what it FOUND, which is
+# vendor / product → Device Type. The IoT Discovery Squad tags what it FOUND, which is
 # usually a vendor or product ("Device Type: Ubiquiti", "IoT: pfSense", "Device Type: Raspberry Pi
 # Foundation" from the network-card vendor) rather than a generic type, so without this every one
 # of those landed in Other. Groups mirror the Squad's built-in term pack (core.iot_common).
@@ -279,7 +280,7 @@ def os_confidence(db_path=None, scope=None):
     'macOS') via the same helpers the classifier uses; ``family`` collapses to Windows /
     Linux / macOS / Other. An asset can fingerprint on several ports — we keep the HIGHEST
     confidence reading per asset."""
-    frag, args = _scope_sql(scope, "asset_uuid")        # build 489: one tag's assets (per-asset values unchanged)
+    frag, args = _scope_sql(scope, "asset_uuid")        # one tag's assets (per-asset values unchanged)
     try:
         rows = db.query("SELECT asset_uuid, output FROM vulns WHERE plugin_id=? "
                         "AND output IS NOT NULL AND output!=''" + frag, (_OS_CONF_PLUGIN,) + tuple(args), path=db_path)
@@ -316,7 +317,7 @@ def os_confidence(db_path=None, scope=None):
 
 
 # tag categories that carry classification meaning
-# build 500: every key another agent (or a customer) writes that says WHAT an asset is —
+# every key another agent (or a customer) writes that says WHAT an asset is —
 #   Asset Inventory  'Class:'/'OS:'/'Device Type:'/'IoT:'/'OT:'/'Network:'/'Cloud:'/'Mobile:'/'Medical:'/'App:'
 #                    (Linnaeus, IoT Discovery Squad, Argos) — plus customer facets
 #   IoT              '<device or vendor>'   (IoT Squad cross-reference tagging)
@@ -471,7 +472,7 @@ def _tag_class(th):
         return ("OT", th["ot"], "tag: OT")
     if th.get("mobile"):
         return ("Mobile", th["mobile"], "tag: Mobile")
-    # IoT / Device Type: a generic type OR a vendor / product name (build 500) — the IoT Squad
+    # IoT / Device Type: a generic type OR a vendor / product name — the IoT Squad
     # tags what it found ('Ubiquiti', 'pfSense'), so a pfSense box is Network, not IoT or Other
     for facet, label in (("device type", "tag: Device Type"), ("iot", "tag: IoT")):
         dv = th.get(facet)
@@ -742,8 +743,8 @@ def _gather_signals(db_path, keep):
             m = _DEVTYPE_RE.search(r.get("output") or "")
             if m and r.get("asset_uuid"):
                 S["devtype"][r["asset_uuid"]] = m.group(1).lower()
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return S
 
 

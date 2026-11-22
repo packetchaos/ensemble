@@ -58,7 +58,7 @@ import re
 
 from core import db
 
-from core import crown as _crown   # build 527: the default line is the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the default line is the one crown-jewel definition (Settings, default 8)
 MAX_FIX_CANDIDATES = 60
 MAX_ENTRIES = 60          # entry states searched individually (strongest first)
 PATHS_PER_TARGET = 5      # diverse routes per crown jewel

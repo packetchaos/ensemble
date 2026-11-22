@@ -155,7 +155,7 @@ def _bulk_asset_apply(owner="", uuids=None, mode="complete"):
     queue's background worker (see apply()) so the HTTP request can return instantly
     and the user is free to leave the page. Each asset still cascades its routes &
     paths via engine.assign_asset_owner, which queues the individual navi tag writes."""
-    # build 464: unbounded — the cascade is computed in bulk and each tag value goes as ONE
+    # unbounded — the cascade is computed in bulk and each tag value goes as ONE
     # paged tag (≤1,999-UUID tag series), instead of one navi job per asset × route (which is
     # why this was capped at 2,000 assets)
     return engine.assign_assets_owner(uuids or [], owner, mode=mode)
@@ -201,7 +201,7 @@ def apply(p):
     sdesc = tagscope.describe(*scope) if scope else None
     if layer == "asset":
         from core import tagq
-        batch = uuids                    # unbounded (build 464): the job pages it
+        batch = uuids                    # unbounded: the job pages it
         job = tagq.submit(
             _bulk_asset_apply, {"owner": owner, "uuids": batch, "mode": mode},
             {"agent": "asset_ownership", "category": tagname.effective(engine.ASSET_OWNER_KEY),

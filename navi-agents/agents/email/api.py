@@ -19,8 +19,9 @@ Read-only composition, double-gated send:
                `navi action mail`, recording each send in the Tagging log (the
                accountability ledger — who was notified, when).
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import datetime
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 import re
 
 from core import brand, db, tagname
@@ -78,8 +79,8 @@ def _console_base():
             m = re.match(r"(https?://[^/]+/tio/app\.html)", u)
             if m:
                 return m.group(1)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return _DEFAULT_BASE
 
 
@@ -220,8 +221,8 @@ def _briefing_numbers():
             r = db.query(sql)
             if r:
                 return list(r[0].values())[0]
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         return default
     total = scalar("SELECT COUNT(DISTINCT uuid) FROM assets;")
     kev = len(_kev_uuids())
@@ -394,7 +395,7 @@ def _kev_message(domain, to):
     if n > 60:
         lines.append(f"… and {n-60} more.")
     # graphic: KEV assets by ACR band
-    cj = "Crown jewel (%s)" % _crown.label()             # build 527: the Settings line, not a fixed 9
+    cj = "Crown jewel (%s)" % _crown.label()             # the Settings line, not a fixed 9
     band = {cj: 0, "High (7+)": 0, "Medium (4-6)": 0, "Low (1-3)": 0}
     for u in kev:
         a = _flt(meta.get(u, {}).get("acr"))
@@ -501,7 +502,7 @@ _AGENT_SIGNALS = {
     "identity": ["83303", "10860", "41028", "10859", "149334", "17651", "104410", "110723"],
     "iot_squad": [],
 }
-# build 524: the names the console shows (core.brand — "Codename · Plain job" for a hero, the plain
+# the names the console shows (core.brand — "Codename · Plain job" for a hero, the plain
 # name otherwise), so an email names the specialist exactly as its page does
 _AGENT_HOUND = {aid: brand.display(aid) for aid in brand.ROSTER}
 
@@ -861,8 +862,8 @@ def _sev_counts(uuids):
             sn = _sev_name(r.get("severity"))
             if sn in out:
                 out[sn] += int(r.get("n") or 0)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return out
 
 
@@ -1082,8 +1083,8 @@ def send(p):
         if html_path:
             try:
                 os.unlink(html_path)
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
         ok = bool(r.get("ok"))
         sent += 1 if ok else 0
         failed += 0 if ok else 1
@@ -1150,12 +1151,12 @@ def graph(p):
             if pth:
                 try:
                     os.unlink(pth)
-                except Exception:
-                    pass
+                except Exception as _e:
+                    _swallowed(_e)
         try:
             os.rmdir(tmpdir)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return {"ok": bool(r.get("ok")), "message": r.get("message"), "to": to,
             "cmd": r.get("cmd"), "attached": f"{safe}.{ext}", **_gate()}, 200
 
@@ -1304,12 +1305,12 @@ def dashboard(p):
             if pth:
                 try:
                     os.unlink(pth)
-                except Exception:
-                    pass
+                except Exception as _e:
+                    _swallowed(_e)
         try:
             os.rmdir(tmpdir)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return {"ok": bool(r.get("ok")), "message": r.get("message"), "to": to, "attached": att_name,
             "pictures": len(pics), "components": len(comps), "cmd": r.get("cmd"), **_gate()}, 200
 
@@ -1443,12 +1444,12 @@ def widget(p):
             if pth:
                 try:
                     os.unlink(pth)
-                except Exception:
-                    pass
+                except Exception as _e:
+                    _swallowed(_e)
         try:
             os.rmdir(tmpdir)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return {"ok": bool(r.get("ok")), "message": r.get("message"), "to": to, "cmd": r.get("cmd"),
             "attached": att_name, "rows": n, "rows_inline": len(inline), **_gate()}, 200
 
@@ -1529,13 +1530,13 @@ def data(p):
             if pth:
                 try:
                     os.unlink(pth)
-                except Exception:
-                    pass
+                except Exception as _e:
+                    _swallowed(_e)
         if tmpdir:
             try:
                 os.rmdir(tmpdir)
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
     return {"ok": bool(r.get("ok")), "message": r.get("message"), "to": to, "rows": n,
             "mode": mode, "attached": attached, "cmd": r.get("cmd"), **_gate()}, 200
 

@@ -186,7 +186,7 @@ PRESETS = [
        value_col="certs"),
 ]
 
-# ── Ownership analytics (build 511): the hard joins (routes × tags × device type) on the
+# ── Ownership analytics: the hard joins (routes × tags × device type) on the
 # semantic tables $__route_assets() / $__path_assets() / $__asset_facts() — also the worked
 # examples the ✨ Ask AI prompt learns from (core/dashai) ───────────────────────────────────
 _RD = ("WITH rd AS (SELECT af.device_type AS dt, ra.route, MIN(ra.owned) AS all_owned FROM $__route_assets() ra "
@@ -277,7 +277,7 @@ def _manifest_widgets():
                  "source": {"kind": "specialist", "agent": aid, "name": m.get("name", aid),
                             "page": f"/agents/{aid}/page.html"}}
             if isinstance(w.get("snapshot"), dict):
-                # build 510: a number read from the specialist's own last run (its page cache) —
+                # a number read from the specialist's own last run (its page cache) —
                 # the specialist's logic, not a re-implementation in SQL
                 d["snapshot"] = {"call": str(w["snapshot"].get("call") or "run"),
                                  "path": w["snapshot"].get("path"), "paths": w["snapshot"].get("paths"),
@@ -312,7 +312,7 @@ def builtin():
     for d in specialists():
         out[d["ref"]] = d
     out[TEXT["ref"]] = TEXT
-    from core import crown                      # build 527: titles / notes carry the live crown-jewel line
+    from core import crown                      # titles / notes carry the live crown-jewel line
     return crown.fill(out)
 
 

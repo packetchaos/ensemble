@@ -16,6 +16,7 @@ still works exactly as before off the in-memory list — persistence just degrad
 to session-only. Job IDs come from the DB (AUTOINCREMENT) so they never collide
 across processes; if the DB is unavailable we fall back to an in-process counter.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import itertools
 import json
 import os
@@ -69,7 +70,7 @@ def _db_init():
             con.execute("CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, val TEXT)")
             # business case (human-readable ACR Change Reasons + note) — added in build 442; an
             # older tag_jobs.db gains the column in place (existing rows read as '').
-            # output: tail of navi's own output (build 450); series/page/pages/assets: a paged
+            # output: tail of navi's own output; series/page/pages/assets: a paged
             # "tag series" (build 453 — one job per ≤1,999-asset page of one tag)
             for col in ("business_case", "output", "series", "page", "pages", "assets"):
                 try:
@@ -90,8 +91,8 @@ def _db_init():
         d = _meta_get("desired_workers")
         if d is not None:
             _DESIRED = max(1, min(32, int(d)))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def _dbexec(sql, params=(), want=None):
@@ -141,8 +142,8 @@ def _output_tail(res, n=3000):
     try:
         from core import redact
         t = redact.text(t)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return t[-n:]
 
 
@@ -212,8 +213,8 @@ def _synced_desired():
     if d is not None:
         try:
             return max(1, min(32, int(d)))
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return _DESIRED
 
 
@@ -229,8 +230,8 @@ def _ensure_workers():
     if d is not None:
         try:
             _DESIRED = max(1, min(32, int(d)))
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     with _WLOCK:
         _WORKERS[:] = [t for t in _WORKERS if t.is_alive()]
         while len(_WORKERS) < _DESIRED:
@@ -245,8 +246,8 @@ def set_workers(n) -> int:
     global _DESIRED
     try:
         _DESIRED = max(1, min(32, int(n)))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     _meta_set("desired_workers", _DESIRED)   # persist + share across processes/restarts
     _ensure_workers()
     return _DESIRED
@@ -337,7 +338,7 @@ def submit(fn, kwargs, meta=None) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Tag SERIES (build 453): one tag over a large asset set = one job per page of
+# Tag SERIES: one tag over a large asset set = one job per page of
 # ≤ 1,999 assets, sharing a series id. Pages run ONE AT A TIME (the next page is
 # queued only when the previous one finished, after an optional pause), each with
 # its own navi output; a failed page can be retried alone; cancel stops the rest.

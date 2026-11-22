@@ -7,6 +7,7 @@
           tag-by-CVE selector (navi enrich tag --cve), exactly as the navi skill
           recipe prescribes — the CVE picks the assets, the tag lands on them.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 from core import downloads, mitre, navi_cli, tagscope
 from core.gates import confirmed
 try:
@@ -32,8 +33,8 @@ def source(p):
                 "Assess whether it is an official/trustworthy source, what it contains, and any caution "
                 "before approving the download.")
             llm_used = True
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return {"ok": True, "url": mitre.CSV_URL, "assessment": note,
             "llm_used": llm_used, "llm_available": bool(llm and llm.available()),
             "source_id": mitre.SOURCE_ID, "auto_approved": downloads.auto_approve()}, 200
@@ -59,7 +60,7 @@ def run(p):
     # the Contract's discovery runs this with {} and must not wipe it
     if "csv_text" in p or "approved" in p:
         _LAST["csv"] = csv_text or ""
-    tk, tv = tagscope.parse(p)          # build 489: (None, None) = the whole estate, as before
+    tk, tv = tagscope.parse(p)          # (None, None) = the whole estate, as before
     try:
         if tk:
             res = mitre.build_plan(scope=scope, csv_text=csv_text, allow_live=live, tag_key=tk, tag_value=tv)

@@ -200,7 +200,7 @@ def applied(p):
     """Applied tags straight from navi.db's `tags` table — the source of truth for
     'applied' status (so agent pages don't rely on a local cache)."""
     try:
-        # DISTINCT (build 464): the page only asks "is category:value applied?" — one row per
+        # DISTINCT: the page only asks "is category:value applied?" — one row per
         # tag, not one per asset × tag (100k assets × a dozen tags was a 30 MB answer on every
         # page open). SQLite de-duplicates in the engine; nothing per-asset leaves the server.
         rows = db.query("SELECT DISTINCT tag_key, tag_value FROM tags WHERE tag_value IS NOT NULL;")
@@ -504,7 +504,7 @@ def tag_export(p):
         import io as _io
         from core import exports
         hdr = ["agent", "category", "value", "selector", "detail", "op", "status", "business_case"]
-        # build 525: EVERY job in the log (the page view keeps the newest 2,000; the export doesn't)
+        # EVERY job in the log (the page view keeps the newest 2,000; the export doesn't)
         all_rows = [[j.get("agent", ""), j.get("category", ""), j.get("value", ""), j.get("selector", ""),
                      j.get("detail", ""), j.get("op", ""), j.get("status", ""), j.get("business_case", "")]
                     for j in tagq.list_jobs(limit=-1) if not (which == "done" and j.get("status") != "done")]

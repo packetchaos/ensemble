@@ -11,6 +11,14 @@
   },
   "history": [
     {
+      "ts": "2026-11-21T19:01:47Z",
+      "source": "contract",
+      "evaluated": 3,
+      "newly": [],
+      "still": 0,
+      "sent": false
+    },
+    {
       "ts": "2026-11-20T05:45:39Z",
       "source": "contract",
       "evaluated": 3,
@@ -346,5 +354,5 @@
       "sent": false
     }
   ],
-  "last_run": "2026-11-20T05:45:39Z"
+  "last_run": "2026-11-21T19:01:47Z"
 }

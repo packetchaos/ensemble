@@ -13,6 +13,7 @@ re-attaches to a running build) and never computes.
 
 A snapshot is ``{"result": <your dict>, "meta": {"sig", "built_at", "build_sec", "extra"}}``.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import datetime
 import gzip
 import hashlib
@@ -45,7 +46,7 @@ def db_signature(db_path=None) -> str:
             parts.append(f"{st.st_size}:{st.st_mtime_ns}")
         except OSError:
             parts.append("-")
-    from core import crown                   # build 527: a new crown-jewel line rebuilds every snapshot
+    from core import crown                   # a new crown-jewel line rebuilds every snapshot
     parts.append(crown.sig())
     return "|".join(parts)
 
@@ -110,8 +111,8 @@ class Snapshots:
                 f.write(gzip.compress(json.dumps(s, default=list).encode("utf-8"), 5))
             os.replace(tmp, p)
             self._prune()
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
 
     def _prune(self):
         """Keep the newest `keep` files for this snapshot name (different weights/views)."""
@@ -121,8 +122,8 @@ class Snapshots:
                         key=os.path.getmtime, reverse=True)
             for fp in fs[self.keep:]:
                 os.remove(fp)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
 
     # ---- the three calls an agent makes
     def state(self, db_path=None, extra=None):

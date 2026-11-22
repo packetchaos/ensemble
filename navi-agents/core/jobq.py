@@ -17,7 +17,7 @@ from . import db, qprofile
 _JOBS = []                     # newest-last list of job dicts (the log)
 _LOCK = threading.Lock()
 _IDS = itertools.count(1)
-# Two pools (build 458): "default" for background work the user asked for explicitly (Run in
+# Two pools: "default" for background work the user asked for explicitly (Run in
 # background, snapshots, confirmed tag jobs, Release) and "run" for DETACHED ▶ Runs
 # (core/launcher._detached). Hours-long ▶ Runs can never take every worker and leave a confirmed
 # write or a snapshot queued behind them.

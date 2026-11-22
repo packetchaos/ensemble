@@ -6,6 +6,7 @@
 `interpret` — natural-language tagging: turn an instruction + the discovered
               identities into per-identity {category,value} assignments (LLM).
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import hashlib
 import re
 
@@ -28,7 +29,7 @@ def _agent():
     return AGENT
 
 
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 RISK = ("privileged", "non-expiring pw", "ssh password auth", "weak pw policy", "guest enabled",
         "default/blank cred", "AD attack path", "default secret", "write (private)",
         "never changed pw", "never logged in")
@@ -50,10 +51,10 @@ def _enrich(res, k=None, v=None):
                         acr[r["uuid"]] = float(r.get("acr") or 0)
                     except (TypeError, ValueError):
                         pass
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     try:
-        if k and v:      # a tag view: "estate" is the tag's assets (build 489)
+        if k and v:      # a tag view: "estate" is the tag's assets
             frag, args = tagscope.sql(k, v, "uuid")
             total = db.scalar("SELECT COUNT(*) FROM assets WHERE 1=1" + frag, args) or 0
         else:
@@ -117,7 +118,7 @@ def scan_scoped(k, v):
     return res, scope
 
 
-# ── tag views keep their own runs (build 489) ─────────────────────────────────────────────────
+# ── tag views keep their own runs ─────────────────────────────────────────────────
 # The result store keeps each hound's last 2 runs. A tag view stores under its OWN name,
 # idt_<hash of the tag>, so a tag run never evicts the estate's run (or another tag's), and a
 # drill / tag / interpret request is bound to its scope: the run must belong to the request's
@@ -143,11 +144,11 @@ def _trim_tag_runs(keep_hound):
         for run_, h in rows:
             if h not in live:
                 payload.STORE.drop(run_)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
-# ── payload contract (build 464) ──────────────────────────────────────────────────────────────
+# ── payload contract ──────────────────────────────────────────────────────────────
 # A big estate has 200k+ identities, each carrying the uuids of every host it was seen on, plus
 # host sets of 100k+ uuids for the tag buttons: 22 MB at 150k assets. The run now stores every
 # identity server-side (core.payload's result store) and ships the decision data + page 1; the
@@ -392,12 +393,12 @@ def tag(p):
         return {"ok": False, "error": "from a tag view, tag with the page's buttons (the server rebuilds "
                                       "the hosts inside the tag)"}, 400
     if p.get("set") is not None:
-        # build 464: a KEY — the server rebuilds the hosts. dry=true (read-only, no confirm) just
+        # a KEY — the server rebuilds the hosts. dry=true (read-only, no confirm) just
         # counts, so the page's confirm dialog can name exactly what will be written.
         try:
             plan = [(c, v, u) for c, v, u in _resolve(p, _hound(tk, tv)) if u and v]
             if tk:
-                # build 489: re-read the tag's assets from navi.db NOW and keep only those — a
+                # re-read the tag's assets from navi.db NOW and keep only those — a
                 # write from a tag view never leaves the tag, even if tags moved since the run
                 inside = tagscope.uuids(tk, tv)
                 plan = [(c, v, [u for u in uu if u in inside]) for c, v, uu in plan]
@@ -457,7 +458,7 @@ def interpret(p):
     tk, _tv = tagscope.parse(p)
     accounts = [] if tk else (p.get("accounts") or [])     # a tag view: only its stored run
     if not accounts and p.get("run"):
-        # build 464: the identities come from the stored run, not a 20 MB upload from the page
+        # the identities come from the stored run, not a 20 MB upload from the page
         if not payload.STORE.run_info(p.get("run"), _hound(*tagscope.parse(p))):
             return {"ok": False, "error": "this run's identities are no longer on the server — press ▶ Run again"}, 200
         accounts = [{"user": r.get("user"), "klass": r.get("klass")} for r in payload.STORE.iter_rows(p["run"], "ids")]

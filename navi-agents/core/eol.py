@@ -12,6 +12,7 @@ plugins: "Security End of Life : July 11, 2017"; older detections: "End of suppo
 date : 2014/04/08", …), years past end of life, crown jewels, and the overlap with
 CISA KEV / critical findings on the same assets. Read-only over navi.db.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import datetime
 import functools
 import re
@@ -155,7 +156,7 @@ def date_tag_query(group, db_path=None, scope=None):
         w.append("lower(COALESCE(state,'open')) IN ('open','reopened')")
     w.append("(" + " OR ".join(like(t) for t in texts) + ")")
     k, v = scope if (isinstance(scope, (tuple, list)) and len(scope) == 2) else (None, None)
-    if k and v:                          # a tag view: only that tag's assets (build 489)
+    if k and v:                          # a tag view: only that tag's assets
         w.append("asset_uuid IN (SELECT asset_uuid FROM tags WHERE tag_key=" + lit(k) + " AND tag_value=" + lit(v) + ")")
     return "SELECT DISTINCT asset_uuid FROM vulns WHERE " + " AND ".join(w)
 
@@ -198,7 +199,7 @@ def _cols(table, path=None):
         return set()
 
 
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 
 
 def analyze(db_path=None, groups=None, keep_uuids=False, scope=None):
@@ -262,8 +263,8 @@ def analyze(db_path=None, groups=None, keep_uuids=False, scope=None):
                     except (TypeError, ValueError):
                         acr[a["uuid"]] = 0.0
                     host[a["uuid"]] = (a.get("hostname") or "").strip() or a.get("ip_address") or a["uuid"]
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         try:
             sw = " AND lower(COALESCE(state,'open')) IN ('open','reopened')" if has_state else ""
             if fast:
@@ -275,7 +276,7 @@ def analyze(db_path=None, groups=None, keep_uuids=False, scope=None):
             for r in (db.query(kq, path=db_path) if kq else db.query("SELECT asset_uuid, "
                               "MAX(CASE WHEN xrefs LIKE '%CISA-KNOWN-EXPLOITED%' THEN 1 ELSE 0 END) kev, "
                               "SUM(CASE WHEN lower(COALESCE(severity,''))='critical' THEN 1 ELSE 0 END) crit "
-                              # NOT INDEXED (build 455): the EOL set is a large share of all assets, and
+                              # NOT INDEXED: the EOL set is a large share of all assets, and
                               # with hx_v_asset the planner would fetch every finding of every EOL asset
                               # by random row reads (xrefs isn't in the index) — 41 s → 130 s at 16M rows.
                               # One sequential scan is cheaper. Phase 1's hx_asset summary replaces this.
@@ -287,8 +288,8 @@ def analyze(db_path=None, groups=None, keep_uuids=False, scope=None):
                     kev_a.add(r["asset_uuid"])
                 if r.get("crit"):
                     crit_a[r["asset_uuid"]] = int(r["crit"])
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     crown = {u for u in eol_assets if acr.get(u, 0) >= _crown.threshold()}
 
     # ---- products

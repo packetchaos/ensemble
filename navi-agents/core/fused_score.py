@@ -26,7 +26,7 @@ import sqlite3
 
 from core import db, hx_summary, tagname
 
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 
 # factor metadata for the UI: id, label, Hound, max points. Sum(max) == 100.
 FACTORS = [
@@ -471,7 +471,7 @@ ACT_THRESHOLDS = (80, 60, 40)
 
 def _scored(p, wmap, epss_map, only=None):
     """Stream (signals, factor points, unrounded score, score) for every asset (or `only` one)."""
-    # build 465: "blind" = scanned but NOT credentialed (core.credstate — any 19506 "Credentialed
+    # "blind" = scanned but NOT credentialed (core.credstate — any 19506 "Credentialed
     # checks : yes" or 141118 / 110095 is credentialed); failure plugins alone no longer decide it
     from core import credstate
     try:
@@ -763,7 +763,7 @@ def overview(db_path=None, limit=500, offset=0, epss_cap=_EPSS_CAP, weights=None
             "sla_days": _sla_days(p)}
 
 
-# ── tag scope + the per-asset score map (build 488) ──────────────────────────────────────────
+# ── tag scope + the per-asset score map ──────────────────────────────────────────
 def scope_uuids(tag_key, tag_value, db_path=None):
     """The assets carrying tag_key:tag_value in navi.db's tags table (exact match, as the SLA
     hound's filter). An empty set when the tag has none."""

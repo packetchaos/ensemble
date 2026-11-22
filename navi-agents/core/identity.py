@@ -8,6 +8,7 @@ agent can TAG the hosting assets via navi's tag-by-query selector.
 
 Reads are read-only (core.db). Tag writes go through navi (core.navi_cli).
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import re
 
 from core import db, hx_summary
@@ -47,7 +48,7 @@ PARSE_PLUGINS = ("95928", "95929", "10860")
 _USER_LIST = ("95928", "95929")          # structured user lists: [ User / System Accounts ] + Groups
 
 # ---------------------------------------------------------------------------
-# PRIVILEGE — inferred from EVIDENCE, never from a name like "admin" (build 482):
+# PRIVILEGE — inferred from EVIDENCE, never from a name like "admin":
 #   * membership of an administrative group, from Tenable's group-member plugins
 #     (Windows Administrators / Domain Admins, macOS Admin) or the Linux / macOS user lists'
 #     Groups (sudo / wheel / admin) or Enumerate Local Group Memberships (71246);
@@ -699,8 +700,8 @@ def scan(db_path=None, keep=False):
                     _flag(acct[m.group(1)], "non-expiring pw")
     except (db.QueryTimeout, db.TooManyRows):
         raise
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     # privileged — by EVIDENCE (see the PRIVILEGE note at the top), never by a name like "admin"
     for a in acct.values():
         for g, uu in (a.get("groups") or {}).items():
@@ -861,7 +862,7 @@ def scan(db_path=None, keep=False):
         _flag(acct["__41028"], "write (private)")
 
     # coverage gap — reachable hosts scanned WITHOUT credentials
-    # build 465 — one rule for every hound (core.credstate): credentialed = any 19506
+    # one rule for every hound (core.credstate): credentialed = any 19506
     # "Credentialed checks : yes" or 141118 / 110095; uncredentialed = scanned but not that
     from core import credstate
     _cs = credstate.sets(db_path)
@@ -937,8 +938,8 @@ def project(res, scope, db_path=None):
                     names[r["uuid"]] = (r.get("hostname") or r.get("ip_address") or "").strip() or "host"
         except (db.QueryTimeout, db.TooManyRows):
             raise
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     accounts = []
     for a in res.get("accounts") or []:
         uu = [u for u in (a.get("asset_uuids") or []) if u in scope]

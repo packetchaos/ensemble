@@ -23,8 +23,9 @@ the current value only (no ACR drivers, no override flag). "Changed" therefore m
 the Ensemble recorded (ACR log) or an asset someone protected with NO : UPDATE; everything else
 is reported as "no recorded change" — Tenable-calculated as far as navi can tell.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import os
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 
 from . import db
 
@@ -110,8 +111,8 @@ def _riskiest_per_value(path, has_host, has_ip):
         for r in db.query(sql, path=path, budget="run"):
             out[int(r["r"])] = {"uuid": r["uuid"], "hostname": (r.get("hostname") or "").strip(),
                                 "ip": (r.get("ip") or "").strip(), "aes": r.get("e"), "acr": int(r["r"])}
-    except Exception:                 # an old SQLite without window functions: the cards just omit it
-        pass
+    except Exception as _e:                 # an old SQLite without window functions: the cards just omit it
+        _swallowed(_e)
     return out
 
 
@@ -164,8 +165,8 @@ def _changed(path=None):
         for r in acrlog.rows({"result": "applied"}, limit=10).get("rows", []):
             recent.append({k: r.get(k) for k in ("ts", "agent", "category", "value", "mod", "score", "asset_uuid",
                                                  "host", "ip", "acr_before", "acr_after", "reasons", "business_case")})
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     by_agent = {}
     for u in in_db:
         a = changed[u].get("agent") or "?"
@@ -181,8 +182,8 @@ def _changed(path=None):
                 rs = ["(none)"]
             for x in rs:
                 reasons[x] = reasons.get(x, 0) + r["n"]
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return {"ensemble": len(in_db), "ensemble_not_in_db": len(set(changed) - in_db),
             "protected": len(prot), "protected_only": len(prot - in_db),
             "either": len(in_db | prot), "drift": drift, "drift_checked": drift_eligible,
@@ -311,7 +312,7 @@ def _compute(path=None) -> dict:
                            "pct": _pct(aes_b[k], total)} for k, l, a, b in AES_BANDS],
                 "top": top, "bottom": bottom},
         # the two calibration questions a VM lead asks first
-        # build 527: crown jewels = core.crown (ACR ≥ the Settings line, default 8) — not the 9–10 band
+        # crown jewels = core.crown (ACR ≥ the Settings line, default 8) — not the 9–10 band
         "crown_acr": _crown.threshold(),
         "crown": sum(by_val[v] for v in range(_crown.threshold(), 11)),
         "crown_exposed": sum(vd[v]["aes"]["high"] for v in range(_crown.threshold(), 11)),   # crown AND AES High

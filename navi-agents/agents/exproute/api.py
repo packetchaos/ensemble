@@ -60,7 +60,7 @@ def snapshot(p):
       {refresh_owners:true}  re-pull the owner directory from Tenable, then rebuild
     A build answers {building:{job_id, started}}; poll /api/jobs/<id>, then peek."""
     force, ro = bool(p.get("force")), bool(p.get("refresh_owners"))
-    # build 498: a ▶ Run / rebuild from the page carries its run id → Done so far records the
+    # a ▶ Run / rebuild from the page carries its run id → Done so far records the
     # run when the snapshot is ready (served from cache now, or when the build ends)
     rid = p.get("record_run") if isinstance(p.get("record_run"), str) and not p.get("peek") else None
     sc = _scope(p)

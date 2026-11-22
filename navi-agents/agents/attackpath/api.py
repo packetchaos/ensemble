@@ -19,7 +19,7 @@ VALUES = {"Entry Point", "Target", "Pivot", "Choke Point"}
 
 def run(p):
     from core import crown
-    try:   # build 527: no override → the one crown-jewel line from Settings (core.crown, default 8)
+    try:   # no override → the one crown-jewel line from Settings (core.crown, default 8)
         acr = float(p.get("crown_acr")) if p.get("crown_acr") not in (None, "") else float(crown.threshold())
     except (TypeError, ValueError):
         acr = float(crown.threshold())
@@ -31,7 +31,7 @@ def run(p):
             "drill": {"action": "drill", "run": runid, "section": "entries"}, "first": first}, 200
 
 
-# ── payload contract (build 464) ──────────────────────────────────────────────────────────────
+# ── payload contract ──────────────────────────────────────────────────────────────
 # The full analysis stays on the server (AGENT.result — what every tag key rebuilds from); the
 # page gets the paths, map, metrics and the fix / control tables WITHOUT their asset-uuid lists,
 # and the ways-in table pages from the result store (10k+ entry points was 4.5 MB, the control

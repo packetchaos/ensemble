@@ -22,6 +22,7 @@ One place decides who may talk to the console, so the three servers can't drift:
 
 Nothing here logs the token; it is printed exactly once, in the startup banner.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import hashlib
 import hmac
 import ipaddress
@@ -67,8 +68,8 @@ def harden_process():
     """Files this process creates are owner-only (navi.db extracts, caches, logs, configs)."""
     try:
         os.umask(0o077)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 # --------------------------------------------------------------------------- #
@@ -123,8 +124,8 @@ def allowed_hosts() -> frozenset:
             s.add(socket.getfqdn().lower())
             for ip in socket.gethostbyname_ex(hn)[2]:
                 s.add(ip)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     fs = frozenset(s)
     _HOSTS_CACHE.update(key=key, set=fs)
     return fs

@@ -299,7 +299,7 @@ def _detection_where(det: dict, db_path=None, hx=False):
     an identity string in a SIGNAL plugin's output) AND the IoT-candidate filter
     (no software enum / no general-purpose OS). None when the detection has no match
     clause. Used by BOTH discovery and the single-query tag selector so they agree."""
-    # plugin ids are digits only (build 521): a registry value is never trusted into SQL
+    # plugin ids are digits only: a registry value is never trusted into SQL
     sig = ",".join("'" + p + "'" for p in [str(x).strip() for x in (det.get("signal_plugins") or SIGNAL_PLUGINS)
                                          if re.fullmatch(r"[0-9]{1,7}", str(x).strip())]) or "''"
     clauses = []

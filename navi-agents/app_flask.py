@@ -3,6 +3,7 @@
 Run:  python3 app_flask.py
 Identical behavior to app_fastapi.py (both call core.launcher).
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import os
 
 from flask import Flask, abort, jsonify, make_response, redirect, request, send_from_directory
@@ -115,8 +116,8 @@ def act(agent_id, action):
                                            http=True, budget_hint=hint, tab=tab))
     try:
         launcher.note_response(agent_id, action, resp.calculate_content_length() or 0)  # > 2 MB → logged
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return resp, status
 
 

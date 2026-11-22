@@ -5,6 +5,7 @@ pulling in other agents. `data_source` tells the UI whether it's reading a
 crafted sample fixture or a real navi.db, so demo data is never mistaken for
 live Tenable data.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import os
 import threading
 import time
@@ -34,8 +35,8 @@ def _asset_count_bg():
     try:
         _ASSETS["n"] = db.scalar("SELECT count(*) FROM assets;", budget=0)  # run to completion
         _ASSETS["t"] = time.time()
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     finally:
         _ASSETS["busy"] = False
 
@@ -61,8 +62,8 @@ def data_source(path: str) -> dict:
         if rows:
             return {"data_source": rows[0].get("source", "fixture"),
                     "provenance_note": rows[0].get("note"), "is_fixture": True}
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     base = os.path.basename(path or "")
     if base in ("sample_navi.db", "fixture.db") or "sample" in base.lower():
         return {"data_source": "fixture", "is_fixture": True,
@@ -97,11 +98,11 @@ def health() -> dict:
             "navi_cli_cwd": navi_cli._navi_cwd(),
             "enable_file": navi_cli._enable_file() or None, "llm": llm_ok,
             "llm_provider": llm_provider, "llm_model": llm_model, "llm_why": llm_why}
-    try:                                     # build 527: the one crown-jewel line, for every page's labels
+    try:                                     # the one crown-jewel line, for every page's labels
         from core import crown
         info["crown"] = crown.definition()
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     try:
         from . import tagname as _tagname
         info["tag_prefix"] = _tagname.status()     # Settings → Test run (header chip)

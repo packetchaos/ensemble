@@ -18,7 +18,7 @@ import statistics
 from core import db, tagname
 from core.agents.base import Agent
 
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 _EC = re.compile(r"ecdsa|elliptic|\bec\b", re.I)
 _WEAK_SIG = re.compile(r"md5|sha-?1(?!\d)", re.I)
 

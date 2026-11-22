@@ -47,7 +47,7 @@ INDEXES = [
     ("hx_comp_asset", "compliance", ("asset_uuid",), 45.0),
     ("hx_certs_asset", "certs", ("asset_uuid",), 45.0),
     ("hx_sw_asset", "software", ("asset_uuid",), 45.0),
-    # Argos / C2 resolve a host by IP or hostname (build 455): without these, that lookup scans assets
+    # Argos / C2 resolve a host by IP or hostname: without these, that lookup scans assets
     ("hx_assets_ip", "assets", ("ip_address",), 40.0),
     ("hx_assets_host", "assets", ("hostname",), 50.0),
 ]

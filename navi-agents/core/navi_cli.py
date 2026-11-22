@@ -6,6 +6,7 @@ Two gates protect every write, mirroring the navi-mcp write-gate convention:
 
 Reads never come through here — they use db.py (read-only sqlite3).
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import os
 import re
 import shlex
@@ -31,12 +32,52 @@ def _truthy(v) -> bool:
     return str(v or "").strip().lower() in _TRUE
 
 
-def _enable_file() -> str:
-    for fn in _ENABLE_FILES:
+def _gate_file(names) -> str:
+    """The first enable file (ALLOW_WRITES, ALLOW_EMAIL…) in the repo root that may be HONORED.
+    Build 529: a file only counts when it is a regular file (not a symlink) owned by the user the
+    server runs as and not writable by group / others — so another local account, a shared
+    checkout or an unpacked archive can't switch a gate on. Ignored files are reported by
+    enable_file_warnings()."""
+    for fn in names:
         p = os.path.join(_REPO_ROOT, fn)
-        if os.path.exists(p):
-            return p
+        if os.path.lexists(p):
+            if not _gate_file_problem(p):
+                return p
     return ""
+
+
+def _gate_file_problem(p) -> str:
+    """'' when the enable file may be trusted, else why not."""
+    try:
+        st = os.lstat(p)
+    except OSError as e:
+        return "can't stat (%s)" % e.__class__.__name__
+    import stat as _st
+    if not _st.S_ISREG(st.st_mode):
+        return "not a regular file (symlink or directory)"
+    if hasattr(os, "geteuid") and st.st_uid != os.geteuid():
+        return "owned by another user (uid %d)" % st.st_uid
+    if os.name == "posix" and st.st_mode & 0o022:
+        return "writable by group or others (chmod 600 it)"
+    return ""
+
+
+def enable_file_warnings() -> list:
+    """One line per enable file present in the repo root: honored (a gate is ON because of a
+    file, not the environment) or ignored (and why). Printed at server start."""
+    out = []
+    for names in (_ENABLE_FILES, _EMAIL_ENABLE_FILES, _RCE_ENABLE_FILES, _SCAN_ENABLE_FILES):
+        for fn in names:
+            p = os.path.join(_REPO_ROOT, fn)
+            if os.path.lexists(p):
+                why = _gate_file_problem(p)
+                out.append(("IGNORED enable file %s — %s" % (p, why)) if why else
+                           ("enable file %s is switching a gate ON (prefer the environment / Settings)" % p))
+    return out
+
+
+def _enable_file() -> str:
+    return _gate_file(_ENABLE_FILES)
 
 
 def allow_writes() -> bool:
@@ -116,8 +157,8 @@ def _navi_cwd():
             d = os.path.dirname(os.path.abspath(p))
             if os.path.isdir(d):
                 return d
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return None
 
 
@@ -148,8 +189,8 @@ def update_async(kinds=("assets",)) -> dict:
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                              cwd=_navi_cwd(), start_new_session=True)
             started.append(k)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return {"ok": bool(started), "started": started}
 
 
@@ -733,11 +774,7 @@ _EMAIL_ENABLE_FILES = ("ALLOW_EMAIL", ".allow_email", "allow_email")
 
 
 def _email_enable_file() -> str:
-    for fn in _EMAIL_ENABLE_FILES:
-        p = os.path.join(_REPO_ROOT, fn)
-        if os.path.exists(p):
-            return p
-    return ""
+    return _gate_file(_EMAIL_ENABLE_FILES)
 
 
 def email_enabled() -> bool:
@@ -862,8 +899,8 @@ def mail(to: str, subject: str = "navi report", message: str = "", file: str = "
         from core import tagq
         tagq.record({"agent": agent, "category": "Email", "value": to,
                      "selector": "mail", "detail": (subject or "")[:200], "op": "mail"}, res)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return res
 
 
@@ -1026,8 +1063,8 @@ def acr(category: str, value: str, score: float, mod: str = "set",
                                         and re.fullmatch(r"\d+(\.\d+)?", acr_protect.score_arg(score))
                                         and any(r in _ACR_REASONS for r in (reasons or [])))
                                     else {})}, res)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     try:
         log = acrlog.record_change(pv, res, agent or "acr", category, value, mod,
                                    acr_protect.score_arg(score), reasons, note, bc,
@@ -1051,8 +1088,8 @@ def drop_acr_cache():
         for a in ("acr", "contract"):
             try:
                 m._invalidate(a)
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
 
 
 _ACR_REASONS = ("business", "compliance", "mitigation", "development")
@@ -1135,11 +1172,7 @@ _PUSH_FILE_FLAG = os.environ.get("NAVI_PUSH_FILE_FLAG", "--file")
 
 
 def _rce_enable_file() -> str:
-    for fn in _RCE_ENABLE_FILES:
-        p = os.path.join(_REPO_ROOT, fn)
-        if os.path.exists(p):
-            return p
-    return ""
+    return _gate_file(_RCE_ENABLE_FILES)
 
 
 def rce_enabled() -> bool:
@@ -1513,8 +1546,8 @@ def push(target: str, command: str = "", file: str = "", agent: str = "c2",
                     {"ok": res.get("ok"), "message": (st + (" · exit %s" % res["exit_code"]
                                                             if res.get("exit_code") is not None else "")
                                                       + (" · " + res["message"][:160] if res.get("message") and not res.get("ok") else ""))})
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return res
 
 
@@ -1533,7 +1566,7 @@ def cancel_series(series) -> dict:
     return {"ok": True, "series": series, "cancelled": tagq.cancel_series(series)}
 
 
-# ── Scan Confirmation launch gate (build 514) ────────────────────────────────────────────
+# ── Scan Confirmation launch gate ────────────────────────────────────────────
 # Launching scans spends scanner capacity on real networks, so it is its own opt-in on top
 # of writes (like email and remote execution): NAVI_SCAN_LAUNCH=1 or an ALLOW_SCAN_LAUNCH
 # file in the repo root. Writes alone do NOT let the console launch scans.
@@ -1541,11 +1574,7 @@ _SCAN_ENABLE_FILES = ("ALLOW_SCAN_LAUNCH", ".allow_scan_launch", "allow_scan_lau
 
 
 def _scan_enable_file() -> str:
-    for fn in _SCAN_ENABLE_FILES:
-        p = os.path.join(_REPO_ROOT, fn)
-        if os.path.exists(p):
-            return p
-    return ""
+    return _gate_file(_SCAN_ENABLE_FILES)
 
 
 def _scan_opted_in() -> bool:

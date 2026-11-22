@@ -24,6 +24,7 @@ Helpers for a hound:
     s = tagscope.uuids(k, v)                 # the set, for Python-side filtering
     tagscope.describe(k, v)                  # {"key","value","label","assets"} — put it in a result as "scope"
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import json
 import os
 import threading
@@ -154,8 +155,8 @@ def check(agent_id, action, payload):
     payload["tag_scope"] = {"key": k.strip(), "value": v.strip()}
     try:
         remember(agent_id, k.strip(), v.strip())
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return None
 
 

@@ -26,7 +26,7 @@ Each asset's crypto risk is weighted by its ACR and CISA-KEV status so the
 highest-value, most-exposed assets rise to the top of the migration queue.
 """
 import re
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 from datetime import datetime, timezone
 
 from core import db, navi_cli, tagscope

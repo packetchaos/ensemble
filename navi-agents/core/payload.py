@@ -35,6 +35,7 @@ sort (the hound's own ranking) is the primary key, so paging it is O(page). Each
 keeps its last KEEP_RUNS runs (a page replayed from the page cache still pages the run
 it showed); a run older than that answers {expired: true} and the page asks for ▶ Run.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import base64
 import hashlib
 import hmac
@@ -48,7 +49,7 @@ import time
 import zlib
 
 TOP_MAX = 200
-CHUNK_MAX = 500          # build 525: a chunked section (sections[sec]["max_limit"]) sends ≤ 500 rows a call
+CHUNK_MAX = 500          # a chunked section (sections[sec]["max_limit"]) sends ≤ 500 rows a call
 MAX_BYTES = int(os.environ.get("NAVI_PAYLOAD_MAX_BYTES", str(2 * 1024 * 1024)))
 COUNT_CAP = 10000
 KEEP_RUNS = int(os.environ.get("NAVI_RESULTS_KEEP_RUNS", "2"))
@@ -391,8 +392,8 @@ class ResultStore:
                 try:
                     from core.security import private_file
                     private_file(p)
-                except Exception:
-                    pass
+                except Exception as _e:
+                    _swallowed(_e)
         return con
 
     # -- writing
@@ -446,8 +447,8 @@ class ResultStore:
             con.commit()
             try:
                 con.execute("PRAGMA incremental_vacuum")
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
         finally:
             con.close()
 

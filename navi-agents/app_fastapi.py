@@ -3,6 +3,7 @@
 Run:  python3 app_fastapi.py        (or: uvicorn app_fastapi:app --port 8000)
 Drop a folder into agents/ and restart to add an agent.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import os
 
 from fastapi import FastAPI, Request
@@ -157,13 +158,13 @@ async def act(agent_id: str, action: str, request: Request):
             try:
                 if await request.is_disconnected():
                     token.cancel()
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
     resp = _resp(task.result())
     try:
         launcher.note_response(agent_id, action, len(getattr(resp, "body", b"") or b""))  # > 2 MB → logged
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return resp
 
 

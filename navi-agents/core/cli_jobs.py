@@ -8,6 +8,7 @@ Those refresh local navi.db tables from Tenable (a read into the local DB, not a
 tenant write), so they are NOT write-gated; the kind allowlist blocks arbitrary
 command execution.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import itertools
 import os
 import re
@@ -150,8 +151,8 @@ def _log_close(job):
         f.write("#\n# finished  %s\n# result    %s · exit %s · took %s\n"
                 % (_stamp(job.get("finished")), job.get("status"), job.get("returncode"), _dur(el)))
         f.close()
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def _add(job, line):
@@ -163,8 +164,8 @@ def _add(job, line):
         try:
             f.write(line + "\n")
             f.flush()
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     if len(job["lines"]) < MAX_LINES:
         job["lines"].append(line)
 
@@ -395,8 +396,8 @@ def _after_sync(job):
         if msg:
             with _LOCK:
                 _add(job, msg)
-    except Exception:                            # pragma: no cover
-        pass
+    except Exception as _e:                            # pragma: no cover
+        _swallowed(_e)
 
 
 def _loopback():
@@ -447,8 +448,8 @@ def _refresh_summaries(job):
             with _LOCK:
                 _add(job, line)
         threading.Thread(target=_go, daemon=True, name="hounds-summary-refresh").start()
-    except Exception:                            # pragma: no cover
-        pass
+    except Exception as _e:                            # pragma: no cover
+        _swallowed(_e)
 
 
 def hx_busy():
@@ -492,8 +493,8 @@ def _spawn(argv, cwd, env, answer=None, devnull_stdin=False):
         master, slave = _pty.openpty()
         try:
             fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 50, 200, 0, 0))
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         try:
             proc = subprocess.Popen(
                 argv, stdin=(subprocess.DEVNULL if devnull_stdin else slave), stdout=slave, stderr=slave,
@@ -514,8 +515,8 @@ def _spawn(argv, cwd, env, answer=None, devnull_stdin=False):
         try:
             proc.stdin.write(answer)
             proc.stdin.close()
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return proc, proc.stdout.fileno()
 
 
@@ -624,13 +625,13 @@ def run_navi_streamed(sub_argv, emit, live=None, cancel_ev=None, timeout_s=120, 
         if timed_out or cancelled:
             try:
                 proc.kill()
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
             emit("[%s — navi stopped]" % ("timed out after %ds" % int(timeout_s) if timed_out else "cancelled"))
         try:
             proc.wait(timeout=10)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         if not eof:                              # whatever was already read before the kill
             while True:
                 try:
@@ -724,8 +725,8 @@ def _tag_kind(r, kind):
             with _LOCK:
                 if jid in _JOBS:
                     _JOBS[jid]["kind"] = kind
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 REBUILD_TABLES = {"both": ["config", "update", "full"],

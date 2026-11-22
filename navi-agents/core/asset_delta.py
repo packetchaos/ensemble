@@ -15,6 +15,7 @@ window), how many navi.db marks as licensed, and Tenable's live licensed count
 rebuild: Settings ▸ Rebuild navi.db (`navi config update full -rebuild --days N`).
 Reads only — navi.db read-only + one navi read command.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import re
 
 from core import db, navi_cli
@@ -60,20 +61,20 @@ def navi_side(db_path=None, days=DEFAULT_DAYS) -> dict:
             out["oldest_last_found"] = db.scalar(
                 "SELECT MIN(substr(last_found,1,10)) FROM assets WHERE TRIM(COALESCE(last_found,''))<>''",
                 path=db_path)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     if "last_licensed_scan_date" in cols:
         try:
             out["licensed_marked"] = _int(db.scalar(
                 "SELECT COUNT(*) FROM assets WHERE TRIM(COALESCE(last_licensed_scan_date,''))<>''",
                 path=db_path))
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     if _cols("tags", db_path):
         try:
             out["tagged_assets"] = _int(db.scalar("SELECT COUNT(DISTINCT asset_uuid) FROM tags", path=db_path))
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return out
 
 

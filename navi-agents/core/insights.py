@@ -4,6 +4,7 @@ Cheap, resilient roll-up used by the insights landing page: certificates failing
 soon, assets with no software inventory, IoT devices, identities, MITRE techniques
 on high-ACR assets, and custom apps. Each figure links to the agent that owns it.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import datetime
 import re
 
@@ -73,8 +74,8 @@ def compute(db_path=None):
                     b["count"] += 1
             elif d < today:
                 certs_expired += 1
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
     total = sc("SELECT COUNT(uuid) FROM assets")
     # intersect with assets — software may carry orphan asset_uuids not in the assets table,
@@ -127,8 +128,8 @@ def compute(db_path=None):
                 if c.upper() in cset:
                     hits.add(r["asset_uuid"]); break
         mitre_high = len(hits)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
     custom = sc("SELECT COUNT(*) FROM vuln_route")
 
@@ -144,8 +145,8 @@ def compute(db_path=None):
     acols = set()
     try:
         acols = {r["name"] for r in db.query("PRAGMA table_info(\"assets\");", path=db_path)}
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     cloud = 0
     from core import cloud as _cloud
     if _cloud.columns(acols):
@@ -329,8 +330,8 @@ def scent_board(db_path=None):
                                  f"{fails} failing", "crit" if fails else "ok", "/agents/compliance/page.html"))
         else:
             posture.append(tile("compliance", "Compliance", "Compliance Overview", "⚖️", "—", "no audit data yet", "off", "/agents/compliance/page.html"))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     try:
         from core import sla as _sla
         so = _sla.readiness(db_path)
@@ -338,8 +339,8 @@ def scent_board(db_path=None):
             posture.append(tile("sla", "SLA adherence", "SLA Tracker", "⏱", "set", "SLA thresholds active", "warn", "/agents/sla/page.html"))
         else:
             posture.append(tile("sla", "SLA adherence", "SLA Tracker", "⏱", "—", "no SLA set", "off", "/agents/sla/page.html"))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     try:
         from core import was as _was
         wo = _was.overview(db_path)
@@ -348,8 +349,8 @@ def scent_board(db_path=None):
                                  f"{wo.get('apps', 0)} apps", "warn", "/agents/was/page.html"))
         else:
             posture.append(tile("was", "Web apps (WAS)", "Arachne", "🕸️", "—", "no WAS data yet", "off", "/agents/was/page.html"))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     # ---- Command & Control (Amarok) — remediation executed on hosts, from the tag ledger ----
     try:
         from core import tagq as _tq
@@ -362,8 +363,8 @@ def scent_board(db_path=None):
         else:
             posture.append(tile("c2", "Remediation", "Remote Remediation", "🐺", "—",
                                  "no pushes yet — arm Remote Remediation to fix at the source", "off", "/agents/c2/page.html"))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
     # ---- blind spots — the dark matter Sphinx is named for (risk by ABSENCE) ----
     # Classification MUST come from Linnaeus' own engine, not a re-implemented SQL
@@ -509,9 +510,9 @@ _MAN = None
 FACTOR_AGENT = {"expl": "cisakev", "aes": "fused_score", "sev": "fused_score", "crit": "acr", "path": "attackpath",
                 "ident": "identity", "comp": "compliance", "was": "was", "eol": "eol", "exp": "iot_squad", "ai": "ai",
                 "cry": "certificate", "sla": "sla", "vol": "fused_score", "own": "asset_ownership", "mit": "mitre"}
-# Build 527: one crown-jewel rule for every hound (core.crown) — each crown number still shows it.
+# one crown-jewel rule for every hound (core.crown) — each crown number still shows it.
 CROWN_RULE = {a: "{CROWN}" for a in ("fused_score", "asset_ownership", "postquantum", "ai", "certificate",
-                                     "eol", "attackpath", "scan_eval", "cisakev")}   # build 527: ONE rule
+                                     "eol", "attackpath", "scan_eval", "cisakev")}   # ONE rule
 
 
 def _P(a, sec=""):
@@ -539,8 +540,8 @@ def _manifests():
                     with open(_os.path.join(_ROOT, "agents", a, "manifest.json"), encoding="utf-8") as f:
                         m = _json.load(f)
                     out[m.get("id") or a] = m
-                except Exception:
-                    pass
+                except Exception as _e:
+                    _swallowed(_e)
         except OSError:
             pass
         _MAN = out
@@ -1053,7 +1054,7 @@ def scent_digest(db_path=None):
     blind = {"assets": total, "funnel": funnel, "tiles": tiles}
 
     # ---- next moves (ranked: crit first, then by n; n=0 dropped)
-    act = g(fk, "act", "80", default={}) or {}    # build 512: act now = Critical (≥ 80) by default
+    act = g(fk, "act", "80", default={}) or {}    # act now = Critical (≥ 80) by default
     fix = (ap_r.get("fixes") or [{}])[0] or {}
     eolp = (g(eol_r, "view", "products", default=[]) or [{}])[0] or {}
     mp = expr.get("map") or {}

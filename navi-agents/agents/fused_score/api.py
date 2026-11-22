@@ -26,6 +26,7 @@ scopes   — the switcher (live, never computes): the whole estate + the recent 
 A whole-estate build with the DEFAULT weighting also saves every asset's score
 (engine.save_score_map) — Software Explorer's Nemesis column reads it.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import datetime
 import json
 import os
@@ -85,8 +86,8 @@ def _remember(k, v):
             with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(r[:RECENT_MAX], f)
             os.replace(tmp, _recent_path())
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
 
 
 def _tag_count(k, v):

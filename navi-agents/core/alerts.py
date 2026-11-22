@@ -12,6 +12,7 @@ previous snapshot). Two metric sources:
   • sql     — a read-only SELECT whose first numeric cell (or row count) is the metric,
     plus an optional detail SELECT listing the affected assets for the email.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import json
 import os
 import re
@@ -280,8 +281,8 @@ def _metric_of(alert, db_path):
                 vs = list(r.values())
                 affected.append({"host": str(vs[0]) if vs else "", "ip": str(vs[1]) if len(vs) > 1 else "",
                                  "account": "", "uuid": ""})
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return {"value": value, "unit": alert.get("unit", ""), "affected": affected, "note": ""}
 
 

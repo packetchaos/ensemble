@@ -9,6 +9,7 @@ launcher sets it around every dispatch; Settings uses it to keep the gate switch
 navi.db path local-only. In-process callers (tests, the MCP server, scripts) have no HTTP
 peer and count as local.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import contextvars
 
 _CLIENT = contextvars.ContextVar("hounds_client", default=None)
@@ -32,8 +33,8 @@ def set_client(peer_addr=None, http=False):
 def reset_client(tok):
     try:
         _CLIENT.reset(tok)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def client_is_loopback() -> bool:

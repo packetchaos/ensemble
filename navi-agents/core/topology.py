@@ -13,6 +13,7 @@ Plus:
 
 `members(path)` lazily returns the asset list at any node (leaf → the Argos asset page).
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import re
 
 from core import db, classify as _classify, software as _sw
@@ -56,8 +57,8 @@ def _software_by_asset(db_path, keep):
                     nm, ver = _sw.parse_software(r.get("software_string") or "")
                 if nm:
                     out.setdefault(u, []).append((nm, ver or "—"))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return out
 
 
@@ -70,8 +71,8 @@ def _docker_by_asset(db_path, keep):
                 cs = _containers(r.get("output"))
                 if cs:
                     out.setdefault(u, []).extend(cs)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return out
 
 

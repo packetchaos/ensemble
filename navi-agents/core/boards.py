@@ -19,6 +19,7 @@ Imported SQL never runs unseen: a SQL widget that arrives in an import is saved 
 run_widget refuses it until someone approves it after reading its SQL (`approve`).
 Exports carry definitions only (layout, scope, SQL) — never cached rows.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import hashlib
 import json
 import os
@@ -509,7 +510,7 @@ def _state(body):
     return "fresh"
 
 
-# ── specialist snapshots (build 510) ────────────────────────────────────────────────────────
+# ── specialist snapshots ────────────────────────────────────────────────────────
 _SNAPMEMO = {}
 
 
@@ -609,7 +610,7 @@ def snapshot_result(d, scope):
     return base
 
 
-# ── trends: one point per KPI per day (build 510) ────────────────────────────────────────────
+# ── trends: one point per KPI per day ────────────────────────────────────────────
 def _kpi_value(rows):
     if len(rows or []) != 1:
         return None
@@ -936,7 +937,7 @@ def ensure_daily():
         while True:
             try:
                 _daily_pass()
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
             time.sleep(1800)
     threading.Thread(target=loop, name="boards-daily", daemon=True).start()

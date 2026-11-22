@@ -140,7 +140,7 @@ def inventory_export(p):
     if err:
         return err, 200 if err.get("expired") else 400
     run, flt, q = sel
-    # build 525: every row; past 5,000 a background export job the page downloads (core/exports.py)
+    # every row; past 5,000 a background export job the page downloads (core/exports.py)
     from core import exports
     sec = iot_inventory.SECTION
     n = (payload.STORE.page(run, sec, flags=flt, q=q, limit=1)[2] if (flt or q)

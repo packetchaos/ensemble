@@ -11,6 +11,7 @@ proposes ONE read-only SQL SELECT plus a visualization choice; this module then:
 
 Nothing is ever written. This agent only reads navi.db.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import re
 import sqlite3
 
@@ -69,8 +70,8 @@ def schema_text(db_path: str = None) -> str:
             body += "\n\nJOIN KEYS:\n" + joins
         try:
             body += "\n" + db.value_hint(tables, path=db_path)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         return body + "\n" + SCHEMA_NOTES
     finally:
         con.close()
@@ -135,8 +136,8 @@ def _run_readonly(sql: str, db_path: str = None) -> list:
     try:
         try:
             con.enable_load_extension(False)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         con.set_authorizer(_authorizer)
         cur = con.execute(sql)
         return [dict(r) for r in cur.fetchall()]

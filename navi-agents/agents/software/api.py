@@ -19,6 +19,7 @@ Payload contract (build 455): the page no longer pulls raw tables through run_sq
   run_sql    the ✨ Ask box only: capped at 200 rows per page, 10,000 rows in all, paged
              with a signed token; never used for bulk data.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import hashlib
 import json
 import os
@@ -78,7 +79,7 @@ VIEWS = {"sprawl": ("sprawl", ["multi"]), "common": ("common", []), "single": ("
          "eol": ("eol", ["eol"]), "delta": ("delta", ["delta"]), "all": ("all", [])}
 
 
-# ── tag filter (build 489) ─────────────────────────────────────────────────────────────────
+# ── tag filter ─────────────────────────────────────────────────────────────────
 # A request may carry tag_scope {key, value}: the whole analysis then covers only the assets
 # carrying that tag (re-read from navi.db). Each tag's runs live in the result store under their
 # OWN hound name ("software_t<hash>"), so a run id is only valid for the scope it was built for
@@ -143,8 +144,8 @@ def inventory(p):
     if scope:
         try:
             _prune_tag_runs(hound)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     sm = inv["summary"]
     view = (p or {}).get("view") if (p or {}).get("view") in VIEWS else "sprawl"
     srt, flt = VIEWS[view]
@@ -215,7 +216,7 @@ def lifecycle(p):
         return _GONE
     scope = _scope(p)
     if p.get("server"):
-        # build 512: the server asks endoflife.date itself (7-day disk cache) — what Run the Ensemble
+        # the server asks endoflife.date itself (7-day disk cache) — what Run the Ensemble
         # records, so the restored page shows the same Lifecycle section without a browser round-trip
         res = lifecycle_results(_server_plan(run))
     else:
@@ -442,7 +443,7 @@ ACTIONS = {"run": run, "inventory": inventory, "drill": drill, "product": produc
            "nl_translate": nl_translate, "run_sql": run_sql}
 
 
-# ---- Release the Hounds: all four widgets (build 461) ----------------------------------------
+# ---- Release the Hounds: all four widgets ----------------------------------------
 # The page's ▶ Run all is inventory → lifecycle (endoflife.date) → crown jewels → risk. Release
 # runs the same four server-side and stores each response under the request the page will send,
 # so opening Software after a release shows all four widgets. The lifecycle verdicts mirror the
@@ -482,8 +483,8 @@ def _eol_cycles(slug):
         from core.security import private_open
         with private_open(p, "w") as f:
             json.dump(d, f)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return d
 
 
@@ -557,7 +558,7 @@ def release_requests(dispatch):
     run = ((body or {}).get("drill") or {}).get("run") if isinstance(body, dict) else None
     if not run or st >= 400 or (isinstance(body, dict) and body.get("ok") is False):
         return out
-    # all four sections (build 512): inventory → lifecycle (server-side endoflife.date) → crown → risk
+    # all four sections: inventory → lifecycle (server-side endoflife.date) → crown → risk
     b = {"run": run, "server": True}
     out.append(("lifecycle", b, dispatch("software", "lifecycle", b)))
     for act in ("crown", "risk"):

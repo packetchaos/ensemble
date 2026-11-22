@@ -70,7 +70,7 @@ def export(p):
         return {"ok": False, "expired": True, "error": "this list is no longer on the server — open it again"}, 200
     q = (p or {}).get("q") if isinstance((p or {}).get("q"), str) else ""
     q = q.strip()[:200]
-    # build 525: every row; past 5,000 a background export job the page downloads (core/exports.py)
+    # every row; past 5,000 a background export job the page downloads (core/exports.py)
     from core import exports
     n = (payload.STORE.page(run, "assets", q=q.lower(), limit=1)[2] if q
          else payload.STORE.section_total(run, "assets"))
@@ -183,7 +183,7 @@ def software_export(p):
 
         def src():
             return iter(rebuilt)
-    # build 525: every asset; past 5,000 a background export job (core/exports.py)
+    # every asset; past 5,000 a background export job (core/exports.py)
     r = exports.start("software-" + prod + ("-" + ver if ver else ""),
                       rows=lambda: ([prod, ver or ""] + [x.get(c) for c in CSV_COLS] for x in src()),
                       header=["product", "version"] + list(CSV_COLS), total=n, agent="ex_assets")

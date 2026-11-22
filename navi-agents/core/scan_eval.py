@@ -11,6 +11,7 @@ Read-only. Tag writes go through navi (core.navi_cli):
   - problematic scan (by id) -> navi enrich tag --scanid <id>
   - credential failures      -> navi enrich tag --plugin 104410
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import datetime
 import re
 import statistics
@@ -72,7 +73,7 @@ STATUS_ORDER = ["failed", "insufficient", "intermittent", "uncredentialed", "ok"
 FRESH_BUCKETS = [("0-7", 0, 7), ("8-30", 8, 30), ("31-90", 31, 90), ("90+", 91, 10 ** 6)]
 SLOW_SEC = 3600            # an asset scan over an hour is "slow"
 FEED_LAG_DAYS = 7          # scanner feed this far behind the newest feed seen = outdated
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 ROW_CAP = 20000            # asset rows returned to the page (metrics + tags always use every asset)
 
 
@@ -197,8 +198,8 @@ def evaluate(db_path=None, keep_uuids=False, all_rows=False, scope=None):
                           + ",".join("'" + p + "'" for p in pids) + ")" + open_only + vf, va, path=db_path):
             if r.get("asset_uuid"):
                 signals.setdefault(r["asset_uuid"], set()).add(str(r["plugin_id"]))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     amap = {}
     try:
         cols = _cols("assets", db_path)
@@ -206,8 +207,8 @@ def evaluate(db_path=None, keep_uuids=False, all_rows=False, scope=None):
                           + (", url" if "url" in cols else "") + " FROM assets"
                           + (" WHERE 1=1" + af if af else ""), aa, path=db_path):
             amap[a["uuid"]] = a
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
     universe = set(amap) | set(latest) | set(signals)
     assets = []
@@ -215,7 +216,7 @@ def evaluate(db_path=None, keep_uuids=False, all_rows=False, scope=None):
         rec = latest.get(u) or {}
         sig = signals.get(u, set())
         states = {CRED_PLUGINS[p] for p in sig if p in CRED_PLUGINS}
-        # build 465 — coverage first (core.credstate): CREDENTIALED = any 19506 "Credentialed
+        # coverage first (core.credstate): CREDENTIALED = any 19506 "Credentialed
         # checks : yes" or 141118 / 110095. A credentialed host is "ok" even if one credential
         # failed (19506 yes + 104410): that failure is an ISSUE on it, not a blind spot. A host
         # that is NOT credentialed takes the worst failure state as the reason it is blind.

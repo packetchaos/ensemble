@@ -40,6 +40,7 @@ Scale (148–600 GB navi.db) — how statements run:
 * ``connect()`` still returns a NEW private connection the caller owns and closes (callers
   change its row_factory / functions / authorizer); it gets the same PRAGMAs.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import builtins
 import contextlib
 import itertools
@@ -147,8 +148,8 @@ def budget_payload(e) -> dict:
             if not has_index(_OPTIMIZE_IDX):
                 d["optimize"] = True
                 msg += _HINT_OPT
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     d["message"] = msg
     d["error"] = msg            # most pages render o.error on ok:false (some o.message)
     return d
@@ -466,8 +467,8 @@ def _open(p) -> sqlite3.Connection:
                    f"PRAGMA busy_timeout={_BUSY_MS}"):
         try:
             con.execute(pragma)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return con
 
 
@@ -523,8 +524,8 @@ def harden(con):
     """Install the user-SQL guard on an open connection (and disable extension loading)."""
     try:
         con.enable_load_extension(False)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     con.set_authorizer(user_sql_authorizer)
     return con
 
@@ -580,8 +581,8 @@ class _Conn:
     def close(self):
         try:
             self.con.close()
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
 
 
 _POOL_LOCK = threading.Lock()
@@ -777,8 +778,8 @@ def _record(sql, t0):
         if not (head.startswith("EXPLAIN") or head.startswith("PRAGMA")
                 or "sqlite_master" in sql.lower()):
             qprofile.record(sql, (time.monotonic() - t0) * 1000.0)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def _translate(e, s):

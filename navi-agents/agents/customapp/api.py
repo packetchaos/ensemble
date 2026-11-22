@@ -1,4 +1,5 @@
 """Custom App Name agent — self-contained HTTP actions."""
+from core.errors import swallowed as _swallowed  # no silent excepts
 from core import navi_cli, llm, db, tagname, tagscope
 from .agent import (CustomAppAgent, search_paths, search_routes, tag_query_for, scoped_tag_sql,
                     load_ignore, save_ignore, routing_status, _SETUP_HINT)
@@ -27,8 +28,8 @@ def _owned_names(db_path=None):
                 nm = v.rsplit(": ", 1)[0].strip()
                 if nm:
                     names.add(_nk(nm))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return names
 
 

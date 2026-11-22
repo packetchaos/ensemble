@@ -15,6 +15,7 @@ Accuracy levers ported from the console:
 
 Read-only; the tag writes are gated (navi_cli). scan() returns structured JSON.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import re
 
 from core import db, hx_summary, tagname
@@ -450,7 +451,7 @@ def scan(db_path=None, fp=None, allow=None, scope=None):
 
     # 3) plugin name / output (distinct AI terms; generic terms blocked)
     # 4) exposed AI endpoints — port match requires port CONTEXT, not a bare substring
-    # Build 455: steps 3 and 4 used to be two full scans of vulns that both read `output` (the
+    # steps 3 and 4 used to be two full scans of vulns that both read `output` (the
     # ~5 KB column — 20 s each at 6 M findings, 60 s at 16 M). They are ONE streamed scan now:
     # the two WHERE clauses are evaluated by SQLite in the SELECT list (m3 / m4), so each row
     # set is exactly the old one; step-4 evidence is held back and added after the scan, so
@@ -638,7 +639,7 @@ def scan(db_path=None, fp=None, allow=None, scope=None):
         idx = {x["asset_uuid"]: x for x in assets}
         try:
             where = egress_predicate(vcols) or _like_where("output", EGRESS_TERMS)
-            # Build 463: ⚡ Optimize flagged the findings whose output names an egress host (same
+            # ⚡ Optimize flagged the findings whose output names an egress host (same
             # predicate) — read only those by rowid; the AI-asset filter is the idx lookup below.
             # Within an asset rows still come in rowid order, as the asset_uuid index gave them,
             # so the same snippet wins. Fallback: every finding of every AI asset, as before.
@@ -663,8 +664,8 @@ def scan(db_path=None, fp=None, allow=None, scope=None):
                     if m:
                         x["_eg"][cat + "|" + dest] = {"cat": cat, "dest": dest, "via": "observed",
                                                       "snip": _snip(out, m.group(0))}
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     for x in assets:
         x["egress"] = [{"cat": e["cat"], "dest": e["dest"], "via": e["via"], "snip": e["snip"],
                         "sanctioned": _sanctioned(e["dest"], allow)} for e in x["_eg"].values()]

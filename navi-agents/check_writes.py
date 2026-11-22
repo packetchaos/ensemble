@@ -27,6 +27,8 @@ def main():
     print(f"  NAVI_MCP_ALLOW_WRITES .... {s['NAVI_MCP_ALLOW_WRITES']!r}")
     print(f"  ALLOW_WRITES file ........ {s['enable_file'] or '(none)'}")
     print(f"  -> allow_writes() ........ {s['allow_writes']}")
+    for w in navi_cli.enable_file_warnings():
+        print(f"  ! {w}")
     print()
     print(f"  NAVI_BIN ................. {s['NAVI_BIN']!r}")
     print(f"  navi resolved to ......... {s['navi_resolved'] or '(NOT FOUND)'}")
@@ -49,7 +51,8 @@ def main():
     if not s["allow_writes"]:
         print("\n✗ Writes are DISABLED. Fix it one of these ways, then restart the server:")
         print("    export NAVI_ALLOW_WRITES=1        # in the SAME shell you launch the server")
-        print(f"    touch {os.path.join(s['repo_root'], 'ALLOW_WRITES')}   # env-independent toggle")
+        print(f"    touch {os.path.join(s['repo_root'], 'ALLOW_WRITES')} && chmod 600 it   # env-independent toggle")
+        print("    (an enable file only counts when it is yours, a regular file, and not group/world-writable)")
         return
 
     navi = s["navi_resolved"]

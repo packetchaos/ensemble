@@ -12,6 +12,7 @@ navi schema quirks this module hides from the pages:
   • status ∈ {PASSED, FAILED, WARNING, UNKNOWN}. Compliance carries NO CVEs, so the
     audit↔vuln link is INFERRED by topic (keyword) overlap on the same asset.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import ast
 import re
 
@@ -126,8 +127,8 @@ def _identities(path=None, uuids=None):
                 for r in db.query("SELECT %s FROM assets WHERE uuid IN (%s)" % (",".join(sel), ph),
                                   tuple(us), path=path):
                     ids[r["uuid"]] = {"hostname": r.get("hostname") or "", "ip": r.get("ip_address") or ""}
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
     miss = [u for u in us if u not in ids or not ids[u].get("hostname")]
     if miss and _table_exists("vulns", path):
         vc = _cols("vulns", path)
@@ -146,8 +147,8 @@ def _identities(path=None, uuids=None):
                     if not cur.get("ip") and iv:
                         cur["ip"] = r.get(iv) or ""
                     ids[u] = cur
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
     return ids
 
 
@@ -227,7 +228,7 @@ def overview(path=None, scope=None):
             "asset_counts": counts, "assets_rows_total": arows_total}
 
 
-OVERVIEW_ROWS = 500       # build 525: the overview's asset table shows the worst 500; the Drill-down pages the rest
+OVERVIEW_ROWS = 500       # the overview's asset table shows the worst 500; the Drill-down pages the rest
 
 
 def _asset_rollup(arows, path=None):
@@ -375,8 +376,8 @@ def cohort(f, path=None):
                               " AND reference LIKE ?", ("%" + key + "%",), path=path):
                 if r.get("asset_uuid") and any(x["framework"] == key for x in parse_reference(r.get("reference"))):
                     uu.add(r["asset_uuid"])
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     elif kind == "audit":
         label = "Failing in " + (key or "(no audit file)")
         uu = _set("SELECT DISTINCT asset_uuid FROM compliance WHERE COALESCE(audit_file,'')=? AND " + _FAILED, (key,))
@@ -386,7 +387,7 @@ def cohort(f, path=None):
 
 
 # --------------------------------------------------------------------------- #
-#  Build 525 — the cohort as ONE streamed query (the drill-down's paged asset list + its CSV)
+#  the cohort as ONE streamed query (the drill-down's paged asset list + its CSV)
 #  The old path built the cohort's uuid set, aggregated EVERY asset, then looked their names up
 #  with an IN (…) of every uuid and shipped the whole list to the page (44,000+ rows → the page
 #  never finished). Now one SELECT aggregates per asset, joins the asset's name, filters to the
@@ -488,8 +489,8 @@ def _fw_uuids(key, path=None):
                          ("%" + key + "%",), path=path):
             if r.get("asset_uuid") and any(x["framework"] == key for x in parse_reference(r.get("reference"))):
                 out.add(r["asset_uuid"])
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return out
 
 
@@ -547,8 +548,8 @@ def in_cohort(f, asset_uuid, path=None):
             for r in db.query("SELECT reference FROM compliance WHERE asset_uuid=? AND " + _FAILED, (asset_uuid,), path=path):
                 if any(x["framework"] == m["key"] for x in parse_reference(r.get("reference"))):
                     return True
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         return False
     return True
 
@@ -633,7 +634,7 @@ def _correlate(checks, vulns):
 
 
 def asset_detail(path=None, asset_uuid=None, focus_check=None):
-    if not ready(path):         # build 525: a LIMIT 1 probe — status() counted the whole table 3× per click
+    if not ready(path):         # a LIMIT 1 probe — status() counted the whole table 3× per click
         return {"available": False, "reason": "no compliance data in navi.db"}
     asset_uuid = (asset_uuid or "").strip()
     if not asset_uuid:

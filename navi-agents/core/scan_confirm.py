@@ -31,8 +31,9 @@ poll → scoped syncs (both `--since` and `--days 1`: `since` only returns state
 ingestion check → verdicts. Runs, scans, verdicts and an append-only, hash-chained event log
 live in tag_jobs.db (beside the Tagging / ACR / C2 logs).
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import ast
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 import datetime
 import hashlib
 import ipaddress
@@ -65,7 +66,7 @@ TERMINAL = frozenset({"completed", "canceled", "cancelled", "aborted", "stopped"
 OK_TERMINAL = frozenset({"completed"})
 # plugin families that are LOCAL checks — they need credentials to mean anything (P4)
 LOCAL_FAMILIES = ("Local Security Checks", "Windows : Microsoft Bulletins", "Windows", "Misc.")
-# local-check login proof (build 517): 117887 OS Security Patch Assessment Available = the local checks ran;
+# local-check login proof: 117887 OS Security Patch Assessment Available = the local checks ran;
 # 21745 Patch Assessment Failed / 117886 Not Available = they didn't
 LOCAL_OK_PLUGINS = ("117887",)
 LOCAL_FAIL_PLUGINS = ("21745", "117886")
@@ -511,8 +512,8 @@ def plugin_families(plugins, path=None):
                 out[int(r["plugin_id"])] = r.get("fam")
             if all(v is not None for v in out.values()):
                 return out
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     if "plugin_family" in _cols("vulns", path):
         for p in plugins:
             r = db.query("SELECT plugin_family FROM vulns WHERE plugin_id=? LIMIT 1", (str(p),), path=path)
@@ -531,16 +532,16 @@ def plugin_names(plugins, path=None):
             for r in db.query(f"SELECT plugin_id, name FROM plugins WHERE plugin_id IN ({ph})",
                               tuple(str(p) for p in plugins), path=path):
                 out[int(r["plugin_id"])] = r.get("name")
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     missing = [p for p in plugins if int(p) not in out]
     for p in missing:
         try:
             r = db.query("SELECT plugin_name FROM vulns WHERE plugin_id=? LIMIT 1", (str(p),), path=path)
             if r:
                 out[int(p)] = r[0].get("plugin_name")
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return out
 
 
@@ -1028,8 +1029,8 @@ def features(runner=None):
         f["multi_plugin"] = bool(m) and ("multiple" in seg or "repeat" in seg or "one or more" in seg)
         f["name"] = bool(re.search(r"--name\b", txt))
         f["no_launch"] = bool(re.search(r"--no-launch\b", txt))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     if runner is None:
         _FEAT[key] = f                        # an injected runner (tests) never fills the cache
     return _feat_override(f)
@@ -1741,7 +1742,7 @@ def via_scan(scan_id, lk, runner=None):
 
 
 
-# ══ open findings (build 518) — start a confirmation from what is open, not typed plugin IDs ═════════
+# ══ open findings — start a confirmation from what is open, not typed plugin IDs ═════════
 _OPEN = "lower(COALESCE(state,'open')) IN ('open','reopened')"
 FINDINGS_LIMIT = 100
 OPEN_ASSETS_CAP = 5000                  # never more than ~5,000 asset UUIDs to the page

@@ -33,6 +33,9 @@ ALLOW_EMAIL
 allow_email
 ALLOW_REMOTE_EXEC
 .allow_remote_exec
+ALLOW_SCAN_LAUNCH
+.allow_scan_launch
+allow_scan_launch
 allow_remote_exec
 
 # runtime state written into the repo tree: files staged for C2 push (scripts, agent

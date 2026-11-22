@@ -15,6 +15,7 @@ Tags in a hound's categories that this install never applied (navi CLI, the
 Tenable UI, another install) are reported separately as "already in navi.db" — the
 panel never claims them as the hound's own work.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import os
 import sqlite3
 import threading
@@ -128,8 +129,8 @@ def note_run(agent, action, ok=True, ms=0.0, cached=False, rid=None):
                 con.commit()
             finally:
                 con.close()
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def _q(sql, params=()):
@@ -166,8 +167,8 @@ def summary(agent: str) -> dict:
                 last[0]["ok"] = min([x["ok"] for x in steps] or [last[0]["ok"]])
             out["runs"] = {"count": r["n"] or 0, "fresh": r["fresh"] or 0, "last_at": r["last"],
                            "last": last[0] if last else None}
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
 
     # ---- the Hounds log: writes this hound made ----
     log = []
@@ -218,8 +219,8 @@ def summary(agent: str) -> dict:
                               f"WHERE tag_key IN ({ph}) AND tag_value >= ? AND tag_value < ? "
                               f"GROUP BY tag_key, tag_value;", tuple(names) + (prefix, prefix + "\uffff")):
                 counts[(r.get("tag_key"), r.get("tag_value"))] = r.get("n") or 0
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
 
     # removals by ANY hound (usually Tag Removal) — a removed value isn't "awaiting sync"
     removed = {}
@@ -228,8 +229,8 @@ def summary(agent: str) -> dict:
             for r in _q("SELECT category, value, MAX(COALESCE(finished, created)) t FROM jobs "
                         "WHERE op='remove' AND ok=1 GROUP BY category, value"):
                 removed[(r["category"], r["value"])] = r["t"] or 0
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     # when navi.db was last rebuilt — a value applied BEFORE that and still on 0 assets
     # matched nothing (it isn't waiting on a sync)
     try:
@@ -269,8 +270,8 @@ def summary(agent: str) -> dict:
                                           args) or [{}])[0].get("n") or 0
             else:
                 tagged_assets = sum(t["assets"] for t in out["tags"])     # upper bound
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
 
     t = out["tags"]
     out["kpi"] = {

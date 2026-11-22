@@ -9,6 +9,7 @@
            flag-driven views (-software/-patches/…). Needs the navi CLI + keys; it's
            a read, so no write gate.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import re
 
 from core import db, identity as _identity, tagname
@@ -110,7 +111,7 @@ def _decipher(cat, val):
         meta = _FACET_INTEL.get(fk, {"hound": "Linnaeus", "agent": "classify", "weight": 1,
                                      "band": "info", "why": "Inventory classification (" + facet.strip() + ")."})
         if fk == "device type":
-            # build 473: a Server / Desktop / Switch is a classification, not an IoT signal —
+            # a Server / Desktop / Switch is a classification, not an IoT signal —
             # only IoT / OT device types carry the IoT / OT weight
             from core import classify as _cl
             hit = _cl.device_type(sub)
@@ -243,8 +244,8 @@ def _vuln_rows(uuid):
         try:
             from core import sla as _sla
             sel.append(_sla._age_days("first_found") + " AS _age")
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return db.query(f"SELECT {', '.join(sel)} FROM vulns WHERE asset_uuid=?;", (uuid,),
                     budget="open"), vc
 
@@ -338,8 +339,8 @@ def _software_for(uuid):
                 name, ver = _sw.parse_software(s)
                 if name:
                     out.append({"name": name, "version": ver, "raw": s})
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         if out:
             src = "plugins"
     return out, src
@@ -482,10 +483,10 @@ def _glance(uuid, tags, vrows=None, certs=None):
                     idx = next((i for i, r in enumerate(rows) if r.get("uuid") == uuid), None)
                     g["nemesis"].update({"of": res.get("total"), "rank": (idx + 1) if idx is not None else None,
                                          "beyond": len(rows) if idx is None else None})
-            except Exception:
-                pass
-    except Exception:
-        pass
+            except Exception as _e:
+                _swallowed(_e)
+    except Exception as _e:
+        _swallowed(_e)
     # ---- open critical / high, KEV, past-SLA, oldest open critical (open findings only)
     if vc and "asset_uuid" in vc:
         ff = "first_found" in vc
@@ -567,8 +568,8 @@ def _glance(uuid, tags, vrows=None, certs=None):
                                 "(plugin_id='19506' AND output LIKE '%Credentialed checks : yes%')) LIMIT 1",
                                 (uuid,), budget="open"):
                         g["scan"]["credentialed"] = True
-                except Exception:
-                    pass
+                except Exception as _e:
+                    _swallowed(_e)
     # ---- compliance (Minos / Tiresias)
     if "asset_uuid" in _cols("compliance"):
         try:
@@ -579,8 +580,8 @@ def _glance(uuid, tags, vrows=None, certs=None):
             if r.get("n"):
                 g["compliance"] = {"pass_pct": round(100.0 * p_ / (p_ + f_), 1) if (p_ + f_) else None,
                                    "failed": f_, "checks": int(r.get("n") or 0)}
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     # ---- certificates: expired / expiring soon (same parser as the Certificates card)
     if certs is None:
         certs = _certs_for(uuid)
@@ -591,8 +592,8 @@ def _glance(uuid, tags, vrows=None, certs=None):
         for c in certs:
             try:
                 days.append((datetime.date.fromisoformat(str(c.get("expiry_iso"))[:10]) - today).days)
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
         soon = [d for d in days if 0 <= d <= _CERT_SOON]
         g["certs"] = {"total": len(certs), "expired": sum(1 for d in days if d < 0), "soon": len(soon),
                       "soonest_days": min(soon) if soon else None, "window": _CERT_SOON}
@@ -663,8 +664,8 @@ def lookup(p):
     acr = row.get("acr")
     try:
         acr = float(acr) if acr not in (None, "") else None
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
     top_cves = sorted(cves)[:40]
     # sort: critical→info, then vpr desc

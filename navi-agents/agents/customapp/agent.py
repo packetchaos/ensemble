@@ -10,6 +10,7 @@ Also powers the natural-language "tag my custom app <X>" flow: search the paths
 table for a keyword, show the matching paths/assets, then (gated) tag
 `Custom App:<name>`.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import json
 import os
 import re
@@ -37,8 +38,8 @@ def save_ignore(terms: list) -> list:
     try:
         with _popen(IGNORE_PATH, "w", encoding="utf-8") as f:
             json.dump(terms, f, indent=2)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return terms
 
 
@@ -191,7 +192,7 @@ class CustomAppAgent(Agent):
                            "paths": len(paths), "candidates": len(kept), "hidden": hidden}}
 
 
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 
 
 def _nk(s):

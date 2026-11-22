@@ -3,8 +3,11 @@
 Serves the hub, /api/health, /api/registry, the generic POST /api/<id>/<action>
 dispatch, and static files (web assets, agent pages, READMEs). No FastAPI/Flask
 required, so `python3 app_stdlib.py` (or `python3 run.py`) works on a stock
-Python install. For production you can still use app_fastapi.py / app_flask.py.
+Python install. Build 529: this is THE reference server and `run.py`'s default — client
+disconnects cancel running SQL, chunked bodies are refused, a busy port walks to the next.
+app_fastapi.py / app_flask.py remain opt-in alternatives behind the same core.security gate.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import json
 import os
 import select
@@ -227,8 +230,10 @@ def _print_write_status():
             print("WRITES: DISABLED — set NAVI_ALLOW_WRITES=1 (this shell) "
                   "or `touch ALLOW_WRITES` in the repo root, then restart. "
                   "Run `python3 check_writes.py` to diagnose.")
-    except Exception:
-        pass
+        for w in navi_cli.enable_file_warnings():     # say when a FILE is flipping a gate
+            print("WARNING: " + w)
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def _resume_schedules():

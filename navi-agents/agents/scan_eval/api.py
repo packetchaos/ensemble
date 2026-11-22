@@ -51,7 +51,7 @@ def _agent():
     return AGENT
 
 
-# ── payload contract (build 464) ──────────────────────────────────────────────────────────────
+# ── payload contract ──────────────────────────────────────────────────────────────
 # Every asset row is stored server-side (core.payload's result store); the run ships the
 # metrics + dimension tables + page 1, and the asset table's states / metric-card filters /
 # search page on the server (`drill`). Tags were already keys. (Before: the page got the first
@@ -208,7 +208,7 @@ def export(p):
         return {"ok": False, "error": "bad filter"}, 400
     q = (p or {}).get("q") if isinstance((p or {}).get("q"), str) else ""
     q = q.strip()[:200]
-    # build 525: every row of the view; past 5,000 a background export job (core/exports.py) —
+    # every row of the view; past 5,000 a background export job (core/exports.py) —
     # cells go through exports.csv_safe (the spreadsheet-formula guard)
     from core import exports
     n = (payload.STORE.page(run, "assets", flags=flt, q=q.lower(), limit=1)[2] if (flt or q)

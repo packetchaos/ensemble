@@ -13,15 +13,15 @@ navi Ensemble grew out of **The Hounds**, the proof-of-concept project. The new 
 has matured: server-side caching, an architecture built for very large estates, and a consistent
 interface across every specialist.
 
-Version `2.44.528`. The scheme is `MAJOR.<specialists>.<build>`, where the middle number is the count of
+Version `2.44.529`. The scheme is `MAJOR.<specialists>.<build>`, where the middle number is the count of
 specialists the server discovers (43 in this release; see `navi-agents/core/version.py`).
 
 ## Quick start
 
 ```bash
 cd navi-agents
-python3 run.py            # auto: FastAPI if installed, else Flask, else the built-in server
-python3 run.py stdlib     # force the zero-dependency server (no pip required)
+python3 run.py            # the built-in zero-dependency server (default, no pip required)
+python3 run.py stdlib     # the same, explicitly
 python3 run.py fastapi    # FastAPI (auto-installs if missing)
 python3 run.py flask      # Flask  (auto-installs if missing)
 ```

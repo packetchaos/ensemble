@@ -18,6 +18,7 @@ A model never decides what is affected in YOUR estate: it only reads a page into
 {product, ranges} shape the JSON parsers produce, the ranges are validated by the same parser
 the search uses, and the inventory match itself is plain SQL + version comparison.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import datetime as _dt
 import html
 import ipaddress
@@ -89,8 +90,8 @@ def plan(prompt, interpret=None):
             mk = [str(k).strip() for k in (got.get("keywords") or []) if str(k).strip()][:4]
             if mc or mk:
                 cves, words, by = mc or cves, mk or words, "model"
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     src = []
     for c in cves[:5]:
         src.append({"url": NVD_CVE % c, "kind": "nvd", "why": "NVD — %s: description, CVSS, affected CPEs and "

@@ -86,10 +86,10 @@ check("j.budget===true || j.budget_partial===true" in hb and "budget_message" in
 check("b.background=true" in hb and "cached_result" in hb and "/api/jobs/" in hb,
       "⏳ Run in background re-sends the read with background:true and follows the job")
 check("j.optimize" in hb and "/web/settings.html#secHx" in hb, "⚡ Optimize link when the payload says optimize")
-check("'confirm' in b" in hb and "H_WRITE_RE.test(ap.action)" in hb, "writes are never re-sent in the background")
+check("'confirm' in b" in hb and "hIsWrite(ap.agent, ap.action)" in hb, "writes are never re-sent in the background")
 check("esc(msg)" in hb and "innerHTML='<span class=\"hb-msg\">" in hb, "the banner escapes the server message")
 check("(j.ok===false || j.budget || j.budget_partial)" in JS, "HC never stores a budget / budget_partial answer")
-check("const WRITE_RE = H_WRITE_RE" in JS, "HC and HB share one write classifier")
+check(JS.count("hIsWrite(") >= 3 and "const WRITE_RE" not in JS, "HC and HB share one write classifier (build 529: hIsWrite)")
 check("function hDrill(o)" in JS and "hdrill-pager" in JS, "E's hDrill paged-table helper is intact")
 check(re.search(r"\(\"settings\", \"hx_status\"\)", open(os.path.join(ROOT, "core", "launcher.py")).read()) is not None,
       "server still maps page-open reads to 'open' (core/launcher._OPEN_ACTIONS)")

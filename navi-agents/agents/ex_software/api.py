@@ -155,7 +155,7 @@ def export(p):
     st = str(p.get("status") or "").strip().lower()
     scores, _ninfo = _nemesis()
     scores = scores or {}
-    # build 525: every install (no 50,000 cap) — past 5,000 rows a background export job (core/exports.py)
+    # every install (no 50,000 cap) — past 5,000 rows a background export job (core/exports.py)
     from core import exports
     sel = [r for r in res["rows"] if not (st in swsearch.STATUS_ORDER and r["status"] != st)]
     total = sum(len(r["installs"]) for r in sel)

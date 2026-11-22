@@ -7,6 +7,7 @@
 Read-only end to end: navi.db is opened in SQLite read-only mode and the SQL is
 guarded to a single SELECT. This agent never writes anything.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 from core import dashboard
 
 AGENT = None
@@ -254,8 +255,8 @@ def ai_sql(p):
         _boards._audit(con, "ai_sql", str(p.get("board") or ""),
                        f"{'ok' if out.get('ok') else 'fail'}: {str(p.get('prompt') or '')[:200]}")
         con.commit(); con.close()
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return out, 200
 
 

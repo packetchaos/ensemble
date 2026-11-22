@@ -15,6 +15,7 @@ Tag filter (build 489): run and every tag_* action honour {tag_scope:{key,value}
 page is rebuilt over the tag's assets, and a write from a tag view tags only assets carrying
 that tag (the set re-read from navi.db here, never from the browser). source / nl ignore it.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 from core import downloads, navi_cli, llm, kev, tagscope
 from .agent import CisaKevAgent, kev_dates, summary as _xref_summary
 from .agent import tag_vulnerable as _tag_vuln, tag_date as _tag_date, fmt_date, xref_view, scoped_xref_sql
@@ -38,8 +39,8 @@ def source(p):
                                  "to add CISA KEV due dates and ransomware flags to its findings. Assess whether "
                                  "it is an official/trustworthy source, what it contains, and any caution before approving.")
             llm_used = True
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return {"ok": True, "url": kev.FEED_URLS[0], "mirror": kev.FEED_URLS[1], "assessment": note,
             "llm_used": llm_used, "source_id": kev.SOURCE_ID,
             "auto_approved": downloads.auto_approve()}, 200

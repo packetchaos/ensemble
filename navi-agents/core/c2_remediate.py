@@ -23,6 +23,7 @@ Prompt-injection posture: navi.db text (plugin output, hostnames, solution prose
 <navi_data> with any closing tag defanged, the system prompt says it is data, and the validator
 is the backstop — a model talked into `curl … | sh` still produces a plan that cannot deploy.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import hashlib
 import json
 import os
@@ -125,8 +126,8 @@ def sources(selector, targets=None, max_hosts=5, live=None):
                 for r in db.query("SELECT DISTINCT plugin_id FROM vulns WHERE cves LIKE ? LIMIT 20", (f"%{x.upper()}%",)):
                     if r.get("plugin_id") not in (None, ""):
                         pids.append(str(r["plugin_id"]))
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
     pids = list(dict.fromkeys(pids))[:10]
     out["plugin_ids"] = pids
     pcols = _cols("plugins")
@@ -188,8 +189,8 @@ def sources(selector, targets=None, max_hosts=5, live=None):
                 for r in db.query(f"SELECT plugin_id, output FROM vulns WHERE asset_uuid=? AND plugin_id IN "
                                   f"({','.join('?' * len(pids))}) LIMIT 5", (a["uuid"],) + tuple(pids)):
                     h["outputs"][str(r.get("plugin_id"))] = (r.get("output") or "")[:4000]
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
         out["hosts"].append(h)
     out["families"] = sorted({h["family"] for h in out["hosts"]})
     blob = [p["plugin_name"] + " " + p["solution"] + " " + p["synopsis"] + " " + p["description"] for p in out["plugins"]]

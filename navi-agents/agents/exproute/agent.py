@@ -6,6 +6,7 @@ live Tenable API) and the application **routes** (`vuln_route`) and filesystem
 route/path to an owner; applying a mapping tags every asset on that route/path
 with `Owner:<group-or-user>` via the gated navi tag path.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import datetime
 import gzip
 import hashlib
@@ -593,7 +594,7 @@ def _base(db_path=None, scope=None) -> dict:
     zl = {"route_only": 0, "path_only": 0, "both": 0, "neither": 0}
     zp = {}                                 # plugin → [findings, owned, decided, orphan, route, paths set]
     zr, zpa = {}, {}                        # route / path → findings tagging it would close
-    # build 497: coverage of each route / path by its FINDINGS, whatever method owns them —
+    # coverage of each route / path by its FINDINGS, whatever method owns them —
     # [findings, owned, decided] and the assets with a finding on it that isn't owned
     cov_r, cov_p, open_r, open_p = {}, {}, {}, {}
     a_open, a_cov, a_all = set(), set(), set()   # a_open: an asset with ANY finding not owned
@@ -786,7 +787,7 @@ def plugin_assets(b, pid, db_path=None) -> int:
     if n is not None:
         return int(n)
     if str((b.get("zip_raw") or {}).get("source", "")) in ("index", "navi.db"):
-        return 0                    # build 496: assets with an OPEN, non-info finding — none
+        return 0                    # assets with an OPEN, non-info finding — none
     if b.get("scope"):
         frag, args = _sf(b["scope"], "asset_uuid")
         try:
@@ -898,7 +899,7 @@ def coverage(db_path=None, base=None, om=None, users_total=None, scope=None) -> 
     assets_with_routes = len(asset_apps)
     avg_routes = (sum(len(x) for x in asset_apps.values()) / len(asset_apps)) if asset_apps else 0
     total_routes = len(b["apps"])              # distinct route names — what the map counts
-    # build 496: everything below counts OPEN, NON-INFO findings only (the zipper) — navi's
+    # everything below counts OPEN, NON-INFO findings only (the zipper) — navi's
     # vuln_route.total_vulns and raw vuln_paths rows also count fixed and info findings.
     # workload reduction: path findings (asset × path) collapse to the distinct paths you
     # assign; route findings collapse to a handful of routes.
@@ -943,8 +944,8 @@ def coverage(db_path=None, base=None, om=None, users_total=None, scope=None) -> 
         owners_assigned = len(assigned_set)
         owners_total = len(all_set)
         owners_no_work = max(0, owners_total - owners_assigned)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
     # total platform users (the denominator for owner engagement): 4 owners of 87 users.
     if users_total is None:                 # from the cached owner directory, not a live call
@@ -1093,7 +1094,7 @@ def ownership_map(db_path=None, base=None, scope=None) -> dict:
         cov = path_routes.get(it["name"], set())
         it["routes"] = sorted(cov)                # which app(s) cover this path
         it["on_route"] = bool(cov)
-    # ── Status = COVERAGE of the item's findings (build 497) ─────────────────────────────────
+    # ── Status = COVERAGE of the item's findings ─────────────────────────────────
     # Routes and paths are two ways to assign PLUGINS to people. An item is owned when every open,
     # non-info finding on it is owned — by its own Owner tag, or by the route / path tag that
     # covers the same finding. Own the CentOS route and every CentOS path is 100% owned too;
@@ -1207,7 +1208,7 @@ def ownership_map(db_path=None, base=None, scope=None) -> dict:
         # DISTINCT over the table, twice) and handed to both statements as a JSON list
         _ib = db.indexed_by("hx_v_plugin", db_path)
         _present = None
-        # build 496: paths = the distinct paths of OPEN findings (the same set as the map)
+        # paths = the distinct paths of OPEN findings (the same set as the map)
         _paths_sql, _routes_sql, _fa = "(SELECT %d)" % len(b.get("path_assets") or {}), "(SELECT COUNT(DISTINCT app_name) FROM vuln_route)", ()
         if scope:
             # a tag view: the funnel over the tag's findings, paths and routes only
@@ -1337,7 +1338,7 @@ def path_detail(path, scope=None):
             return []
 
     _sfr, _sar = _sf(scope, "vp.asset_uuid")
-    # build 498: only OPEN, non-info findings (vuln_paths also keeps fixed findings' paths) —
+    # only OPEN, non-info findings (vuln_paths also keeps fixed findings' paths) —
     # the same rows Exposure Routes' coverage counts (core/hx_rpp)
     try:
         from core import hx_rpp
@@ -1372,7 +1373,7 @@ def path_detail(path, scope=None):
         apps = sorted({_rm[p][1] for p in plugins if p in _rm})
     except Exception:
         apps = []
-    # who covers this path ON ITS ASSETS (build 498): its own Owner tag, or the Owner tag of the
+    # who covers this path ON ITS ASSETS: its own Owner tag, or the Owner tag of the
     # route its plugins belong to — routes and paths are both ways the plugin gets assigned
     owners, direct, via = set(), set(), set()
     names = {_nk(path): "path"} | {_nk(a): "route" for a in apps}
@@ -1419,7 +1420,7 @@ SNAP_VERSION = 2   # 496: + zip (route/path/plugin zipper); open non-info findin
 _SNAP_MEM = {}            # key -> snapshot dict
 _BUILDING = {}            # key -> {"job_id", "started"}
 _SLOCK = threading.Lock()
-# Build 489: a tag view's snapshot is its own store — keyed by navi.db + the tag, the newest 5
+# a tag view's snapshot is its own store — keyed by navi.db + the tag, the newest 5
 # kept — so a tag view never serves (or evicts) the whole estate's snapshot, nor the reverse.
 SNAP_TAG = snapcache.Snapshots("exproute_tag", version=SNAP_VERSION, keep=5)
 
@@ -1481,8 +1482,8 @@ def owners_cached(refresh=False):
     now = _time.time()
     try:
         _atomic_write(path, _json.dumps({"at": now, "owners": live}).encode())
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return live, now
 
 
@@ -1515,8 +1516,8 @@ def _save_snapshot(key, s):
     try:
         _atomic_write(_cache_path(f"exproute_{key}.json.gz"),
                       gzip.compress(_json.dumps(s, default=list).encode("utf-8"), 5))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def build_snapshot(db_path=None, refresh_owners=False, scope=None) -> dict:
@@ -1565,8 +1566,8 @@ def note_run(rid, ok=True, ms=0, cached=False):
     try:
         from core import activity
         activity.note_run("exproute", "snapshot", ok=bool(ok), ms=float(ms or 0), cached=bool(cached), rid=str(rid)[:40])
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def _recorded(fn, rid):

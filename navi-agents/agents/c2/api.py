@@ -6,8 +6,9 @@ The push itself is triple-gated in core/navi_cli.py; this layer adds the operato
 workflow — Linux-only host discovery, the destructive-command force step, armed
 canary-first batches with an abort switch, and vuln→host patch derivation.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import base64
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 import hashlib
 import json
 import os
@@ -107,7 +108,7 @@ def _breakdown(hs):
 
 
 # --------------------------------------------------------------------------- #
-#  Scale path (build 455): nothing on open reads every asset into Python or ships
+#  Scale path: nothing on open reads every asset into Python or ships
 #  every host. OS classes come from a GROUP BY over the distinct OS strings (cached
 #  per navi.db signature); the host picker is a server-side search (keyset pages of
 #  ≤ 200); patch-from-vuln resolves the selector on the PLUGIN dimension first and
@@ -374,7 +375,7 @@ def precheck(p):
     dangers = navi_cli.scan_command(cmd) if cmd else []
     host = None
     if target:
-        # build 485: the same lookup the push choke point uses (IP OR hostname, case-insensitive) — a
+        # the same lookup the push choke point uses (IP OR hostname, case-insensitive) — a
         # hostname that IS in navi.db is no longer reported as "not found" (sec MUST 6, API change 6)
         try:
             _sel, ip, _os, _ok = _asset_sql()
@@ -475,7 +476,7 @@ def plan(p):
         return {"ok": False, "error": f"query failed: {e}"}, 200
     sols = _solutions(pids)                 # Tenable's OWN remediation text, from the plugins table
     pkg = _guess_pkg(sel, names, sols)
-    # build 485: the package the pre-flight checks (the fixed version comes from the generated plan — plan()
+    # the package the pre-flight checks (the fixed version comes from the generated plan — plan()
     # itself never reads vulns.output, the scale rule)
     fixed = {"package": pkg, "fixed_version": "", "compare": ""}
     return {"ok": True, "selector": sel, "matched_assets": n_uuids, "plugin_names": names, "fixed": fixed,
@@ -1226,7 +1227,7 @@ def _installed_ver(inst, name, compare):
     return v
 
 
-# build 486: the LIVE facts the last strict pre-flight read per host (os-release family + group, package state,
+# the LIVE facts the last strict pre-flight read per host (os-release family + group, package state,
 # locks, holds, candidates, downgrade availability). In memory, like the plan store and the runs registry; deploy
 # refuses a host whose live family / plan group differs from the plan's (linux M3, second half), and plan_ai groups
 # the Target set by it (linux P1-1). Never output — parsed facts only.
@@ -1818,8 +1819,8 @@ def plan_ai(p):
                     vv = _installed_ver(ver_, pkgn, pc.get("compare"))
                     vs[str(t)[:255]] = "at_least" if c2_remediate.version_ok(
                         vv, {"fixed_version": pc["fixed_version"], "compare": pc.get("compare"), "want": "at_least"}) else "older"
-                except Exception:
-                    pass
+                except Exception as _e:
+                    _swallowed(_e)
         out_groups.append({"plan_id": plan_id, "generator": gen["generator"], "note": gen.get("note"), "vs_fixed": vs,
                            "model": gen.get("model", ""), "source": {k: src[k] for k in ("plugin_ids", "plugins", "families")},
                            "affected_packages": c2_remediate.affected(src)["packages"],
@@ -2021,7 +2022,7 @@ def _remediate_host(plan, run_id, source, plan_sha, rollback_upto=None, rollback
             pc_bad = not _check_ok(r, pc)
         else:
             pc_bad, r = False, None
-        # build 486: the plan's packages as the host has them NOW (C7: per package, status-aware) — the "before".
+        # the plan's packages as the host has them NOW (C7: per package, status-aware) — the "before".
         # linux M2 / F1 / F6 (verify round): when this multi-package read works IT decides (not installed / held /
         # already fixed / fixed on disk); the single-package precheck above decides only when the read failed.
         before_f = read(["pkgstate"], "before")
@@ -2276,7 +2277,7 @@ def deploy(p):
     if p.get("selector") not in (None, "", rec["selector"]):
         return {"ok": False, "error": "plan_id belongs to a different selector"}, 400
     sel = rec["selector"]
-    # build 486: the OS-group refusal comes FIRST — with the 486 package scope a wrong-family host's own output names
+    # the OS-group refusal comes FIRST — with the 486 package scope a wrong-family host's own output names
     # other packages, and the operator must be told "wrong OS group", not "rejected step"
     # (checked first: the most specific pre-contact refusal)
     if not flag(p, "dry_run"):
@@ -2505,7 +2506,7 @@ ACTIONS = {"run": run, "load": load, "status": status, "hosts": hosts, "precheck
            "cred_test": cred_test, "path_check": path_check, "run_status": run_status,
            "plan_ai": plan_ai, "plan_validate": plan_validate, "deploy": deploy, "rollback": rollback,
            "plans": plans, "c2log": c2log_rows, "c2log_export": c2log_export,
-           # build 485: acknowledge a CHANGED-host-key banner (an `ack` row in the C2 log; sec C6)
+           # acknowledge a CHANGED-host-key banner (an `ack` row in the C2 log; sec C6)
            "ack": ack,
-           # build 486: the Phase 2 pre-flight (strict login + bundle + per-host eligibility, one confirm)
+           # the Phase 2 pre-flight (strict login + bundle + per-host eligibility, one confirm)
            "preflight": preflight}

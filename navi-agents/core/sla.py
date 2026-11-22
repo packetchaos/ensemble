@@ -20,6 +20,7 @@ Notes grounded in real navi data:
   • first_found / last_fixed are ISO 8601 ('YYYY-MM-DDTHH:MM:SS.sssZ'); SQLite's
     julianday() won't parse the 'T'/'Z', so we normalise to 'YYYY-MM-DD HH:MM:SS'.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 from core import db, tagname
 
 SEVERITIES = ("critical", "high", "medium", "low")
@@ -410,7 +411,7 @@ from core import qprofile as _qp
 _NORM = "julianday(substr(replace(replace(%s,'T',' '),'Z',''),1,19))"
 _QUOTED = _re.compile(r"'([^']*)'")
 DUE_WINDOWS = (7, 14, 30)
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 TREND_MONTHS = 24
 OVERDUE_BUCKETS = ((30, "1–30 d over"), (90, "31–90 d over"), (180, "91–180 d over"),
                    (None, "> 180 d over"))
@@ -467,8 +468,8 @@ def _timed(con, sql, args=()):
     rows = con.execute(sql, args).fetchall()
     try:
         _qp.record(sql, (_t.monotonic() - t0) * 1000.0)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return rows
 
 

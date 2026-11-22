@@ -25,6 +25,7 @@ Common env:
 With nothing configured, `available()` is False and every caller falls back to
 its deterministic path, so the whole pack still runs — see BYO_MODEL.md.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import json
 import os
 import re
@@ -285,8 +286,8 @@ def _tally(inp, out):
         USAGE["output_tokens"] += out
         USAGE["last"] = {"model": DEFAULT_MODEL, "provider": PROVIDER,
                          "input": inp, "output": out}
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def reset_usage():
@@ -356,15 +357,15 @@ def _post_json(url: str, body: dict, headers: dict, timeout: int, label: str) ->
         raw = ""
         try:
             raw = e.read().decode("utf-8", "replace")
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         msg = raw
         try:                                   # {"error":{"message":…}} or {"error":"…"}
             j = json.loads(raw)
             err = j.get("error") if isinstance(j, dict) else None
             msg = (err.get("message") if isinstance(err, dict) else err) or j.get("message") or raw
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         raise RuntimeError(f"{label} HTTP {e.code}: {msg or e.reason}"
                            f"{_http_hint(e.code, msg)}") from e
     except urllib.error.URLError as e:

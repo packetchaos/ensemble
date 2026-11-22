@@ -22,6 +22,7 @@ The scan runs BEFORE Optimize's write transaction (no write lock while it reads 
 parallel threads over rowid ranges: SQLite evaluates the LIKEs in C with the GIL released, so
 the threads scale with cores (HOUNDS_SIGNAL_THREADS, default min(8, CPUs)).
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import hashlib
 import os
 import re
@@ -50,18 +51,18 @@ def predicates(vcols):
         p = ai_assets.signal_predicate(vcols)
         if p:
             out["ai"] = p
-        p = ai_assets.egress_predicate(vcols)           # build 463: AI egress hosts
+        p = ai_assets.egress_predicate(vcols)           # AI egress hosts
         if p:
             out["ai_egress"] = p
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     try:
         from core import identity
         p = identity.signal_predicate(vcols)
         if p:
             out["identity"] = p
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return out
 
 
@@ -164,8 +165,8 @@ def scan(path, emit=None, live=None, cancel=None):
         for cc in conns:
             try:
                 cc.close()
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
     live("")
     if cancel.is_set():
         return {"cancelled": True}

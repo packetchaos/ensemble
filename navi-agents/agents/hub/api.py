@@ -10,6 +10,7 @@ apply its tags:
             name or mapping — they default off in the contract) are skipped. The
             skipped list comes from roster() so the page's confirm text is exact.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 from core import contract, navi_cli
 from core.gates import confirmed
 
@@ -155,7 +156,7 @@ def release_cancel(p):
     return {"ok": True, "cancelled": release.cancel(), "state": release.state()}, 200
 
 
-# ---------------------------------------------------------------- ⚙ settings status light (build 468)
+# ---------------------------------------------------------------- ⚙ settings status light
 def config_status(p):
     """The header gear's light. red = a KEY configuration is missing (navi.db unreadable, no
     assets or no findings — no hound can run); amber = OPTIONAL data / setup is missing (some
@@ -195,8 +196,8 @@ def config_status(p):
         if not llm.available():
             items.append({"level": "amber", "label": "AI model", "fix": "set a model and key in Settings",
                           "href": "/web/settings.html", "why": "the plain-English boxes and AI summaries are off"})
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     level = "red" if any(i["level"] == "red" for i in items) else ("amber" if items else "ok")
     title = {"red": "Key configurations required", "amber": "Optional configurations missing", "ok": "All set"}[level]
     return {"ok": True, "level": level, "title": title, "items": items}, 200

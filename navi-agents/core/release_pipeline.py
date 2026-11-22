@@ -26,6 +26,7 @@ confirm === true and a browser on this machine (the same rule as ⚡ Optimize).
 The schedule and the run history are saved to CACHE_DIR/release_pipeline.json and resumed when the
 server starts (resume()), so a restart does not drop the morning release.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import datetime as _dt
 import json
 import os
@@ -272,8 +273,8 @@ def _last_line(cli_jobs, jid):
             t = " ".join(str(ln).split())
             if t and not t.startswith(("cwd:", "audit log:", "started by ")):
                 return " — " + t[:200]
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return ""
 
 
@@ -413,8 +414,8 @@ def _run(c, trigger, wait_s, slot):
             entry["log"] = rl
             with _LOCK:
                 _STATE["log"] = rl
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     _record(entry, slot)
 
 
@@ -472,8 +473,8 @@ def _sched_loop(stop):
                     d["last_slot"] = slot
                     _write(d)
                 start("daily", cfg=c, slot=slot)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         stop.wait(20)
 
 

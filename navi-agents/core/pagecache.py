@@ -25,6 +25,7 @@ SUMMARY entry (summarize(): each big response cut to its decision data, flagged
 `_pc_trimmed`) so the page shows the last run on open instead of re-running live. Pages that
 follow the payload contract (core/payload.py) never get near the limit.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import gzip
 import hashlib
 import json
@@ -37,7 +38,7 @@ from core.security import private_open as _popen
 
 MAX_BYTES = int(os.environ.get("NAVI_PAGECACHE_MAX_BYTES", str(64 * 1024 * 1024)))   # one entry, raw JSON
 MAX_PAGES = int(os.environ.get("NAVI_PAGECACHE_MAX_PAGES", "200"))
-TAG_VIEWS = 5                     # build 489: tag views kept per hound (core/tagscope.MAX_TAGS)
+TAG_VIEWS = 5                     # tag views kept per hound (core/tagscope.MAX_TAGS)
 _LOCK = threading.Lock()
 
 
@@ -125,7 +126,7 @@ def put(key, entry, db_path=None):
     raw = json.dumps(entry, default=str, separators=(",", ":")).encode("utf-8")
     trimmed = 0
     if len(raw) > MAX_BYTES:
-        # build 455: keep a SUMMARY entry — every response cut down to its decision data
+        # keep a SUMMARY entry — every response cut down to its decision data
         # (summary / totals / top rows; long lists trimmed by core.payload.cap) — so the page
         # still shows the last run instead of re-running live on every open. Only when even
         # that doesn't fit is the entry dropped (and a stale smaller copy with it: it has the
@@ -258,7 +259,7 @@ def _prune():
                         os.remove(fp)
                 except OSError:
                     pass
-        # build 484: a hound's own page (/agents/<id>/page.html, no query string) is NEVER pruned —
+        # a hound's own page (/agents/<id>/page.html, no query string) is NEVER pruned —
         # its last run stays until a newer run replaces it or someone presses ✕ Clear. Only
         # per-target variants (?target=… / ?q=…) are capped at MAX_PAGES, oldest first.
         def _key(fp):
@@ -276,7 +277,7 @@ def _prune():
                 return False                       # unknown → keep it
         fs = sorted((os.path.join(d, n) for n in names if n.endswith(".json.gz")),
                     key=os.path.getmtime, reverse=True)
-        # build 489: a hound's tag views (?tk=…&tv=…) are capped at TAG_VIEWS per hound (newest
+        # a hound's tag views (?tk=…&tv=…) are capped at TAG_VIEWS per hound (newest
         # kept), outside the MAX_PAGES pool, so one hound's tags never push out another's
         keys = {fp: _key(fp) for fp in fs}
         tagged, per = [], {}
@@ -294,8 +295,8 @@ def _prune():
                     os.remove(x)
                 except OSError:
                     pass
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def _size(n):

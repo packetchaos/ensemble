@@ -1,9 +1,10 @@
 """Shared launcher logic — discovery + generic action dispatch.
 
-Both app_fastapi.py and app_flask.py import this so behavior is identical.
+All three servers (app_stdlib.py — the default — app_fastapi.py, app_flask.py) call this, so behavior is identical.
 Drop a new agent folder into agents/ and restart: it is discovered, its
 api.ACTIONS are mounted under /api/<id>/<action>, and the hub lists it.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import contextvars
 import hashlib
 import json
@@ -65,13 +66,13 @@ _LIVE = {"status", "log", "loop_log", "history", "scheduler", "list", "get", "me
 # actions with their own server-side snapshot (or a peek of one): the short result cache
 # would only serve a stale "building…" / old summary. Still counted as runs (unlike _LIVE).
 _OWN_CACHE = {"snapshot", "scent",
-              # build 509: the Dashboards app (agents/dashboard → core/boards) — board edits are app
+              # the Dashboards app (agents/dashboard → core/boards) — board edits are app
               # state and widget results have their own per-widget cache; never the short read cache
               "boards", "board_get", "board_save", "board_new", "board_delete", "board_default",
               "board_export", "board_import", "library", "widget_cached", "widget_run", "widget_sql",
               "widget_data", "sql_save", "sql_approve", "sql_delete", "sql_get", "scope_keys",
               "scope_values", "scope_count", "preset_sql", "ai_sql", "sql_preview",
-              # build 525: a CSV export starts a job / hands back a file — never a remembered answer
+              # a CSV export starts a job / hands back a file — never a remembered answer
               "export", "widget_export", "inventory_export", "software_export", "log_export", "c2log_export",
               "export_start", "search_export"}
 
@@ -110,7 +111,7 @@ def _db_sig():
             out.append((st.st_size, st.st_mtime_ns))
         except (OSError, TypeError):
             out.append(None)
-    from core import crown                   # build 527: a new crown-jewel line drops every cached answer
+    from core import crown                   # a new crown-jewel line drops every cached answer
     out.append(crown.sig())
     return tuple(out)
 
@@ -164,8 +165,8 @@ def note_response(agent_id, action, nbytes):
         import sys
         print("[navi Ensemble] large response: %s/%s %.1f MB (> %.1f MB payload contract — not yet migrated)"
               % (agent_id, action, n / 1048576.0, _BIG_LIMIT / 1048576.0), file=sys.stderr, flush=True)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return True
 
 
@@ -202,8 +203,22 @@ def registry() -> dict:
     return discovery.registry(RECORDS)
 
 
+def write_actions() -> list:
+    """Build 529 — the ONE declaration of which actions change state, served to every page in
+    /api/health so console.js stops keeping its own list (its H_WRITE_RE is only the fallback
+    for a page that hasn't heard from the server yet). Plain names apply to every specialist;
+    "agent.action" names to one (a bare `load` is a read on most pages, a write on the AI Contract)."""
+    names = (_MUTATING | DESTRUCTIVE) - {"load"}
+    return sorted(names) + ["contract.load"]
+
+
 def health() -> dict:
-    return redact.scrub(_health.health())
+    h = _health.health()
+    if isinstance(h, dict):
+        h["write_actions"] = write_actions()
+        from core import errors as _errs
+        h["swallowed_errors"] = _errs.total()     # ignored exceptions since start (core/errors.py)
+    return redact.scrub(h)
 
 
 def jobs_list() -> dict:
@@ -287,7 +302,39 @@ _OPEN_ACTIONS = {
 }
 # long orchestration runs started from a page → the background budget (2 h, heavy)
 _JOB_ACTIONS = {("contract", "run_now"), ("contract", "plan")}
-# build 525: a CSV export is an explicit request for EVERY row — never under the 5 s page-open budget,
+
+# LOOPBACK-ONLY for every action that changes something outside this console: Tenable
+# tags / ACR, email, remote execution over SSH, scan launch / delete, the Automation Station's
+# armed runs. Any payload with confirm:true (or armed / force / send: true) counts too. An explicit
+# dry run (confirm:false) is a preview and stays allowed.
+# A browser on another host (HOUNDS_BIND opened the console to the LAN) can still READ, stop /
+# pause / cancel work, and edit local app state (dashboards, alerts, contract drafts) — but it can't
+# write unless the server was started with HOUNDS_REMOTE_WRITES=1 (environment only, never from
+# the browser). Settings keeps its own stricter rules (core/gates, agents/settings).
+DESTRUCTIVE = {"tag", "tag_candidate", "apply", "bulk_apply", "assign", "acr", "set_acr", "promote", "remove",
+               "delete", "add_removals", "send", "send_test", "rotate", "encrypt", "decrypt",
+               "command", "upload", "push_file", "campaign", "deploy", "rollback", "run_checks", "cred_test",
+               "path_check", "scan_launch", "scan_resume", "scan_resume_watch", "scan_reverify",
+               "scan_delete_old", "arm", "run_now", "retag", "tag_atlas", "tag_signal", "tag_uuids", "roadmap_tag",
+               "protect", "push"}
+_REMOTE_OK_AGENTS = {"settings"}           # enforces its own loopback + confirm rules per field
+
+
+def remote_writes_allowed() -> bool:
+    return (os.environ.get("HOUNDS_REMOTE_WRITES") or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def is_destructive(agent_id, action, payload) -> bool:
+    if agent_id in _REMOTE_OK_AGENTS:
+        return False
+    p = payload if isinstance(payload, dict) else {}
+    from . import gates
+    if gates.confirmed(p) or any(gates.flag(p, k) for k in ("armed", "force", "send")):
+        return True                       # the write itself (every external write needs confirm:true)
+    if action in DESTRUCTIVE:
+        return p.get("confirm") is not False   # an explicit dry run (confirm:false) is only a preview
+    return False
+# a CSV export is an explicit request for EVERY row — never under the 5 s page-open budget,
 # whatever the page's hint (the owner's rule: nothing under 2 h). Past 5,000 rows it is a background job.
 _EXPORT_ACTIONS = {"export", "export_start", "search_export", "software_export", "inventory_export",
                    "log_export", "c2log_export", "widget_export", "cohort"}
@@ -307,13 +354,13 @@ def _run_actions() -> set:
                     out.add((r["agent"], r.get("action") or "snapshot"))
                 for q in r.get("requests") or []:
                     out.add((q["agent"], q["action"]))
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         _RUN_SET = out
     return _RUN_SET
 
 
-# ---- detached ▶ Runs (build 458) ---------------------------------------------------------------
+# ---- detached ▶ Runs ---------------------------------------------------------------
 # A ▶ Run from the console (X-Hounds-Budget: run-bg) runs as a jobq job from the start. The request
 # waits up to _FOREGROUND_S for it: a quick run answers inline exactly as before; a long one answers
 # 202 {pending, job_id, started, now} and keeps running on the server under the "job" budget (2 h by
@@ -505,11 +552,17 @@ def dispatch(agent_id: str, action: str, payload: dict, peer=None, http=False, *
     from . import gates, tagscope
     tok = gates.set_client(peer, http=http)
     try:
-        # build 489: a tag scope only reaches an action that declares it (manifest "tag_scope"),
+        # a tag scope only reaches an action that declares it (manifest "tag_scope"),
         # so no action can silently ignore a filter the operator believes is applied
         _ts = tagscope.check(agent_id, action, payload)
         if _ts is not None:
             return _ts
+        if http and is_destructive(agent_id, action, payload) and not gates.client_is_loopback() \
+                and not remote_writes_allowed():
+            return {"ok": False, "remote_refused": True,
+                    "error": "this action changes Tenable, sends mail, runs commands or launches scans — it only "
+                             "runs from a browser on the console's own machine (start the server with "
+                             "HOUNDS_REMOTE_WRITES=1 to allow it from other hosts)"}, 403
         if isinstance(payload, dict) and payload.get("_cacheonly"):
             # a page-cache replay of a ▶ step whose answer the browser no longer has (console.js
             # HC): opening a page must never start a hound — serve the server's cached answer, or

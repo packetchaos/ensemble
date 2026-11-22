@@ -39,6 +39,18 @@ const H_WRITE_RE = /^(apply|bulk_apply|assign|tag|tag_.+|.+_tag|tags_.+|send|sen
    operator's own (recorded as a run step) — only for that button, only while it is dispatched */
 function hTsClick(ev){ const t=window.__TS_CLICK; return !!(t && ev && ev.target && (ev.target===t || (t.contains && t.contains(ev.target)))); }
 const H_READ_OK = new Set(['tag_plan','os_plan','detections_export','tag_scopes']);   // read actions whose names look like writes
+/* build 529: the SERVER declares which actions write (core/launcher.write_actions → /api/health
+   write_actions; cached per browser). hIsWrite() asks that list first; H_WRITE_RE stays only as the
+   fallback (and safety net) until the page has heard from the server — "write" is the cautious side
+   (never cached, never backgrounded). */
+window.__H_WRITES = (function(){ try{ const a=JSON.parse(localStorage.getItem('hWriteActions')||'null'); if(Array.isArray(a)) return new Set(a); }catch(e){} return null; })();
+function hIsWrite(agent, action, body){
+  if(H_READ_OK.has(action)) return false;
+  if(body && typeof body==='object' && 'confirm' in body) return true;
+  const s=window.__H_WRITES;
+  if(s && (s.has(action) || s.has(agent+'.'+action))) return true;
+  return H_WRITE_RE.test(action) || (agent==='contract' && action==='load');
+}
 const HB = (function(){
   const TAB = Date.now().toString(36)+Math.random().toString(36).slice(2,10);
   const S = { ran: /(?:^|[?&])run=1(?:&|$)/.test(location.search), lastBtn:null, last:null, seq:0 };
@@ -105,7 +117,7 @@ const HB = (function(){
     if(!body) return false;
     let b; try{ b=JSON.parse(body); }catch(e){ return false; }
     if(!b || typeof b!=='object' || Array.isArray(b) || 'confirm' in b || b.background) return false;
-    if(H_WRITE_RE.test(ap.action) && !H_READ_OK.has(ap.action)) return false;
+    if(hIsWrite(ap.agent, ap.action)) return false;
     return ['hub','settings','jobs','profile'].indexOf(ap.agent)<0;
   }
   function show(j, ap, body){
@@ -280,11 +292,9 @@ const HC = (function(){
   // ✕ Clear replaces it. A browser can still opt into one with localStorage houndsCacheTTLh.
   const TTL_MS = (function(){ try{ const v=parseFloat(localStorage.getItem('houndsCacheTTLh')); if(v>0) return v*3600e3; }catch(e){} return Infinity; })();
   const MAX_PAGES = 80;
-  // never cached: writes + live state. Mirrors core/launcher._MUTATING and widens it.
-  const WRITE_RE = H_WRITE_RE;   // shared with HB (request budgets)
+  // never cached: writes (hIsWrite — the server's list, core/launcher.write_actions) + live state.
   const LIVE_RE  = /^(status|log|loop_log|history|scheduler|list|get|applied|metrics|verify_tags|tags_compare|which_agent|activity)$/;
   const SKIP_AGENTS = new Set(['jobs','profile','settings','hub']);
-  const READ_OK = H_READ_OK;
   const S = { on:ENABLED, key:KEY, mode:'live', entry:null, inflight:0, last:0, steps:[], dirty:false, ready:null, runCtx:false,
               src:'server', onServer:false, respDirty:false };
   // body keys a page leaves out of its cache key (<body data-cache-ignore="fp,allow">): values
@@ -350,7 +360,7 @@ const HC = (function(){
     const m=p.pathname.match(/^\/api\/([a-z0-9_]+)\/([a-z0-9_]+)$/); if(!m) return null;
     const agent=m[1], action=m[2];
     let b={}; if(body){ try{ b=JSON.parse(body); }catch(e){ b=null; } }
-    const write = (WRITE_RE.test(action) && !READ_OK.has(action)) || (agent==='contract' && action==='load') || !!(b && b.confirm);
+    const write = hIsWrite(agent, action) || !!(b && b.confirm);
     if(write) return {write:true};
     if(!b || SKIP_AGENTS.has(agent) || LIVE_RE.test(action) || b.background) return null;
     const k={}; for(const x in (b||{})) if(!/^(_label|_nocache|_run|refresh)$/.test(x) && !IGNORE.has(x)) k[x]=b[x];
@@ -839,6 +849,8 @@ function crownAcr(){ let v=window.__CROWN_ACR; if(v==null){ try{ v=parseInt(loca
   return (v>=1&&v<=10)?v:8; }
 function crownTxt(n){ return 'ACR ≥ '+((n>=1&&n<=10)?n:crownAcr()); }
 (function(){ try{ fetch('/api/health').then(r=>r.json()).then(h=>{ const c=h&&h.crown&&h.crown.acr_min;
+  if(h && Array.isArray(h.write_actions) && h.write_actions.length){ window.__H_WRITES=new Set(h.write_actions);
+    try{ localStorage.setItem('hWriteActions', JSON.stringify(h.write_actions)); }catch(e){} }
   if(c>=1&&c<=10){ window.__CROWN_ACR=c; try{ localStorage.setItem('crownAcr',String(c)); }catch(e){}
     document.querySelectorAll('[data-crown-txt]').forEach(el=>{ el.textContent=crownTxt(c); }); } }).catch(()=>{}); }catch(e){} })();
 async function jpost(u, b){

@@ -21,6 +21,7 @@ exclusions — and is compiled into one sub-query, so asset ids never reach the 
 Values are inlined as escaped SQL literals so the SQL panel shows exactly the statement that ran
 (and an auditor can paste it into `navi explore query`).
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import hashlib
 import json
 import re
@@ -28,7 +29,7 @@ import threading
 
 from core import credstate, db
 
-from core import crown as _crown   # build 527: crown_jewel = ACR ≥ the Settings line (default 8), on every page
+from core import crown as _crown   # crown_jewel = ACR ≥ the Settings line (default 8), on every page
 MAX_TERMS = 12
 MAX_VALUES = 50
 MAX_LEN = 200
@@ -163,7 +164,7 @@ def scope_count(scope, path=None) -> int | None:
 def fingerprint(path=None) -> str:
     """A short hash of navi.db's identity (path + mtime/size + hx fingerprint) — changes on every sync."""
     try:
-        from core import crown               # build 527: the crown-jewel line is part of every widget's answer
+        from core import crown               # the crown-jewel line is part of every widget's answer
         return hashlib.sha1((str(credstate._fp(path)) + crown.sig()).encode()).hexdigest()[:16]
     except Exception:
         return ""
@@ -179,8 +180,8 @@ def _facts(path=None):
     try:
         f["vcols"] = {r["name"] for r in db.query('PRAGMA table_info("vulns")', path=path)}
         f["acols"] = {r["name"] for r in db.query('PRAGMA table_info("assets")', path=path)}
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     try:
         from core import hx_summary, kev
         if "cves" in f["vcols"] and hx_summary.usable(path):
@@ -190,8 +191,8 @@ def _facts(path=None):
             if pids is not None:
                 f["kev_pids"] = sorted(set(pids), key=lambda p: (len(p), p))
                 f["kev_src"] = f"catalog ({len(K):,} CISA KEV CVEs)"
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     with _LOCK:
         _MEMO[path] = (fp, f)
     return f
@@ -219,7 +220,7 @@ def _certdate(col):
             f"END)")
 
 
-# ── semantic tables (build 511): the hard joins, written once ───────────────────────────────
+# ── semantic tables: the hard joins, written once ───────────────────────────────
 _DISP = "('ignored','accepted','mitigated')"
 
 

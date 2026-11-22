@@ -15,6 +15,7 @@ navi update or an SLA change invalidates it; a new day makes it stale (ages move
 the next ▶ Run recomputes. Builds run on the job queue, so leaving the page doesn't stop
 them, and opening the page only peeks — it never computes.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import datetime
 import gzip
 import hashlib
@@ -171,8 +172,8 @@ def _prune(db_path=None):
             fp = os.path.join(CACHE_DIR, n)
             if n.startswith(pre) and n.endswith(".json.gz") and os.stat(fp).st_mtime < cutoff:
                 os.remove(fp)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def _save_snapshot(key, s, db_path=None):
@@ -181,8 +182,8 @@ def _save_snapshot(key, s, db_path=None):
         _prune(db_path)
         _atomic_write(_cache_path(key + ".json.gz"),
                       gzip.compress(_json.dumps(s, default=list).encode("utf-8"), 5))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def build_snapshot(db_path=None, tag_key=None, tag_value=None, record_history=True) -> dict:
@@ -206,8 +207,8 @@ def build_snapshot(db_path=None, tag_key=None, tag_value=None, record_history=Tr
         try:
             from core import history
             history.record("sla", _sla.snapshot_metrics(res), dims={"tag_key": res.get("tag_key")})
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     return snap
 
 
@@ -232,8 +233,8 @@ def note_run(rid, ok=True, ms=0, cached=False):
     try:
         from core import activity
         activity.note_run("sla", "snapshot", ok=bool(ok), ms=float(ms or 0), cached=bool(cached), rid=str(rid)[:40])
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def start_build(submit, db_path=None, tag_key=None, tag_value=None, record_run=None) -> dict:

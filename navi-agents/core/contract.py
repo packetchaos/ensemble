@@ -17,6 +17,7 @@ the per-row HITL gate. Each cycle:
 Storage is session-memory plus optional JSON files under ./contracts (save/load).
 Writes still pass through the same NAVI_ALLOW_WRITES gate as everything else.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import json
 import os
 import re
@@ -315,8 +316,8 @@ def build_from_log(jobs=None) -> dict:
                     score = float(d.split("score=")[1].split(" ")[0])
                 if "(" in d:
                     mod = d.split("(")[1].split(")")[0]
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
             reasons, note = _reasons_from_log(j)
             doc["acr"].append({"category": j.get("category", "Business Tier"),
                                "value": j.get("value"), "score": score, "mod": mod,
@@ -387,8 +388,8 @@ def _agent_run(aid):
         if ag is not None and had:
             try:
                 ag.result = saved
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
     out = out[0] if isinstance(out, tuple) else out
     return (out or {}).get("result", out) if isinstance(out, dict) else {}
 
@@ -610,7 +611,7 @@ def _ad_software(cfg):
     from core import software as _sw
     if not _has_table("software"):
         raise NeedsInput("no software table in navi.db — run navi update assets first")
-    # the engine itself (build 455): the page's `run` action now ships only the contract payload
+    # the engine itself: the page's `run` action now ships only the contract payload
     res = _sw.analyze()
     out = []
     for pr in sorted(res.get("products", []) or [], key=lambda x: -(x.get("nasset") or 0))[:100]:
@@ -803,8 +804,8 @@ def _ad_postquantum(cfg):
         if pq._has_table("certs") and pq._uuid_set(pq._CERT_TAG_QUERY):
             specs.append({"category": pq.CATEGORY, "value": pq.VALUE, "query": pq._CERT_TAG_QUERY,
                           "remove": False})
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     for pid, _n, _r in pq.PLUGINS:
         if db.scalar("SELECT COUNT(*) FROM vulns WHERE plugin_id=?", (pid,)) or 0:
             specs.append({"category": pq.CATEGORY, "value": pq.VALUE, "plugin": str(pid), "remove": False})
@@ -941,7 +942,7 @@ def _ad_asset_ownership(cfg):
                           _uuid_specs(eng.BUSINESS_OWNER_KEY, owner, uu))
             continue
         mode = "remainder" if str(p.get("mode") or "").lower().startswith("rem") else "complete"
-        # build 464: the cascade in bulk, unbounded (was capped at 2,000 assets)
+        # the cascade in bulk, unbounded (was capped at 2,000 assets)
         cascade = eng.owner_cascade(uu, owner, mode)
         for val, s in sorted(cascade.items()):
             out += _items("Owner : " + val, len(s), _uuid_specs("Owner", val, s))
@@ -963,7 +964,7 @@ _ADAPTERS = {
 }
 
 
-_ACTIVE = {}          # the hound whose discovery a cycle / plan is running now (build 484)
+_ACTIVE = {}          # the hound whose discovery a cycle / plan is running now
 _ACTIVE_LOCK = threading.Lock()
 
 
@@ -1286,8 +1287,8 @@ def execute(contract=None, db_path=None, enforce_pause=True, skip_tags=None, app
             acr_done += 1
             if isinstance(r, dict) and r.get("ok") and not r.get("blocked") and (r.get("acr_log") or {}).get("batch"):
                 applied.append((r["acr_log"]["batch"], r.get("business_case") or ""))
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     out = {"ok": True, "queued_tags": queued, "acr_applied": acr_done, "plan": p}
     if _flag(c.get("protect_acr")):
         # after ALL the rules (a later rule may hit the same asset this cycle): NO : UPDATE on
@@ -1340,8 +1341,8 @@ def _navi_update_bg(kinds=("assets", "vulns")):
                     if (j.get("job") or j).get("status") != "running":
                         break
                     time.sleep(5)
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
             finally:
                 if held:
                     cli_jobs.CHAIN_LOCK.release()
@@ -1512,8 +1513,8 @@ def _sched_loop():
             break
         try:
             run_cycle(_CURRENT)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
 
 
 def scheduler_start() -> dict:

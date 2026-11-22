@@ -177,7 +177,7 @@ def export(p):
         return _missing()
     ac = _cols("assets")
     where, args = _where(p, cc, ac)
-    # build 525: EVERY matching result (no 50,000 cap) — at once up to 5,000, past that a background
+    # EVERY matching result (no 50,000 cap) — at once up to 5,000, past that a background
     # export job (core/exports.py) streams the explorer's own query straight to the file
     from core import exports
     need_join = bool(where) and ("a.hostname" in where or "a.ip_address" in where)

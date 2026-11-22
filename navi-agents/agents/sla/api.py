@@ -50,7 +50,7 @@ def _submit(fn):
 def snapshot(p):
     from .agent import snapshot_state, start_build, note_run
     tk, tv = _view(p)
-    # build 498: a ▶ Run from the page carries its run id → recorded in Done so far when ready
+    # a ▶ Run from the page carries its run id → recorded in Done so far when ready
     rid = p.get("record_run") if isinstance(p.get("record_run"), str) and not p.get("peek") else None
     st = snapshot_state(tag_key=tk, tag_value=tv)
     base = {"ok": True, "history": _history()}

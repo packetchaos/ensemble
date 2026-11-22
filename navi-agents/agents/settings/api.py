@@ -10,6 +10,7 @@ Four jobs:
   • downloads        — Auto-approve downloads switch + the registered external sources
                        (core.downloads); cheap, read by every page that downloads.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import os
 import urllib.parse
 
@@ -352,8 +353,8 @@ def set_env(p):
         try:
             from core import health as _health
             _health.invalidate()
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     body, _ = status(p)
     body["applied"] = applied
     if rejected:
@@ -390,8 +391,8 @@ def db_checks(p):
                 (t["table"],), budget=0))
             if exists:
                 n = int(db.scalar('SELECT count(*) FROM "%s"' % t["table"], budget=0) or 0)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         rows.append({**t, "exists": exists, "rows": n, "populated": bool(exists and n > 0)})
     return {"ok": True, "tables": rows, "db_path": db.db_path()}, 200
 

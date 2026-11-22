@@ -27,7 +27,7 @@ OR'd; inside a clause, constraints separated by spaces or commas are AND'd. A co
   "<2.4.60"      ">=2.0 <2.17.1; >=2.18 <2.18.2"      "3.0.2"
 """
 import functools
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 import re
 
 from core import db

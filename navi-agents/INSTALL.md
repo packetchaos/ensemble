@@ -48,11 +48,12 @@ Everything will be labelled **SAMPLE data** until you point it at a real `navi.d
 
 ## Server modes
 
-`run.py` picks the best available server and falls back gracefully. You can force one:
+`run.py` starts the built-in stdlib server — the reference server (client-disconnect
+cancellation, port walking) — even when FastAPI or Flask is installed. The others are opt-in:
 
 ```bash
-python3 run.py            # auto — FastAPI if installed, else Flask, else stdlib
-python3 run.py stdlib     # force the zero-dependency built-in server
+python3 run.py            # the zero-dependency built-in server (default)
+python3 run.py stdlib     # the same, explicitly
 python3 run.py fastapi    # FastAPI + uvicorn (pip-installs them if missing)
 python3 run.py flask      # Flask (pip-installs it if missing)
 ```
@@ -79,6 +80,9 @@ Every server listens on **127.0.0.1** only. Open the URL printed at startup.
   with `HOUNDS_BIND`, this machine's hostname/IP). Add others with
   `HOUNDS_ALLOWED_HOSTS=hounds.lan,10.0.0.5`. Anything else gets `403` (this blocks DNS
   rebinding).
+- **Writes stay on this machine**: from another machine you can read, preview and stop work, but
+  tagging, ACR changes, email, remote execution and scan launch answer `403` unless the server was
+  started with `HOUNDS_REMOTE_WRITES=1`.
 - **Shared jump box?** `HOUNDS_REQUIRE_TOKEN=1` requires the token even on loopback, so other
   local users can't drive your console.
 - Running uvicorn/flask by hand with `--host 0.0.0.0` (without `HOUNDS_BIND`) refuses every
@@ -194,6 +198,10 @@ export NAVI_ALLOW_WRITES=1
 
 Or drop an empty file named `ALLOW_WRITES` in the repo root (`.allow_writes` and
 `allow_writes` also work). `NAVI_MCP_ALLOW_WRITES` is honoured as an alias.
+Build 529: an enable file (ALLOW_WRITES, ALLOW_EMAIL, ALLOW_REMOTE_EXEC, ALLOW_SCAN_LAUNCH)
+only counts when it is a regular file owned by the user running the server and not writable by
+group or others (`chmod 600 ALLOW_WRITES`); startup and `check_writes.py` say when one is
+switching a gate on or being ignored. The environment / Settings is the preferred switch.
 
 ### Gate 2 — email (Gabriel, Alert Raven)
 
@@ -298,7 +306,7 @@ python3 run.py                    # server starts, prints a URL
 Then in the browser at `http://localhost:8000`:
 
 1. The hub (**Release the Hounds**) shows the pack's cards, and the header shows the
-   version — **v2.44.528** in this release; the middle number is the count of hounds the
+   version — **v2.44.529** in this release; the middle number is the count of hounds the
    server discovered (43). If the hub says "discovering agents…" forever, you're not on the
    served URL or you started `run.py` from the wrong folder.
 2. The header shows your asset count, and **doesn't** say "SAMPLE data" once

@@ -76,7 +76,7 @@ ROSTER = {
 }
 HEROES = [i for i, r in ROSTER.items() if r[4] == "hero"]
 
-# build 493: the navi Ensemble icon set (dark tiles, web/assets/icons/<id>.png, served at /static/icons/).
+# the navi Ensemble icon set (dark tiles, web/assets/icons/<id>.png, served at /static/icons/).
 # A specialist listed here shows its tile everywhere its icon appears (sidebar, home grid, page header,
 # intro panel, Meet, one-pager); everyone else keeps the emoji in ROSTER until their tile is drawn.
 # "hub" (Run the Ensemble) keeps the navi Ensemble mark.

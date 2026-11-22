@@ -20,6 +20,7 @@ A4 IoTSquadOrchestrator — run A1->A2->A3, build the QA coverage ledger, surfac
 
 All reads are read-only sqlite3. Registry writes are gated behind human approval.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 from core import iot_common as ic
 from core import iot_registry as reg
 from core import navi_cli, tagname
@@ -399,8 +400,8 @@ class IoTSquadOrchestrator(Agent):
                                       "signals": dev.get("signals") or [], "klass": klass or "",
                                       "type": typ or "", "conf": dev.get("conf") or ""})
             d["tag_actions"] = [_iot_tag_action(nm, h) for nm, h in d["handoff"].items()]
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
 
         c = self.a2.run(db_path=db_path, handoff=d["handoff"])
         x = self.a3.run(db_path=db_path, carriers=c["carriers"], use_pack=use_pack)

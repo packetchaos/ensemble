@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """One-command launcher — works on a stock Python install, no pip required.
 
-    python3 run.py            # auto: uses the built-in zero-dependency server
-    python3 run.py fastapi    # FastAPI (auto-installs it if missing)
-    python3 run.py flask      # Flask  (auto-installs it if missing)
-    python3 run.py stdlib     # force the zero-dependency server
+    python3 run.py            # the built-in zero-dependency server (the reference server)
+    python3 run.py fastapi    # FastAPI (auto-installs it if missing) — alternative
+    python3 run.py flask      # Flask  (auto-installs it if missing) — alternative
+
+Build 529: the stdlib server is the default whatever is installed. It is the reference
+implementation (client-disconnect cancellation, chunked-body refusal, port walking); FastAPI and
+Flask stay as opt-in alternatives that share core.security + core.launcher, and
+tests/test_security_server.py holds all three to the same gate.
 
 Always run from the repo root (the folder that contains this file, agents/ and
 app_*.py). Builds the bundled sample navi.db on first run; point NAVI_DB_PATH at
@@ -111,10 +115,12 @@ elif which.startswith("fl"):
 elif which.startswith("st"):
     app = "app_stdlib.py"
 else:
-    app = "app_fastapi.py" if fast else ("app_flask.py" if flsk else "app_stdlib.py")
+    app = "app_stdlib.py"              # ONE default server, whatever is pip-installed
 
 if not os.path.exists(app):
     sys.exit(f"ERROR: {app} not found — run this from the repo root.")
 if app == "app_stdlib.py":
     print("using the built-in zero-dependency server (no FastAPI/Flask needed).")
+else:
+    print("using %s — an alternative server; `python3 run.py` (stdlib) is the reference." % app)
 sys.exit(subprocess.call([sys.executable, app]))

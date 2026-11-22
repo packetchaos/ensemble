@@ -25,6 +25,7 @@ one-heavy-scan-at-a-time semaphore, so a release never overlaps two big scans (s
 builds on the job queue take the same semaphore). Budget / cancel / row-cap hits are
 recorded per hound (item["budget"] = {hits, kinds, first}) and totalled in state["budget_hits"].
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import json
 import os
 import threading
@@ -66,8 +67,8 @@ def _save_history(h):
         with _popen(tmp, "w", encoding="utf-8") as f:
             json.dump(h, f)
         os.replace(tmp, _hist_path())
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def _vuln_rows():
@@ -93,7 +94,7 @@ def _auto_approve():
         return False
 
 
-# ---------------------------------------------------------------- preflight (build 466)
+# ---------------------------------------------------------------- preflight
 # What each hound needs in navi.db before a release is worth running it. "block" = the hound
 # has nothing to read without it (the dialog offers to skip it); "warn" = it runs, but part
 # of its answer is missing or it will be slow. Each fix points at the Settings card that
@@ -274,8 +275,8 @@ def _save_last(s):
         with _popen(tmp, "w", encoding="utf-8") as f:
             json.dump(s, f, default=str)
         os.replace(tmp, _last_path())
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def cancel():
@@ -460,8 +461,8 @@ def _snap_ref(agent, body):
         if n:
             m = snap["meta"]
             return {"file": n, "built_at": m.get("built_at"), "sig": m.get("sig")}
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return None
 
 
@@ -552,8 +553,8 @@ def _run(rid):
                 from core import activity
                 activity.note_run(it["agent"], "ensemble", ok=(st == "done"), ms=sec * 1000,
                                   cached=(note == "cached"), rid="ensemble-" + rid)
-            except Exception:
-                pass
+            except Exception as _e:
+                _swallowed(_e)
         # a cached snapshot or a near-instant run says nothing about the real cost — keep
         # the previous measurement (or the first-run rate) for the next estimate
         if st == "done" and note != "cached" and sec >= MIN_HIST_S and rows > 0:

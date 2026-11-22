@@ -19,6 +19,7 @@ Secrets: the command text is REDACTED before it is stored (``mask()``: password=
 the navi.db ssh password). ``command_sha256`` is the hash of the exact bytes sent, so a row
 can still be matched to a command you hold without the log holding the secret.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import csv
 import hashlib
 import io
@@ -80,8 +81,8 @@ def _ensure():
         try:
             from core.security import private_file
             private_file(tagq._DBPATH)
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
         _READY = True
     except Exception:
         _READY = False
@@ -130,8 +131,8 @@ def mask(cmd) -> str:
     try:
         from core import redact
         s = redact.scrub(s)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return s
 
 
@@ -162,8 +163,8 @@ def _operator():
         if c and c.get("http") and not gates.client_is_loopback():
             where = "remote:" + str((c.get("peer") or ("?",))[0] if isinstance(c.get("peer"), (tuple, list))
                                     else c.get("peer"))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return (who or "?") + "@" + where
 
 
@@ -217,8 +218,8 @@ def _write_head(d):
         with private_open(tmp, "w") as f:
             json.dump(d, f)
         os.replace(tmp, _head_path())
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
 
 def _read_head():
@@ -364,7 +365,7 @@ def stats() -> dict:
             "off_inventory_week": n("SELECT COUNT(*) n FROM c2_log WHERE ts>=? AND in_inventory=0" + RAN, (wk,)),
             "last": last[0] if last else None,
             "plans_pending": sum(v for k, v in plans.items() if k in ("generated", "approved")),
-            # per-run statuses (build 485): "deployed (canary)", "failed (3 host(s))", …
+            # per-run statuses: "deployed (canary)", "failed (3 host(s))", …
             "plans_deployed": sum(v for k, v in plans.items() if str(k).startswith("deployed")),
             "plans_failed": sum(v for k, v in plans.items() if str(k).startswith("failed")),
             "since_utc_midnight": day0}
@@ -451,7 +452,7 @@ def plans(limit=50) -> list:
     return _q("SELECT * FROM c2_plans ORDER BY id DESC LIMIT ?", (int(limit),))
 
 
-# ---- per-host safety state, read back from the log (build 485 — sec C6 / C7) -----------------------
+# ---- per-host safety state, read back from the log -----------------------
 # A host's state must survive a page reload, so it is derived from the log rows, never page memory:
 #   key CHANGED   the latest host-key outcome is hostkey_mismatch, and no STRICT login has succeeded since
 #   unknown state the latest remediation / rollback step row timed out, and no clean pre-flight (run_id

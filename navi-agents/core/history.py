@@ -19,6 +19,7 @@ Public API:
     latest(agent) -> the most recent point or None
     agents() -> [agent ids that have history]
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import datetime
 import json
 import os
@@ -77,8 +78,8 @@ def record(agent, metrics, dims=None, date=None):
     try:
         with _REC_LOCK:
             _record_locked(agent, point)
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     return point
 
 

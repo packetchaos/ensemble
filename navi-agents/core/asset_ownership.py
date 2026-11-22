@@ -19,12 +19,13 @@ Three ownership layers, read off tags:
 Crown jewels = core.crown (build 527: ACR ≥ the Settings line, default 8 — one definition on
 every page). All reads are read-only; every write goes through the gated navi tag path.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import re
 
 from core import db, hx_summary, navi_cli, tagname, tagscope
 from core import cloud as _cloud
 
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 BUSINESS_OWNER_KEY = "Business Owner"
 ASSET_OWNER_KEY = "Asset Owner"
 DISPOSITIONS = ("Ignored", "Accepted", "Mitigated")
@@ -146,7 +147,7 @@ def _route_members(db_path=None, scope=None) -> dict:
     out = {}
     if not _has_table("vuln_route", db_path):
         return out
-    fs, ps = _sc(scope, "asset_uuid")          # build 489: only the tag's assets' findings
+    fs, ps = _sc(scope, "asset_uuid")          # only the tag's assets' findings
     hv = db.indexed_by("hx_v_plugin", db_path)
     for r in _q("SELECT app_name, plugin_list FROM vuln_route", path=db_path):
         app = r.get("app_name")
@@ -244,8 +245,8 @@ def _any_open_finding(db_path=None) -> bool:
     try:
         if hx_summary.usable(db_path):
             return bool(_q("SELECT 1 FROM hx_asset WHERE n_open > 0 AND asset_uuid IS NOT NULL LIMIT 1", path=db_path))
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     where = ("lower(COALESCE(state,'open')) IN ('open','reopened') AND " if "state" in vc else "")
     return bool(_q(f"SELECT 1 FROM vulns WHERE {where}asset_uuid IS NOT NULL AND asset_uuid<>'' LIMIT 1", path=db_path))
 
@@ -304,7 +305,7 @@ def _asset_ownership(a, groups):
     disp_map = {}
     for nm, d in disp_names:
         disp_map[nm] = d
-    # build 498: the surface is the asset's OPEN, non-info FINDINGS (one per plugin) — routes and
+    # the surface is the asset's OPEN, non-info FINDINGS (one per plugin) — routes and
     # paths are how they get assigned. A finding is owned when this asset carries an Owner tag
     # for its plugin's route OR one of the paths it was found at (own the CentOS route → every
     # CentOS finding on it is owned, whichever path it sits at); dispositioned when it carries
@@ -329,7 +330,7 @@ def _asset_ownership(a, groups):
         handled = surface
     elif surface:
         handled = handled_items
-        # build 523: 100% means EVERY open finding — 1,999 of 2,000 used to round up to 100.0 and
+        # 100% means EVERY open finding — 1,999 of 2,000 used to round up to 100.0 and
         # count as "fully claimed"; a partial asset now tops out at 99.9
         claimed_pct = 100.0 if handled >= surface else min(99.9, round(100.0 * handled / surface, 1))
     else:
@@ -346,7 +347,7 @@ def _asset_ownership(a, groups):
     }
 
 
-# build 499: specialist findings grouped by what they mean (crown-jewel triage). The same lanes
+# specialist findings grouped by what they mean (crown-jewel triage). The same lanes
 # as the page's CJ_LANES — checked in this order; anything else is context (tiers, classes,
 # inventories), which is not a specialist FINDING.
 SIGNAL_LANES = (
@@ -396,7 +397,7 @@ def _iter_assets_with_tags(db_path=None, scope=None):
     url = "url" if "url" in cols else "NULL AS url"
     cloud_cols = _cloud.columns(cols)
     cc = "".join(", " + c for c in cloud_cols)
-    fa, pa = _sc(scope, "uuid")              # build 489: a tag view streams only the tag's assets
+    fa, pa = _sc(scope, "uuid")              # a tag view streams only the tag's assets
     ft, pt = _sc(scope, "asset_uuid")
     arows = db.iter(f"SELECT rowid AS _rid, uuid, hostname, ip_address ip, {acr}, {aes}, {url}{cc} FROM assets "
                     "WHERE uuid IS NOT NULL AND uuid<>''" + fa + " ORDER BY uuid, rowid", pa, path=db_path, budget="job")
@@ -448,9 +449,9 @@ def _rollup(db_path, emit, scope=None):
     scope = _scope(scope)
     if scope and not _has_table("tags", db_path):
         raise LookupError("no tags table in navi.db — run `navi config update assets` to filter by a tag")
-    # build 489: a tag view reads only the tag's assets; each asset's row is built exactly as in
+    # a tag view reads only the tag's assets; each asset's row is built exactly as in
     # the whole estate (its own tags, routes, paths and findings), only the population changes
-    finds_by = _finding_members(db_path, scope)     # build 498: per-finding (route, paths)
+    finds_by = _finding_members(db_path, scope)     # per-finding (route, paths)
     risk_by = _vuln_risk(db_path, scope)
     owners = {}                       # name -> {assets, crown, business, asset, tech}
     K = dict(n=0, with_surface=0, unclaimed=0, fully=0, biz=0, asset=0, tech=0, claimed_sum=0.0, claimed_n=0,
@@ -526,7 +527,7 @@ def _rollup(db_path, emit, scope=None):
             K["crown_unclaimed"] += 1 if (row["surface"] > 0 and not row["has_owner"]) else 0
             K["crown_biz"] += 1 if row["business_owners"] else 0
             K["crown_no_owner"] += 0 if row["has_owner"] else 1
-            K["crown_crit"] += 1 if crit else 0          # build 499: the crown-jewel summary strip
+            K["crown_crit"] += 1 if crit else 0          # the crown-jewel summary strip
             K["crown_kev"] += 1 if kevf else 0
             K["crown_blind"] += 1 if row["risk_signals"] == 0 else 0     # no specialist FINDING
         K["blind"] += 1 if is_blind else 0
@@ -570,7 +571,7 @@ def _rollup(db_path, emit, scope=None):
         "kev_assets": K["kev"], "blind": K["blind"],
         "blind_no_signal": K["no_signal"], "cred_fail": K["cred_fail"],
         "crown_acr": _crown.threshold(),
-        # --- "At a glance" (build 441) — all derived from the rollup above ---
+        # --- "At a glance" — all derived from the rollup above ---
         "owned": K["owned"], "owned_pct": pct(K["owned"], n),
         "no_owner": n - K["owned"], "no_owner_pct": pct(n - K["owned"], n),
         "no_business": n - K["biz"], "no_business_pct": pct(n - K["biz"], n),
@@ -639,7 +640,7 @@ def _row_flags(r):
 
 
 STORE_NS = "asset_ownership"
-STORE_NS_TAG = "asset_ownership_tag"     # build 489: tag views' runs — never evict the estate's
+STORE_NS_TAG = "asset_ownership_tag"     # tag views' runs — never evict the estate's
 
 
 def overview_store(db_path=None, scope=None):
@@ -854,7 +855,7 @@ def plan(prompt, db_path=None, scope=None) -> dict:
     if not prompt:
         return {"ok": False, "error": "describe who owns which assets"}
     schema = tag_schema(db_path)            # the vocabulary stays the estate's: a tag view only
-    assets = assets_with_tags(db_path, scope)   # narrows WHICH assets match (build 489)
+    assets = assets_with_tags(db_path, scope)   # narrows WHICH assets match
     owner_names = []
     try:
         from agents.exproute.agent import owners as _owners
@@ -893,8 +894,8 @@ def plan(prompt, db_path=None, scope=None) -> dict:
             resolved = entry["name"]
         else:
             resolved_note = f"“{parsed['owner']}” isn't a navi user/group — will tag as a free-text owner."
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
     layer = "asset" if parsed.get("layer") == "asset" else "business"
     mode = (parsed.get("mode") or ("complete" if layer == "asset" else None))

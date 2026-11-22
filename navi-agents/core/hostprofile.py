@@ -9,6 +9,7 @@ Parses per-asset hardware + scan-info from navi.db plugin output:
     Credentialed checks / Scan Start Date / Scan duration).
 Read-only.
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import re
 from core import cloud as _cloud
 
@@ -82,8 +83,8 @@ def device_nature(asset_uuid, db_path=None):
         if w:
             m = re.search(r"Computer Manufacturer\s*:\s*(.+)", w[0].get("output") or "", re.I)
             maker = (m.group(1).strip() if m else "")
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
     lk = maker.lower()
     if lk:
         if any(v in lk for v in _VM_MAKERS) or ("microsoft" in lk and "corporation" in lk):
@@ -102,8 +103,8 @@ def device_nature(asset_uuid, db_path=None):
                         add("cloud", "Cloud instance", c.replace("_", " ") + " present")
                         add("vm", labels["vm"], "cloud instance (" + c + ")")
                         break
-    except Exception:
-        pass
+    except Exception as _e:
+        _swallowed(_e)
 
     if not out:
         if lk and any(p in lk for p in _PHYS_MAKERS):

@@ -14,6 +14,7 @@ Everything here is READ-ONLY over navi.db. Tagging stays in agents/cisakev (gate
 through core.navi_cli — tag-by-CVE: the CVE is the selector, the tag lands on the
 assets that have it).
 """
+from core.errors import swallowed as _swallowed  # no silent excepts
 import datetime
 import json
 import os
@@ -41,7 +42,7 @@ _CVE = re.compile(r"CVE-\d{4}-\d{3,}", re.I)
 _KEEP = ("cveID", "vendorProject", "product", "vulnerabilityName", "dateAdded", "dueDate",
          "knownRansomwareCampaignUse", "forensicTriage", "cwes")
 OPEN_STATES = ("open", "reopened")
-from core import crown as _crown   # build 527: the one crown-jewel definition (Settings, default 8)
+from core import crown as _crown   # the one crown-jewel definition (Settings, default 8)
 
 _CACHE = {"t": 0.0, "v": None}
 _TTL = float(os.environ.get("NAVI_KEV_CACHE_S", "21600"))      # 6 h — CISA updates ~daily
@@ -230,8 +231,8 @@ def analyze(db_path=None, json_text: str = "", force: bool = False, keep_uuids: 
                     except (TypeError, ValueError):
                         acr[a["uuid"]] = 0.0
                     host[a["uuid"]] = (a.get("hostname") or "").strip() or a.get("ip_address") or a["uuid"]
-        except Exception:
-            pass
+        except Exception as _e:
+            _swallowed(_e)
     crown = {u for u in all_assets if acr.get(u, 0) >= _crown.threshold()}
 
     # ---- per-CVE rows

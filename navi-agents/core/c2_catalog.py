@@ -765,7 +765,7 @@ def facts(cid, out):
              # linux R1: where the state came from — the authoritative tool, or the kernel-only fallback
              "via": "tool" if r in ("yes", "no") else ("kernel_list" if newer is not None else "none"),
              "missing_tool": tool if r not in ("yes", "no") else "", "kernel_listed": listed,
-             "rtool": f.get("rtool") or ""}        # build 487: which tool answered (needs-restarting / dnf needs-restarting)
+             "rtool": f.get("rtool") or ""}        # which tool answered (needs-restarting / dnf needs-restarting)
         f["pending"] = r == "yes" or (r == "unknown" and newer is True)
         f["decided"] = r in ("yes", "no") or newer is not None
     if cid == "needrestart":

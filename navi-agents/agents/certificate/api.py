@@ -36,7 +36,7 @@ from core.gates import confirmed
 AGENT = CertificateAgent()
 CATEGORIES = ["Cert failure", "Cert Issue"]
 
-# build 489: the last scoped results, per tag — never AGENT.result (the estate / hub card)
+# the last scoped results, per tag — never AGENT.result (the estate / hub card)
 _TAG_RESULTS = collections.OrderedDict()
 _TAG_LOCK = threading.Lock()
 
