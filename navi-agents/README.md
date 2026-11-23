@@ -48,7 +48,7 @@ run and starts the zero-dependency stdlib server — the reference server, whate
 (build 529). `python3 run.py fastapi` / `flask` remain opt-in alternatives behind the same
 security policy.
 
-The header shows the version, e.g. **v2.44.529** — `MAJOR.<specialists>.<build>`, where the middle
+The header shows the version, e.g. **v2.44.530** — `MAJOR.<specialists>.<build>`, where the middle
 number is the count of specialists the server discovered (`core/version.py`).
 
 **Point at your real tenant** (live data + tagging):
@@ -288,7 +288,7 @@ from `tools/hound_pages/<id>.json` (the same text feeds the intro panel under ea
 |---|---|---|
 | **Ensemble Report** | `insights` | The estate brief — posture across every specialist, blind spots, and where their findings converge |
 | **Automation Station** | `contract` | Orchestrator — capture a policy once; it plans, then tags / sets ACR on a loop when armed. Also schedules **Run the Ensemble** (navi updates → optimize → run) so every page is ready at log-in |
-| **Remote Remediation** | `c2` | Remediation executor — `navi action push` (SSH) to **one** Linux host: run a command, ship a file, or apply a vuln-derived patch. Triple-gated (writes + remote-exec opt-in + per-host confirm), canary-first campaigns with stop-on-failure + abort, Route→Tag→Push→Verify |
+| **Remote Remediation** | `c2` | Remediation executor — `navi action push` (SSH) to **one** Linux host: run a command, ship a file, or apply a vuln-derived patch. Triple-gated (writes + remote-exec opt-in + per-host confirm), canary-first campaigns with stop-on-failure + abort, Route→Tag→Push→Verify. Python-library findings (a `site-packages` path in the plugin output) are planned as a pip upgrade with the interpreter that owns that directory, never the OS `python3` package; ⑧ Verify hands the changed hosts and the plugin to Scan Confirmation for a remediation scan |
 | **Tag Removal** | `tagremoval` | Lists every tag and removes the chosen ones; feeds Automation Station's removal phase |
 | **Alerts** | `alert` | Baseline + threshold alerts; crafts, tests, and emails the change |
 | **Dashboard Builder** | `dashboard` | Plain English → read-only SQL → KPI / bar / line / pie; pin + promote to a Custom Dashboard |

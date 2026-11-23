@@ -1800,7 +1800,7 @@ def plan_ai(p):
                 evals[t["target"]] = c2_verdict.eligibility(pr, _plan_ctx(rec, bool((t.get("asset") or {}).get("crown"))))
         vs = {}
         pc = v["plan"].get("precheck") or {}
-        if pc.get("fixed_version") and inst:
+        if pc.get("fixed_version") and inst and pc.get("compare") != "pep440":   # pre-flight reads OS packages only
             # fix round (linux M3): compare the versions the pre-flight already read against the plan's fixed build —
             # a server-side compare, no SSH (so a pre-flight run before the plan needs no second run)
             pkgn = c2_remediate.guess_package(src)
@@ -1903,6 +1903,16 @@ def _remediate_host(plan, run_id, source, plan_sha, rollback_upto=None, rollback
         reads = {}
         pkgs = plan_pkgs
         keep = None
+        plib = (meta or {}).get("library")
+        if not rollback and selector and plib:
+            # build 530: a Python-library plan touches a host only when THIS host's own finding shows the same library
+            # in the same interpreter's site-packages (another host may have it in a venv — a different plan)
+            hl = c2_remediate.affected(c2_remediate.sources(selector, [ip])).get("library") or {}
+            if (hl.get("interpreter"), c2_remediate.pip_norm(hl.get("name"))) != (plib.get("interpreter"),
+                                                                                  c2_remediate.pip_norm(plib.get("name"))):
+                return {"target": ip, "status": "not_applicable", "steps": log, "ran_upto": 0, "verdict": "not_in_scope",
+                        "message": f"— Not in this host's finding — its own plugin output does not show {plib.get('name')} "
+                                   f"under {plib.get('site')}. Nothing changed."}
         if not rollback and selector:
             # sec F1 (verify round): the package scope is PER HOST — this host's own finding output (or, without
             # package lines, Tenable's text) decides which of the plan's names may touch THIS host. Never adds a name.
@@ -2012,7 +2022,7 @@ def _remediate_host(plan, run_id, source, plan_sha, rollback_upto=None, rollback
                         "verdict": "not_reached", "message": "✗ Not reached — " + str(r.get("status") or "").replace("_", " ")
                                                            + ". Nothing ran. " + (r.get("message") or "")[:200]}
             out = c2_remediate.unwrap(r.get("output"))
-            before = (out.strip().splitlines() or [""])[0].strip()[:80]
+            before = c2_remediate.read_version(out, pc)[:80]     # build 530: `pip show` prints "Version: x" mid-output
             if r.get("exit_code") in (126, 127):
                 # linux C1: "command not found / not executable" is never "not affected" — it is a check that
                 # could not run (wrong distro family?), an error
@@ -2035,7 +2045,8 @@ def _remediate_host(plan, run_id, source, plan_sha, rollback_upto=None, rollback
             if pc.get("fixed_version") and before and r.get("exit_code") in (pc.get("expect_exit") or [0]):
                 verdict, msg = "already_fixed", (f"— Already fixed — installed {before} ≥ fixed {pc['fixed_version']} "
                                                   "(version compare). Nothing changed.")
-            elif r.get("exit_code") == 1 and re.match(r"^\s*(dpkg-query|rpm)\b", pc.get("command") or ""):
+            elif r.get("exit_code") == 1 and (re.match(r"^\s*(dpkg-query|rpm)\b", pc.get("command") or "")
+                                              or re.search(r"\s-m\s+pip\s+show\s", pc.get("command") or "")):
                 verdict, msg = "not_installed", "— Not installed — the package query found no such package (exit 1). Nothing changed."
             else:
                 verdict, msg = "not_affected", (f"— Precheck says not affected (exit {r.get('exit_code')}). Nothing changed.")
@@ -2106,7 +2117,7 @@ def _remediate_host(plan, run_id, source, plan_sha, rollback_upto=None, rollback
                             "verdict": "step_failed", "reads": reads,
                             "message": f"✗ Step {st['n']} ran but its verify did not pass — stopped here."}
                 if st["verify"].get("fixed_version"):
-                    proven = (st["verify"], (c2_remediate.unwrap(v.get("output")).strip().splitlines() or [""])[0].strip())
+                    proven = (st["verify"], c2_remediate.read_version(c2_remediate.unwrap(v.get("output")), st["verify"]))
         pv = plan.get("post_verify") if before_f is None else None   # linux M2: the after-read decides when it works
         if pv:
             v = push(pv["command"], "remediation post_verify", timeout=120)
@@ -2118,7 +2129,7 @@ def _remediate_host(plan, run_id, source, plan_sha, rollback_upto=None, rollback
                         "verdict": "step_failed", "reads": reads,
                         "message": "✗ Post-verify did not pass — the change did not take."}
             if pv.get("fixed_version"):
-                proven = (pv, (c2_remediate.unwrap(v.get("output")).strip().splitlines() or [""])[0].strip())
+                proven = (pv, c2_remediate.read_version(c2_remediate.unwrap(v.get("output")), pv))
         # build 486 (linux P1-4 / P1-5 / C6 / C7): the verdict from what the host has AFTER the change — every package
         # vs its own fixed build, the worst one decides; reboot required and services still on the old library
         hv = verdict_after(proven, before_f=before_f)

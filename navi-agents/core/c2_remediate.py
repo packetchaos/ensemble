@@ -63,7 +63,15 @@ SYSTEM = (
     "openssl) — always end a format string with \\n. verify / post_verify are read-only and expect_regex "
     "is matched against their output (e.g. the fixed version). Never write the word sudo anywhere but at "
     "the very start of a command. If the data does not name a package or a safe fix, return "
-    "\"steps\":[] and say why in summary.")
+    "\"steps\":[] and say why in summary. LANGUAGE LIBRARIES: when the plugin output's Path is inside a Python "
+    "site-packages directory (…/lib/pythonX.Y/site-packages/<lib>…) the finding is a pip library, NOT an OS package — "
+    "never upgrade python3 or any distro package for it. Upgrade that one library with the interpreter that owns the "
+    "directory (…/lib/pythonX.Y/site-packages → …/bin/pythonX.Y), staying on the installed major version: "
+    "sudo <interpreter> -m pip install --upgrade --no-input --disable-pip-version-check '<lib>>=<fixed>,<<next major>' ; "
+    "precheck / verify / post_verify: <interpreter> -m pip show <lib> ; rollback: sudo <interpreter> -m pip install "
+    "--no-input --disable-pip-version-check '<lib>==<installed>'. A library under the system Python (/usr/lib…, "
+    "dist-packages) or a home directory (~/.local): return \"steps\":[] and say the distro package / that user must "
+    "upgrade it.")
 
 
 # --------------------------------------------------------------------------------------------- #
@@ -216,6 +224,11 @@ def _user_prompt(src, family):
         for pid, o in (h.get("outputs") or {}).items():
             lines.append(f"  plugin {pid} output: {_defang(o)}")
     lines.append("</navi_data>")
+    lib = affected(src).get("library")
+    if lib:
+        lines.append("Parsed from the output (trusted parser, not the host): Python library " + lib["name"] + " "
+                     + lib["installed"] + " → fixed " + lib["fixed"] + " in " + lib["site"] + " (" + lib["managed"]
+                     + "-managed); interpreter " + lib["interpreter"] + "; requirement " + lib["spec"] + ".")
     lines.append("Return ONLY the JSON object.")
     return "\n".join(lines)
 
@@ -329,7 +342,7 @@ OUTPUT_FORMATS = [
     {"id": "upstream", "family": "any", "side": "installed", "split": "none", "authority": "upstream",
      "rx": r"^[ \t]*(?:-[ \t]+)?Installed version\s*:\s*(\S+)"},
     {"id": "upstream", "family": "any", "side": "fixed", "split": "none", "authority": "upstream",
-     "rx": r"^[ \t]*(?:-[ \t]+)?Fixed version\s*:\s*(\S+)"},
+     "rx": r"^[ \t]*(?:-[ \t]+)?Fixed version\s*:\s*([^\s,/]+(?:[ \t]*[,/][ \t]*\d[^\s,/]*)*)"},
     {"id": "upstream", "family": "any", "side": "path", "split": "none", "authority": "upstream",
      "rx": r"^[ \t]*(?:-[ \t]+)?Path\s*:\s*(\S+)"},
 ]
@@ -398,7 +411,11 @@ def parse_output(text):
                 if cur_up is None or cur_up.get(f["side"]):
                     cur_up = {"path": "", "installed": "", "fixed": ""}
                     upstream.append(cur_up)
-                cur_up[f["side"]] = m.group(1)
+                val = m.group(1)
+                if f["side"] == "fixed":
+                    cur_up["fixed_all"] = val
+                    val = re.split(r"[ \t]*[,/][ \t]*", val)[0]
+                cur_up[f["side"]] = val
             continue
         tok = m.group(1)
         n, v = (_split_label_rpm(tok) if f["split"] == "rpm" else _split_pkg(tok))
@@ -445,6 +462,96 @@ def _src_parts(src):
     return str(src or ""), [str(src or "")]
 
 
+# --------------------------------------------------------------------------------------------- #
+#  Language-library findings (build 530) — a Python library pip installed, not an OS package
+# --------------------------------------------------------------------------------------------- #
+# Tenable reports a library it found on disk as "Path : …/lib/python3.11/site-packages/urllib3-2.1.0-py3.11.egg/…",
+# "Installed version", "Fixed version" (often "Potential Vulnerability : Component"). That is NOT an OS package: the
+# fix is a pip upgrade of THAT library with the interpreter that owns THAT directory — never `dnf upgrade python3`.
+_PYSITE = re.compile(r"^(?P<prefix>/(?:[A-Za-z0-9._+@-]+/)*?)lib(?:64)?/python(?P<ver>[23](?:\.\d{1,2})?)/"
+                     r"(?P<kind>site|dist)-packages/(?P<rest>[^\s]+)$")
+_PYDIST = re.compile(r"^([A-Za-z0-9][A-Za-z0-9_.]*?)(?:-\d[^/]*)?(?:\.(?:egg|egg-info|dist-info))?(?:/|$)")
+PIP_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$")
+PIP_OPTS_OK = {"--no-input", "--disable-pip-version-check", "-q", "--quiet"}
+
+
+def pip_norm(name):
+    """PEP 503 name normalisation: urllib3 == URLLib3 == url_lib3 (runs of - _ . are one -)."""
+    return re.sub(r"[-_.]+", "-", str(name or "")).lower()
+
+
+def python_site(path):
+    """A Tenable `Path :` inside a Python site-packages / dist-packages dir → {site, prefix, interpreter, version,
+    managed, name, egg} or None. managed: pip (a separately built / venv / /opt Python — pip owns it) · os (the
+    system Python under /usr or a Debian dist-packages dir — the distro package manager owns it) · user (~/.local)."""
+    m = _PYSITE.match(str(path or "").strip())
+    if not m or ".." in path.split("/"):
+        return None
+    prefix, ver, kind, rest = m.group("prefix"), m.group("ver"), m.group("kind"), m.group("rest")
+    n = _PYDIST.match(rest)
+    name = n.group(1) if n else ""
+    if not name or not PIP_NAME.match(name):
+        return None
+    site = path[:path.index("-packages/") + len("-packages")]
+    if "/.local/" in prefix:
+        managed = "user"
+    elif prefix in ("/usr/",) or kind == "dist":
+        managed = "os"
+    else:
+        managed = "pip"
+    interp = prefix + "bin/python" + ver
+    return {"site": site, "prefix": prefix, "interpreter": interp, "python": ver, "managed": managed,
+            "name": name, "egg": bool(re.search(r"\.egg(/|$)", rest)), "path": path}
+
+
+_VNUM = re.compile(r"\d+(?:\.\d+)*")
+
+
+def pick_fixed(installed, fixed_text):
+    """Tenable may state several fixed versions ("1.26.19, 2.2.2" — one per release line). The plan takes the lowest
+    fixed version on the INSTALLED major line that is newer than the installed one (2.1.0 → 2.2.2, never a jump to a
+    new major), else the lowest one newer than installed. '' when none is."""
+    cands = [v for v in _VNUM.findall(str(fixed_text or "")) if v]
+    if not cands:
+        return ""
+    newer = [v for v in cands if not installed or pep_cmp(v, installed) > 0] or ([] if installed else cands)
+    if not newer:
+        return ""
+    maj = (installed or "").split(".")[0]
+    same = [v for v in newer if v.split(".")[0] == maj]
+    pool = same or newer
+    best = pool[0]
+    for v in pool[1:]:
+        if pep_cmp(v, best) < 0:
+            best = v
+    return best
+
+
+def library_finding(src, plugin_text, upstream_rows):
+    """The ONE Python library a finding is about, or None. Authority rule (as for OS packages): the PATH comes from the
+    host's plugin output, but the library NAME must also be in Tenable's own plugin text (name / solution / synopsis),
+    and the output must state an installed and a fixed version for it."""
+    ptl = pip_norm(plugin_text)
+    for u in upstream_rows:
+        info = python_site(u.get("path"))
+        if not info:
+            continue
+        nm = pip_norm(info["name"])
+        if not re.search(r"(?<![a-z0-9-])" + re.escape(nm) + r"(?![a-z0-9])", ptl):
+            continue
+        inst = (u.get("installed") or "").strip()
+        fx = pick_fixed(inst, u.get("fixed_all") or u.get("fixed"))
+        if not inst or not fx or not re.fullmatch(r"[0-9][0-9A-Za-z.+!-]{0,40}", inst):
+            continue
+        info.update(installed=inst, fixed=fx, fixed_stated=(u.get("fixed_all") or u.get("fixed") or "")[:80],
+                    ecosystem="pip", compare="pep440")
+        major = fx.split(".")[0]
+        info["upper"] = (str(int(major) + 1) if major.isdigit() and inst.split(".")[0] == major else "")
+        info["spec"] = f"{info['name']}>={fx}" + (f",<{info['upper']}" if info["upper"] else "")
+        return info
+    return None
+
+
 def affected(src):
     """What the SOURCE authorises — with an authority split:
        * Tenable-authored plugin text (name / solution / synopsis / description) may name packages,
@@ -469,6 +576,7 @@ def affected(src):
     facts = {}
     seen_inst = {}
     anon = {}
+    up_rows = []
     kernel = None
     formats = []
     remote = esm = False
@@ -489,6 +597,7 @@ def affected(src):
             if p["installed"] and p["fixed"] and p.get("compare"):
                 k = vcmp(p["installed"], p["fixed"], p["compare"])
                 d["pair_ok"] = d.get("pair_ok", True) and k == -1    # a real finding: installed < fixed, every time
+        up_rows.extend(po["upstream"])
         for u in po["upstream"]:
             if u.get("installed"):
                 anon.setdefault("installed", u["installed"])
@@ -548,7 +657,11 @@ def affected(src):
     text = pt if not plain else pt              # a plain string IS the plugin text (tests / callers)
     paths = set(re.findall(r"(?<![\w/.~-])(/(?:[A-Za-z0-9._+@:-]+/)*[A-Za-z0-9._+@:-]+)", text))
     words = set(w.lower() for w in re.findall(r"[A-Za-z0-9@_-]+(?:\.[A-Za-z0-9@_-]+)*", text))
-    return {"packages": pk, "paths": paths, "words": words, "kernel": kernel, "formats": formats,
+    lib = library_finding(src, pt, up_rows) if not scope and not remote else None
+    if lib:
+        pk = CIDict()                       # a pip library is never an OS package the plan may upgrade
+    return {"packages": pk, "paths": paths, "words": words, "kernel": kernel, "formats": formats, "library": lib,
+            "upstream_fixed": anon.get("fixed") or "",
             "unauthorised": sorted(unauth), "remote_banner": bool(remote) and not facts, "esm": bool(esm),
             "scope": "output" if scope else "text", "solution_note": sol_note}
 
@@ -589,8 +702,8 @@ def plan_meta(src, family=None):
     source of each fixed version, the kernel shape, and what Tenable listed that its text did not name."""
     aff = affected(src)
     pkgs = package_set(src, aff)
-    if aff.get("remote_banner"):
-        pkgs = []                            # a remote banner / application version: no OS package to plan
+    if aff.get("remote_banner") or aff.get("library"):
+        pkgs = []                            # a remote banner / a pip library: no OS package to plan
     fixed = {n: {"version": (aff["packages"].get(n) or {}).get("fixed") or "",
                  "source": (aff["packages"].get(n) or {}).get("fixed_source") or "",
                  "installed": (aff["packages"].get(n) or {}).get("installed") or "",
@@ -611,8 +724,10 @@ def plan_meta(src, family=None):
             "scope": aff.get("scope") or "", "solution_note": aff.get("solution_note") or "",
             "listed_by": _listed_by(src, pkgs),
             "host_count": len(src.get("hosts") or []) if isinstance(src, dict) else 0,
-            "warnings": _meta_warnings(aff),
-            "compare": "dpkg" if fam == "apt" else ("rpm" if fam in ("dnf", "yum", "zypper") else "")}
+            "warnings": _meta_warnings(aff), "library": aff.get("library"),
+            "upstream_fixed": aff.get("upstream_fixed") or "",
+            "compare": "pep440" if aff.get("library") else
+            ("dpkg" if fam == "apt" else ("rpm" if fam in ("dnf", "yum", "zypper") else ""))}
 
 
 ESM_WARNING = ("The fix is only in Ubuntu ESM repositories (Ubuntu Pro subscription): hosts without ESM / Pro "
@@ -623,6 +738,9 @@ BANNER_REFUSAL = ("Not an OS-package fix: Tenable read this version REMOTELY (a 
 
 def _meta_warnings(aff):
     w = []
+    lib = aff.get("library")
+    if lib:
+        w += library_warnings(lib)
     if aff.get("remote_banner"):
         w.append(BANNER_REFUSAL)
     if aff.get("esm"):
@@ -647,7 +765,10 @@ def _listed_by(src, pkgs):
 
 def guess_package(src):
     """Best-effort package name: a parsed affected package first, then well-known names."""
-    pk = affected(src)["packages"]
+    aff = affected(src)
+    if aff.get("library"):
+        return ""                            # a pip library — never guess an OS package (urllib3 ≠ python3)
+    pk = aff["packages"]
     with_fix = [n for n, d in pk.items() if d.get("fixed")]
     if with_fix:
         return with_fix[0]
@@ -655,6 +776,8 @@ def guess_package(src):
         return next(iter(pk))
     blob = (src.get("text") or "").lower()
     for k in _PKG_HINTS:
+        if k.startswith("python") and re.search(r"\bpython\s+(library|module|package|component)", blob):
+            continue                         # "urllib3 Python Library" names a library, not the python3 package
         if re.search(r"\b" + re.escape(k) + r"\b", blob):
             return k
     return ""
@@ -673,10 +796,67 @@ APT_OPTS = ("-o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confo
             f"-o DPkg::Lock::Timeout={LOCK_WAIT}")
 
 
+LIB_OS_REFUSAL = ("{name} {installed} lives in the SYSTEM Python ({site}) — the distro package manager owns it, so "
+                  "pip must not change it. Upgrade the distro's package for it (often python3-{name}) through your "
+                  "normal patching, then rescan. No pip plan.")
+LIB_USER_REFUSAL = ("{name} {installed} was installed with pip --user in a home directory ({site}). Upgrade it as that "
+                    "user (python{python} -m pip install --user --upgrade '{spec}'), then rescan. No plan from here.")
+
+
+def library_warnings(lib):
+    w = []
+    if lib["managed"] == "os":
+        w.append(LIB_OS_REFUSAL.format(**lib))
+    elif lib["managed"] == "user":
+        w.append(LIB_USER_REFUSAL.format(**lib))
+    else:
+        if lib.get("egg"):
+            w.append(f"{lib['name']} is installed as an egg ({lib['path'].split('/EGG-INFO')[0]}). pip installs the new "
+                     "version beside it and Python may keep loading the egg — if the after-check still reads the old "
+                     "version, remove the egg (and its line in easy-install.pth) by hand, then rescan.")
+        if not lib["prefix"].startswith("/usr/local/"):
+            w.append(f"This Python lives under {lib['prefix'].rstrip('/')} (a virtualenv or an application's own "
+                     "Python). If an application user owns it, run the upgrade as that user rather than root.")
+        if not lib.get("upper"):
+            w.append(f"The fixed version {lib['fixed']} is a new MAJOR version of {lib['name']} (installed "
+                     f"{lib['installed']}) — test the application before rolling out.")
+    return w
+
+
+def _library_plan(lib, fam):
+    """The deterministic plan for a Python library pip owns: upgrade THAT library with THE interpreter that owns its
+    site-packages, on the installed major line; precheck / verify read `pip show` and compare versions (pep440)."""
+    plan = {"summary": "", "distro": fam, "precheck": None, "steps": [], "post_verify": None, "references": [],
+            "generator": "template"}
+    if lib["managed"] != "pip":
+        plan["summary"] = (LIB_OS_REFUSAL if lib["managed"] == "os" else LIB_USER_REFUSAL).format(**lib)
+        return plan
+    py, nm = lib["interpreter"], lib["name"]
+    show = f"{py} -m pip show {nm}"
+    vc = {"fixed_version": lib["fixed"], "compare": "pep440"}
+    plan["precheck"] = dict({"command": show, "expect_exit": [0], "want": "older"}, **vc)
+    verify = dict({"command": show, "expect_regex": "", "expect_exit": [0], "want": "at_least"}, **vc)
+    plan["steps"] = [{
+        "n": 1, "purpose": f"upgrade the Python library {nm} {lib['installed']} → ≥ {lib['fixed']} with the Python that "
+                           f"owns {lib['site']} (pip, not the OS package manager)",
+        "command": f"sudo {py} -m pip install --upgrade --no-input --disable-pip-version-check {_q(lib['spec'])}",
+        "expect_exit": [0], "verify": verify,
+        "rollback": f"sudo {py} -m pip install --no-input --disable-pip-version-check {_q(nm + '==' + lib['installed'])}",
+        "requires_reboot": False, "risk": "medium"}]
+    plan["post_verify"] = dict(verify)
+    plan["summary"] = (f"Python library {nm} {lib['installed']} in {lib['site']} — installed with pip, not by {fam}. "
+                       f"Upgrade it with {py} -m pip to ≥ {lib['fixed']}" + (f" (stays on {lib['installed'].split('.')[0]}.x)"
+                       if lib.get("upper") else "") + "; the checks read `pip show` and compare versions. Restart the "
+                       "applications that use it, then run `" + py + " -m pip check` and rescan.")
+    return plan
+
+
 def template_plan(src, family=None):
     """See _template_plan. Adds the real-sample guards: a remote-banner finding is REFUSED as a package plan (no
     steps, `refused: not_os_package`); an Ubuntu ESM note is carried into the summary and `warnings`."""
     meta = plan_meta(src, family or (src.get("families") or ["unknown"])[0])
+    if meta.get("library"):
+        return _library_plan(meta["library"], family or (src.get("families") or ["unknown"])[0])
     if meta.get("not_os_package"):
         return {"summary": BANNER_REFUSAL, "distro": family or (src.get("families") or ["unknown"])[0], "precheck": None,
                 "steps": [], "post_verify": None, "references": [], "generator": "template", "refused": "not_os_package",
@@ -925,7 +1105,36 @@ def rpm_cmp(a, b):
     return c
 
 
+_PEP = re.compile(r"^v?(?:(\d+)!)?(\d+(?:\.\d+)*)(?:[-_.]?(a|b|c|rc|alpha|beta|pre|preview)[-_.]?(\d*))?"
+                  r"(?:[-_.]?(?:post|rev|r)[-_.]?(\d*))?(?:[-_.]?dev[-_.]?(\d*))?(?:\+.*)?$", re.I)
+
+
+def _pep_key(v):
+    m = _PEP.match(str(v or "").strip())
+    if not m:
+        return None
+    ep, rel, pre, pren, post, dev = m.groups()
+    r = [int(x) for x in rel.split(".")]
+    while len(r) > 1 and r[-1] == 0:
+        r.pop()
+    pk = {"a": 0, "alpha": 0, "b": 1, "beta": 1, "c": 2, "rc": 2, "pre": 2, "preview": 2}
+    pre_t = (pk[pre.lower()], int(pren or 0)) if pre else ((-1, 0) if dev is not None and post is None else (9, 0))
+    return (int(ep or 0), r, pre_t, int(post) if post not in (None, "") else (0 if post == "" else -1),
+            int(dev) if dev not in (None, "") else (0 if dev == "" else 10 ** 9))
+
+
+def pep_cmp(a, b):
+    """PEP 440 order for the versions pip prints (2.1.0 < 2.2.2 < 2.10; 2.0rc1 < 2.0 < 2.0.post1). Unparsable → the
+    plain string compare of the rpm algorithm, so a garbled value never reads as 'fixed' by accident."""
+    ka, kb = _pep_key(a), _pep_key(b)
+    if ka is None or kb is None:
+        return rpm_cmp(a, b)
+    return (ka > kb) - (ka < kb)
+
+
 def vcmp(a, b, compare):
+    if compare == "pep440":
+        return pep_cmp(a, b)
     return (dpkg_cmp if compare == "dpkg" else rpm_cmp)(a, b)
 
 
@@ -940,6 +1149,8 @@ def vs_fixed(host_v, fixed_v, compare):
     compared in full. dpkg: Tenable's Debian/Ubuntu output carries the epoch itself (real sample A), so nothing is
     stripped. → -1 / 0 / 1 like vcmp."""
     h, fx = str(host_v or "").strip(), str(fixed_v or "").strip()
+    if compare == "pep440":
+        return pep_cmp(h, fx)
     if compare != "dpkg" and not re.match(r"^\d+:", fx):
         h = _EPOCH.sub("", h)
     elif compare != "dpkg":
@@ -958,9 +1169,25 @@ def max_version(versions, compare):
     return best
 
 
+def read_version(output, chk=None):
+    """The version a check's output states: `pip show` prints `Version: 2.1.0` among other lines (pep440 checks);
+    a package query prints the build on its first line."""
+    out = str(output or "")
+    if (chk or {}).get("compare") == "pep440":
+        m = re.search(r"(?mi)^Version:[ \t]*(\S+)", out)
+        return m.group(1).strip() if m else ""
+    return (out.strip().splitlines() or [""])[0].strip()
+
+
 def version_ok(installed, chk):
-    """True when `installed` satisfies chk {fixed_version, compare: dpkg|rpm, want: older|at_least}. Several lines
-    (install-only kernels, multilib) → the NEWEST installed build is compared."""
+    """True when `installed` satisfies chk {fixed_version, compare: dpkg|rpm|pep440, want: older|at_least}. Several
+    lines (install-only kernels, multilib) → the NEWEST installed build is compared; pep440 reads `Version:`."""
+    if chk.get("compare") == "pep440":
+        v = read_version(installed, chk)
+        if not v or not chk.get("fixed_version"):
+            return False
+        c = pep_cmp(v, chk["fixed_version"])
+        return c < 0 if chk.get("want") == "older" else c >= 0
     lines = [ln.strip() for ln in (installed or "").strip().splitlines() if ln.strip()]
     if not lines or not chk.get("fixed_version"):
         return False
@@ -999,6 +1226,12 @@ def generate(src, family=None, use_llm=True):
         # real samples I: never ask a model to invent a package fix for a remotely-read banner version
         return {"ok": True, "plan": normalize(template_plan(src, fam)), "generator": "template", "refused": "not_os_package",
                 "note": "Refused — not an OS-package finding: no plan generated and no model asked."}
+    lib = affected(src).get("library")
+    if lib and lib["managed"] != "pip":
+        return {"ok": True, "plan": normalize(template_plan(src, fam)), "generator": "template",
+                "refused": "not_pip_managed",
+                "note": "No plan — this Python library belongs to " + ("the distro package manager" if lib["managed"] == "os"
+                                                                      else "one user's ~/.local") + "; no model asked."}
     if use_llm and llm.available():
         try:
             raw = llm._messages(SYSTEM, _user_prompt(src, fam), max_tokens=1600, timeout=60)
@@ -1006,7 +1239,10 @@ def generate(src, family=None, use_llm=True):
             if not isinstance(obj, dict):
                 raise ValueError("model did not return a JSON object")
             obj["generator"] = "llm"
-            return {"ok": True, "plan": normalize(obj), "generator": "llm", "model": getattr(llm, "DEFAULT_MODEL", ""),
+            plan = normalize(obj)
+            if lib:
+                attach_library_checks(plan, lib)
+            return {"ok": True, "plan": plan, "generator": "llm", "model": getattr(llm, "DEFAULT_MODEL", ""),
                     "note": "Generated by the configured model from Tenable's text — review every step."}
         except Exception as e:
             p = normalize(template_plan(src, fam))
@@ -1016,6 +1252,23 @@ def generate(src, family=None, use_llm=True):
     why = "" if not use_llm else (" No model is configured (" + llm.why_unavailable() + ")")
     return {"ok": True, "plan": p, "generator": "template",
             "note": "Deterministic package-manager template — no AI used." + why}
+
+
+def attach_library_checks(plan, lib):
+    """A model's `pip show <lib>` checks get the trusted parser's fixed version + pep440 compare, so a plan the model
+    wrote is judged by a version compare too (precheck: affected while older; every other check: at least fixed)."""
+    def fit(c, want):
+        if not c or c.get("fixed_version"):
+            return
+        pt = pip_toks(c.get("command"))
+        if pt and pt[0] == lib["interpreter"] and pt[3:4] == ["show"] and len(pt) == 5 and \
+                pip_norm(pt[4]) == pip_norm(lib["name"]):
+            c.update(fixed_version=lib["fixed"], compare="pep440", want=want)
+    fit(plan.get("precheck"), "older")
+    fit(plan.get("post_verify"), "at_least")
+    for st in plan.get("steps") or []:
+        fit(st.get("verify"), "at_least")
+    return plan
 
 
 # --------------------------------------------------------------------------------------------- #
@@ -1051,7 +1304,7 @@ def _check(v):
              "expect_exit": _exits(v.get("expect_exit", [0]))}
         if v.get("fixed_version"):
             c["fixed_version"] = _s(v.get("fixed_version"), 80)
-            c["compare"] = v.get("compare") if v.get("compare") in ("dpkg", "rpm") else "dpkg"
+            c["compare"] = v.get("compare") if v.get("compare") in ("dpkg", "rpm", "pep440") else "dpkg"
             c["want"] = v.get("want") if v.get("want") in ("older", "at_least") else "at_least"
         return c
     return None
@@ -1401,6 +1654,14 @@ def resolve_rollback(cmd, aff):
     """Per-host rollback: re-pin every package to THIS host's installed version (from its own plugin
     output). Returns (command, "") or ("", reason) — a host whose output lacks the fact is skipped."""
     from core.c2_catalog import qword
+    if pip_toks(cmd) is not None:
+        # build 530: a pip rollback re-pins THIS host's own installed version of the finding's library
+        from core.c2_catalog import qword as _qw
+        lib = aff.get("library") if isinstance(aff, dict) else None
+        if not lib or lib.get("managed") != "pip":
+            return "", "this host's plugin output doesn't show the library in a pip-managed Python"
+        return (f"sudo {lib['interpreter']} -m pip install --no-input --disable-pip-version-check "
+                f"{_qw(lib['name'] + '==' + lib['installed'])}"), ""
     argv, r = _argv(cmd, "step")
     if r or not argv:
         return "", "unparsable rollback"
@@ -1758,6 +2019,76 @@ def _cleaned(cmd, kind="step"):
     return " ".join(shlex.quote(t) for t in toks) if (n or n2) else cmd
 
 
+_PY_BIN = re.compile(r"^(?:/[A-Za-z0-9._+@-]+)*/?python[0-9.]*$")
+
+
+def pip_toks(cmd):
+    """argv after a leading `sudo [-n]` when the command is `<python> -m pip …`, else None."""
+    try:
+        toks = shlex.split(str(cmd or ""))
+    except ValueError:
+        return None
+    if toks and toks[0] == "sudo":
+        toks = toks[1:]
+        while toks and toks[0] in ("-n", "--non-interactive"):
+            toks = toks[1:]
+    if len(toks) >= 3 and _PY_BIN.match(toks[0]) and toks[1:3] == ["-m", "pip"]:
+        return toks
+    return None
+
+
+def _check_pip(toks, aff, kind, rollback=False):
+    """Reasons a `<python> -m pip …` command falls outside the ONE pip form a Python-library finding allows (build 530):
+    the interpreter must be the one that owns the finding's site-packages, the requirement must be the finding's own
+    library — `>= fixed[,<next major]` in a step, `== installed` in a rollback — and nothing else (no index URLs, no
+    files, no --user / --target / --break-system-packages / --force-reinstall / --pre)."""
+    lib = aff.get("library") if isinstance(aff, dict) else None
+    if not lib:
+        return ["pip is allowed only for a Python-library finding (the plugin output's Path is in a site-packages "
+                "directory and the plugin text names the library)"]
+    if lib["managed"] != "pip":
+        return [f"pip must not change {lib['site']} — " + ("the system Python belongs to the distro package manager"
+                                                           if lib["managed"] == "os" else "a --user install is upgraded "
+                                                           "by its own user")]
+    if toks[0] != lib["interpreter"]:
+        return [f"pip runs only through the Python that owns {lib['site']} ({lib['interpreter']}), not '{toks[0]}'"]
+    args = toks[3:]
+    if kind == "read":
+        if len(args) == 2 and args[0] == "show" and pip_norm(args[1]) == pip_norm(lib["name"]):
+            return []
+        if args == ["check"]:
+            return []
+        return [f"pip in a check: only `{lib['interpreter']} -m pip show {lib['name']}` or `-m pip check`"]
+    if not args or args[0] != "install":
+        return ["pip: only `install` in a step or rollback"]
+    opts = [a for a in args[1:] if a.startswith("-")]
+    reqs = [a for a in args[1:] if not a.startswith("-")]
+    ok = PIP_OPTS_OK | (set() if rollback else {"--upgrade", "-U"})
+    r = ["pip option not allowed: " + o for o in opts if o not in ok]
+    if not rollback and not {"--upgrade", "-U"} & set(opts):
+        r.append("pip install in a step must be --upgrade")
+    if len(reqs) != 1:
+        return r + [f"pip install names exactly one requirement: {lib['name']}"]
+    m = re.fullmatch(r"([A-Za-z0-9][A-Za-z0-9._-]*)(.*)", reqs[0])
+    if not m or pip_norm(m.group(1)) != pip_norm(lib["name"]):
+        return r + [f"'{reqs[0]}' is not the finding's library ({lib['name']})"]
+    clauses = [c.strip() for c in m.group(2).split(",")] if m.group(2).strip() else []
+    if rollback:
+        if clauses != ["==" + lib["installed"]]:
+            r.append(f"a pip rollback re-pins exactly the installed version: {lib['name']}=={lib['installed']}")
+        return r
+    lo = [c[2:] for c in clauses if c.startswith(">=")]
+    hi = [c[1:] for c in clauses if c.startswith("<") and not c.startswith("<=")]
+    other = [c for c in clauses if not (c.startswith(">=") or (c.startswith("<") and not c.startswith("<=")))]
+    if other or len(lo) != 1 or len(hi) > 1:
+        r.append(f"the requirement must read {lib['name']}>=<fixed>[,<next major>] (got '{reqs[0]}')")
+    elif pep_cmp(lo[0], lib["fixed"]) < 0:
+        r.append(f"{lib['name']}>={lo[0]} is below the fixed version {lib['fixed']}")
+    elif hi and not (re.fullmatch(r"\d{1,4}", hi[0]) and pep_cmp(hi[0], lo[0]) > 0):
+        r.append(f"the upper bound '<{hi[0]}' must be a whole major version above {lo[0]}")
+    return r
+
+
 def check_command(cmd, kind, src="", rollback=False, step_pkgs=None):
     """Reasons (list) why `cmd` may not run as `kind` ∈ step | read. Empty list = allowed.
     `src` is a sources() dict (or plain source text) — what the plugin actually names."""
@@ -1798,6 +2129,12 @@ def check_command(cmd, kind, src="", rollback=False, step_pkgs=None):
                        "'sudo' it sees; quote-split any other occurrence as su''do")
     if "NAVI_" in cmd:
         reasons.append("NAVI_ is reserved by navi (its output filter)")
+    pt = pip_toks(cmd)
+    if pt is not None:
+        # build 530: a Python-library fix — its own narrow allow-list (the interpreter path is the finding's own)
+        if not reasons:
+            reasons += _check_pip(pt, aff, kind, rollback=rollback)
+        return list(dict.fromkeys(reasons))
     argv, r2 = _argv(cmd, kind)
     reasons += r2
     if not reasons:

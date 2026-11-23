@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>navi Ensemble Security Brief</title>
+<meta name="description" content="Security brief for CISOs and security practitioners: architecture, data flows, controls, AI use, common questions and the software bill of materials for navi Ensemble v2.44.529.">
+<style>
+:root{
+  --ink:#16213d; --ink-2:#3c486a; --ink-3:#5b6580;
+  --bg:#ffffff; --panel:#f4f7fb; --line:#dbe3ef;
+  --accent:#5457cc; --accent-2:#2a7d9c; --ok:#0b6b47; --warn:#b7791f; --crit:#c81e3f;
+  --chip:#eef1fb;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.55 Inter,"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:920px;margin:0 auto;padding:40px 24px 64px}
+h1,h2,h3{line-height:1.2;margin:0}
+h1{font-size:34px;letter-spacing:-.02em}
+h2{font-size:22px;margin:44px 0 12px;padding-top:12px;border-top:2px solid var(--ink);letter-spacing:-.01em}
+h2 .n{color:var(--accent);margin-right:8px}
+h3{font-size:16px;margin:22px 0 6px}
+p{margin:8px 0}
+a{color:var(--accent)}
+code{font:12.5px/1.4 "JetBrains Mono","DejaVu Sans Mono",Menlo,Consolas,monospace;background:var(--chip);
+  padding:1px 5px;border-radius:4px;word-break:break-word}
+.muted{color:var(--ink-3)}
+.small{font-size:13px}
+/* cover */
+.cover{border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:8px}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.lede{font-size:17px;color:var(--ink-2);max-width:760px;margin-top:12px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:16px;font-size:13px;color:var(--ink-3)}
+.meta b{color:var(--ink)}
+/* facts */
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:22px 0 0}
+.fact{border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:var(--panel)}
+.fact .k{font-size:12px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.fact .v{font-size:15px;font-weight:600;margin-top:4px}
+/* tables */
+.tw{overflow-x:auto;margin:10px 0 6px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{background:var(--panel);font-weight:600;font-size:12.5px;color:var(--ink-2);white-space:nowrap}
+td:first-child{font-weight:600}
+td.plain{font-weight:400}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;padding:1px 7px;border-radius:10px;white-space:nowrap}
+.t-ok{background:#e3f3ec;color:var(--ok)}
+.t-warn{background:#fbf1de;color:#8a5a12}
+.t-crit{background:#fbe6ea;color:var(--crit)}
+.t-info{background:var(--chip);color:var(--accent)}
+/* callouts */
+.callout{border-left:4px solid var(--accent);background:var(--panel);padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0}
+.callout.warn{border-color:var(--warn)}
+.callout b{color:var(--ink)}
+ul,ol{margin:8px 0;padding-left:22px}
+li{margin:4px 0}
+/* faq */
+.faq{border:1px solid var(--line);border-radius:8px;margin:10px 0;break-inside:avoid}
+.faq .q{font-weight:600;padding:10px 14px;background:var(--panel);border-radius:8px 8px 0 0}
+.faq .a{padding:8px 14px 10px}
+/* diagram */
+figure{margin:14px 0;break-inside:avoid}
+figure svg{width:100%;height:auto;display:block}
+figcaption{font-size:12.5px;color:var(--ink-3);margin-top:6px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.box{border:1px solid var(--line);border-radius:8px;padding:12px 14px;break-inside:avoid}
+.box h3{margin-top:0}
+.toc{columns:2;column-gap:28px;font-size:14px;margin:18px 0 0;padding-left:20px}
+.toc li{break-inside:avoid}
+footer{margin-top:48px;padding-top:12px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3)}
+@media (max-width:700px){
+  .facts{grid-template-columns:1fr 1fr}
+  .cols{grid-template-columns:1fr}
+  .toc{columns:1}
+  h1{font-size:28px}
+}
+@media print{
+  @page{size:Letter;margin:16mm 14mm 16mm 14mm}
+  body{font-size:10.5pt}
+  .wrap{max-width:none;padding:0}
+  h2{break-after:avoid;margin-top:26px}
+  h3{break-after:avoid}
+  .pb{break-before:page}
+  tr{break-inside:avoid}
+  .tw{overflow:visible}
+  a{color:var(--ink);text-decoration:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="cover">
+  <div class="eyebrow">Security brief · for CISOs and security practitioners</div>
+  <h1 style="margin-top:10px">navi Ensemble</h1>
+  <p class="lede">A local, read-only-by-default console of 43 exposure-management specialists that run over a
+  navi.db snapshot of Tenable Vulnerability Management / Tenable One. This brief covers what it is, how it is
+  built, what data moves where, the controls around every change it can make, and the software bill of materials.</p>
+  <div class="meta">
+    <span>Version <b>2.44.529</b></span>
+    <span>Published <b>22 November 2026</b></span>
+    <span>License <b>MIT</b> (Ensemble) · navi CLI per its own license</span>
+  </div>
+  <div class="facts">
+    <div class="fact"><div class="k">Where it runs</div><div class="v">Your machine, bound to 127.0.0.1</div></div>
+    <div class="fact"><div class="k">Default posture</div><div class="v">Read-only — no writes, mail or remote exec</div></div>
+    <div class="fact"><div class="k">Core dependencies</div><div class="v">Python standard library + the navi CLI</div></div>
+    <div class="fact"><div class="k">Detection &amp; scoring</div><div class="v">Deterministic SQL and rules — no AI</div></div>
+    <div class="fact"><div class="k">AI model</div><div class="v">Optional, bring your own, or fully local</div></div>
+    <div class="fact"><div class="k">Tenable credentials</div><div class="v">Held by navi, never sent to the browser</div></div>
+  </div>
+  <ol class="toc">
+    <li><a href="#summary">Summary for the CISO</a></li>
+    <li><a href="#arch">Architecture</a></li>
+    <li><a href="#flows">Data flows and trust boundaries</a></li>
+    <li><a href="#controls">Security controls</a></li>
+    <li><a href="#writes">How changes are gated</a></li>
+    <li><a href="#ai">Use of AI</a></li>
+    <li><a href="#faq">Common questions</a></li>
+    <li><a href="#limits">Known limitations</a></li>
+    <li><a href="#sbom">Software bill of materials</a></li>
+    <li><a href="#deploy">Deployment checklist</a></li>
+  </ol>
+</header>
+
+<h2 id="summary"><span class="n">1</span>Summary for the CISO</h2>
+<p>navi Ensemble turns the vulnerability, asset and tag data your team already pulls from Tenable with
+<a href="https://github.com/packetchaos/Navi">navi</a> into specialist views: actively exploited exposure (CISA KEV),
+asset truth, scan coverage, ownership and SLA, certificates and post-quantum readiness, OT/IoT, AI exposure,
+compliance and more. Each specialist can also write its findings back to Tenable as tags or Asset Criticality
+Rating (ACR) changes, so Tenable One and your other tooling see the same picture.</p>
+<p>The design choices that matter for risk:</p>
+<ul>
+  <li><b>It is a local tool, not a service.</b> One Python process on an analyst's machine or a jump box, listening on
+  127.0.0.1 only. There is no vendor cloud, no telemetry and no account to create.</li>
+  <li><b>It reads a local copy, not your tenant.</b> Analysis runs against navi.db, a SQLite snapshot that navi syncs
+  from Tenable. The Ensemble opens it read-only.</li>
+  <li><b>Every change is opt-in, twice.</b> Writes need a server-side gate switched on <i>and</i> a per-action confirmation.
+  Email, remote command execution and scan launch each need a further, separate gate. Changes are refused from any
+  browser that is not on the console's own machine.</li>
+  <li><b>Findings are explainable.</b> Detection and scoring are SQL and rules. Every number opens the exact assets or
+  findings behind it. An AI model, if you configure one, only helps write queries and summaries, and what it proposes is
+  shown before it runs.</li>
+  <li><b>You control what leaves.</b> The only required external connection is Tenable's API through navi. Model providers,
+  public threat feeds and Google Fonts are listed in the SBOM with exactly what crosses.</li>
+</ul>
+
+<h2 id="arch"><span class="n">2</span>Architecture</h2>
+<figure>
+<svg viewBox="0 0 880 470" role="img" aria-label="Architecture diagram: the analyst's browser talks to the Ensemble server on loopback; the server reads navi.db read-only and calls the navi CLI, which talks to Tenable; optional model providers and public feeds sit outside the trust boundary.">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3c486a"/></marker>
+    <marker id="ard" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b7791f"/></marker>
+  </defs>
+  <style>
+    .bx{fill:#fff;stroke:#3c486a;stroke-width:1.4}
+    .bxa{fill:#eef1fb;stroke:#5457cc;stroke-width:1.6}
+    .bxo{fill:#fdf8ee;stroke:#b7791f;stroke-width:1.3;stroke-dasharray:5 4}
+    .tb{fill:none;stroke:#5457cc;stroke-width:1.6;stroke-dasharray:8 5}
+    .t{font:600 13px Inter,system-ui,sans-serif;fill:#16213d}
+    .s{font:11.5px Inter,system-ui,sans-serif;fill:#3c486a}
+    .l{font:600 11px Inter,system-ui,sans-serif;fill:#5457cc;letter-spacing:.06em}
+    .e{stroke:#3c486a;stroke-width:1.4;fill:none}
+    .eo{stroke:#b7791f;stroke-width:1.3;fill:none;stroke-dasharray:5 4}
+  </style>
+  <!-- trust boundary -->
+  <rect class="tb" x="10" y="30" width="560" height="430" rx="12"/>
+  <text class="l" x="24" y="22">YOUR MACHINE / JUMP BOX — TRUST BOUNDARY</text>
+
+  <!-- browser -->
+  <rect class="bx" x="30" y="56" width="200" height="66" rx="8"/>
+  <text class="t" x="46" y="82">Analyst's browser</text>
+  <text class="s" x="46" y="102">console pages (first-party JS only)</text>
+
+  <!-- server -->
+  <rect class="bxa" x="30" y="164" width="520" height="150" rx="10"/>
+  <text class="t" x="46" y="188">navi Ensemble server — Python stdlib, 127.0.0.1:8000</text>
+  <rect class="bx" x="46" y="202" width="150" height="96" rx="6"/>
+  <text class="t" x="58" y="222">Security policy</text>
+  <text class="s" x="58" y="240">Host allowlist · token</text>
+  <text class="s" x="58" y="256">Origin / JSON guard</text>
+  <text class="s" x="58" y="272">loopback-only writes</text>
+  <text class="s" x="58" y="288">response scrub</text>
+  <rect class="bx" x="210" y="202" width="160" height="96" rx="6"/>
+  <text class="t" x="222" y="222">43 specialists</text>
+  <text class="s" x="222" y="240">SQL + rules (deterministic)</text>
+  <text class="s" x="222" y="256">background job queue</text>
+  <text class="s" x="222" y="272">snapshot + page caches</text>
+  <text class="s" x="222" y="288">exports</text>
+  <rect class="bx" x="384" y="202" width="150" height="96" rx="6"/>
+  <text class="t" x="396" y="222">Write gates</text>
+  <text class="s" x="396" y="240">writes · email</text>
+  <text class="s" x="396" y="256">remote exec · scan</text>
+  <text class="s" x="396" y="272">confirm: true</text>
+  <text class="s" x="396" y="288">audit logs</text>
+
+  <!-- navi.db -->
+  <rect class="bx" x="30" y="356" width="220" height="80" rx="8"/>
+  <text class="t" x="46" y="382">navi.db (SQLite)</text>
+  <text class="s" x="46" y="400">opened mode=ro, query_only</text>
+  <text class="s" x="46" y="416">credential tables blocked to user SQL</text>
+
+  <!-- navi CLI -->
+  <rect class="bx" x="300" y="356" width="250" height="80" rx="8"/>
+  <text class="t" x="316" y="382">navi CLI (subprocess)</text>
+  <text class="s" x="316" y="400">holds the Tenable API keys</text>
+  <text class="s" x="316" y="416">syncs navi.db · tags · ACR · mail · SSH</text>
+
+  <!-- edges inside -->
+  <path class="e" d="M130 122 V162" marker-end="url(#ar)" marker-start="url(#ar)"/>
+  <text class="s" x="140" y="146">HTTP on loopback</text>
+  <path class="e" d="M140 314 V354" marker-end="url(#ar)"/>
+  <text class="s" x="150" y="338">read-only SQL</text>
+  <path class="e" d="M440 314 V354" marker-end="url(#ar)"/>
+  <text class="s" x="450" y="338">gated writes</text>
+  <path class="e" d="M300 410 H252" marker-end="url(#ar)"/>
+  <text class="s" x="258" y="452">navi sync writes navi.db</text>
+
+  <!-- external -->
+  <rect class="bx" x="620" y="356" width="240" height="80" rx="8"/>
+  <text class="t" x="636" y="382">Tenable VM / Tenable One</text>
+  <text class="s" x="636" y="400">cloud.tenable.com (HTTPS)</text>
+  <text class="s" x="636" y="416">the only required connection</text>
+  <path class="e" d="M552 396 H618" marker-end="url(#ar)" marker-start="url(#ar)"/>
+
+  <rect class="bxo" x="620" y="56" width="240" height="96" rx="8"/>
+  <text class="t" x="636" y="80">Model provider (optional)</text>
+  <text class="s" x="636" y="98">Anthropic · OpenAI-compatible</text>
+  <text class="s" x="636" y="114">AWS Bedrock · Ollama (local)</text>
+  <text class="s" x="636" y="132">plain-English features only</text>
+  <path class="eo" d="M552 210 C590 190 590 120 618 110" marker-end="url(#ard)"/>
+
+  <rect class="bxo" x="620" y="182" width="240" height="140" rx="8"/>
+  <text class="t" x="636" y="206">Public data (optional)</text>
+  <text class="s" x="636" y="224">CISA KEV · endoflife.date</text>
+  <text class="s" x="636" y="240">CTID ATT&amp;CK mappings</text>
+  <text class="s" x="636" y="256">NVD · OSV.dev · MITRE CVE</text>
+  <text class="s" x="636" y="272">downloads need approval</text>
+  <text class="s" x="636" y="290">Google Fonts (browser only)</text>
+  <path class="eo" d="M552 262 H618" marker-end="url(#ard)"/>
+
+  <!-- SMTP / SSH -->
+  <rect class="bxo" x="620" y="10" width="240" height="34" rx="6" style="display:none"/>
+</svg>
+<figcaption>Solid lines are always present. Dashed boxes are optional and off until configured. Email (SMTP) and remote
+commands (SSH) are made by navi itself, using settings configured in navi, and only through the gates in section 5.</figcaption>
+</figure>
+
+<h3>Components</h3>
+<div class="tw"><table>
+<tr><th>Component</th><th>What it is</th><th>Security-relevant facts</th></tr>
+<tr><td>Web server</td><td class="plain"><code>app_stdlib.py</code>, Python standard library <code>http.server</code>. FastAPI and Flask variants exist as opt-in alternatives.</td>
+<td class="plain">One policy module (<code>core/security.py</code>) applies to every request on all three. Binds 127.0.0.1 by default. Runs with <code>umask 077</code>.</td></tr>
+<tr><td>Dispatcher</td><td class="plain"><code>core/launcher.py</code> routes each request to a specialist action.</td>
+<td class="plain">Declares which actions write (served to the pages), refuses destructive actions from non-loopback browsers, applies tag scopes and budgets.</td></tr>
+<tr><td>Specialists</td><td class="plain">43 modules under <code>agents/</code> — Python plus one HTML page each.</td>
+<td class="plain">Read navi.db with SQL and rules. Results are cached on the server, keyed to the exact navi.db file.</td></tr>
+<tr><td>Data layer</td><td class="plain"><code>core/db.py</code> over navi.db.</td>
+<td class="plain">Opens with <code>mode=ro</code> plus <code>PRAGMA query_only</code>. SQL written by a person or a model runs under a SQLite authorizer that denies navi's credential tables (<code>keys</code>, <code>smtp</code>, <code>ssh</code>, <code>resend</code>).</td></tr>
+<tr><td>navi CLI</td><td class="plain">The open-source Tenable CLI, called as a subprocess.</td>
+<td class="plain">Owns the Tenable API keys, SMTP and SSH settings. Its binary path and working directory cannot be set from the browser.</td></tr>
+<tr><td>Browser UI</td><td class="plain">First-party HTML, CSS and JavaScript under <code>web/</code> and <code>agents/</code>.</td>
+<td class="plain">No third-party scripts or stylesheets (enforced by a test). Every value placed into a page is HTML-escaped.</td></tr>
+<tr><td>MCP server</td><td class="plain"><code>hounds_mcp.py</code>, optional, exposes the same engines to Claude and other MCP clients.</td>
+<td class="plain">Stdio by default. Its HTTP mode has no authentication, so it refuses a non-loopback host unless explicitly allowed.</td></tr>
+<tr><td>Local state</td><td class="plain">Caches, Tagging log (<code>tag_jobs.db</code>), job audit logs, dashboards, Automation Station policies.</td>
+<td class="plain">Written <code>0600</code> (folders <code>0700</code>). All git-ignored. None of it is sent anywhere.</td></tr>
+</table></div>
+
+<h2 id="flows"><span class="n">3</span>Data flows and trust boundaries</h2>
+<p>Everything below is also declared, machine-readably, as CycloneDX <code>services</code> in the SBOM.</p>
+<div class="tw"><table>
+<tr><th>Connection</th><th>When</th><th>What crosses</th><th>Control</th></tr>
+<tr><td>Tenable API (via navi)</td><td class="plain">Always — sync, and any gated write</td><td class="plain">Asset, finding, tag, scan and ACR data both ways. Writes only through the gates.</td><td class="plain">navi's own API keys. Tenable role permissions decide what navi can do.</td></tr>
+<tr><td>Browser ↔ server</td><td class="plain">Always</td><td class="plain">Findings and asset details for display. Never API keys.</td><td class="plain">Loopback bind, Host allowlist, Origin and JSON checks, response scrubbing.</td></tr>
+<tr><td>Model provider</td><td class="plain">Only if configured</td><td class="plain">Prompts built from navi.db findings and asset facts (for example hostnames, plugin names, counts). Text comes back.</td><td class="plain">Your choice of provider and account. Ollama keeps it on the machine. With no model, every feature falls back to its deterministic path.</td></tr>
+<tr><td>CISA KEV, endoflife.date, CTID ATT&amp;CK</td><td class="plain">On refresh</td><td class="plain">Public catalogs downloaded. Nothing sent.</td><td class="plain">Approval card before each download unless turned off.</td></tr>
+<tr><td>NVD, OSV.dev, MITRE CVE</td><td class="plain">Advisory lookups</td><td class="plain">CVE or advisory IDs go out. Public advisory data comes back.</td><td class="plain">Each site approved on the page.</td></tr>
+<tr><td>SMTP (via navi)</td><td class="plain">Only if email is enabled</td><td class="plain">Reports and alerts to configured recipients.</td><td class="plain">Writes gate + email gate + confirm. Plain <code>user@host</code> recipients only.</td></tr>
+<tr><td>SSH (via navi push)</td><td class="plain">Only if remote execution is enabled</td><td class="plain">A command or file to one Linux host at a time.</td><td class="plain">Writes gate + remote-exec gate + confirm, from the console's own machine.</td></tr>
+<tr><td>Google Fonts</td><td class="plain">Page load, by the browser</td><td class="plain">The viewer's IP and user agent. No application data.</td><td class="plain">The UI falls back to system fonts if blocked.</td></tr>
+</table></div>
+
+<h2 id="controls"><span class="n">4</span>Security controls</h2>
+<div class="tw"><table>
+<tr><th>Area</th><th>Default behaviour</th><th>How it changes</th></tr>
+<tr><td>Network exposure</td><td class="plain">Listens on 127.0.0.1 only.</td><td class="plain"><code>HOUNDS_BIND</code> opts in to LAN access, with a loud startup warning.</td></tr>
+<tr><td>Host allowlist</td><td class="plain">Every request, including GET, must name localhost, 127.0.0.1 or [::1]; anything else gets 403. This defeats DNS rebinding.</td><td class="plain"><code>HOUNDS_ALLOWED_HOSTS</code> adds names or IPs.</td></tr>
+<tr><td>Access token</td><td class="plain">With a non-loopback bind, every API call needs a token generated fresh at each start. It becomes an <code>HttpOnly; SameSite=Strict</code> cookie.</td><td class="plain"><code>HOUNDS_REQUIRE_TOKEN=1</code> requires it on loopback too (shared jump boxes).</td></tr>
+<tr><td>Changes from other machines</td><td class="plain">Any action that changes something outside the console answers 403 unless the browser is on the console's machine. Reading, previews and stopping work still work remotely.</td><td class="plain"><code>HOUNDS_REMOTE_WRITES=1</code> in the environment only, never from the browser.</td></tr>
+<tr><td>Request guard</td><td class="plain">POST bodies must be JSON. A present Origin must match an allowed host. <code>Origin: null</code> and cross-site fetches are refused. Bodies are capped at 80 MB.</td><td class="plain">—</td></tr>
+<tr><td>Response headers</td><td class="plain"><code>X-Frame-Options: SAMEORIGIN</code>, <code>frame-ancestors 'self'</code>, <code>nosniff</code>, <code>Referrer-Policy: no-referrer</code>.</td><td class="plain">—</td></tr>
+<tr><td>Static files</td><td class="plain">Only page assets are served. Never Python source, bytecode or dotfiles.</td><td class="plain">—</td></tr>
+<tr><td>Secrets</td><td class="plain">Keys never reach the browser: Settings shows only "set" or "not set", and every response is scrubbed of configured secret values and key-shaped strings, including provider error messages.</td><td class="plain">Store keys in the environment, or choose Ephemeral storage so they never touch disk.</td></tr>
+<tr><td>Settings that can't be changed from a browser</td><td class="plain">The navi binary path and working directory. Turning a gate on, changing navi.db's path or the model endpoint needs a browser on the console's machine and a confirmation. Changing the model endpoint clears the stored key.</td><td class="plain">Shell, <code>.env</code> or the config file, then restart.</td></tr>
+<tr><td>SQL safety</td><td class="plain">navi.db is read-only. Ad-hoc SQL from a person or a model can't read navi's credential tables, whatever the SQL looks like.</td><td class="plain">—</td></tr>
+<tr><td>File permissions</td><td class="plain"><code>umask 077</code>; caches, logs and policies written <code>0600</code>. The config file is <code>chmod 600</code> and git-ignored.</td><td class="plain">—</td></tr>
+<tr><td>Audit trail</td><td class="plain">Every tag and ACR job is recorded in the Tagging log (<code>tag_jobs.db</code>). Every navi job started from the console keeps its full output in <code>logs/navi-jobs/</code> (newest 1,000). Each specialist shows what it has applied.</td><td class="plain">Logs are local; ship them to your SIEM yourself (see limitations).</td></tr>
+<tr><td>Ignored errors</td><td class="plain">Exceptions that are deliberately ignored are counted per location and logged, with the total in <code>/api/health</code>.</td><td class="plain"><code>HOUNDS_LOG_SWALLOWED=1</code> raises them to warnings.</td></tr>
+</table></div>
+
+<h2 id="writes"><span class="n">5</span>How changes are gated</h2>
+<p>Nothing is written to Tenable, mailed or run on a host unless every layer below agrees. Turning a gate
+<b>off</b> never needs a confirmation; turning one <b>on</b> from the Settings page needs a browser on the console's machine.</p>
+<div class="tw"><table>
+<tr><th>Capability</th><th>Gate 1</th><th>Gate 2</th><th>Gate 3</th><th>Also required</th></tr>
+<tr><td>Tags, ACR, removals</td><td class="plain"><code>NAVI_ALLOW_WRITES=1</code></td><td class="plain"><code>confirm: true</code> on the action</td><td class="plain">—</td><td class="plain">Browser on the console's machine. A dry-run preview is shown first.</td></tr>
+<tr><td>Email</td><td class="plain"><code>NAVI_ALLOW_WRITES=1</code></td><td class="plain"><code>NAVI_EMAIL=1</code></td><td class="plain"><code>confirm: true</code></td><td class="plain">SMTP configured in navi out-of-band. Plain recipients, single-line subjects.</td></tr>
+<tr><td>Remote command execution</td><td class="plain"><code>NAVI_ALLOW_WRITES=1</code></td><td class="plain"><code>NAVI_REMOTE_CODE_EXECUTION=1</code></td><td class="plain"><code>confirm: true</code></td><td class="plain">SSH configured in navi. One host at a time. The highest-risk capability.</td></tr>
+<tr><td>Scan launch</td><td class="plain"><code>NAVI_ALLOW_WRITES=1</code></td><td class="plain"><code>NAVI_SCAN_LAUNCH=1</code></td><td class="plain"><code>confirm: true</code></td><td class="plain">A review step before launch.</td></tr>
+</table></div>
+<div class="callout"><b>Strict confirmation.</b> <code>confirm</code> must be the JSON value <code>true</code>. The strings
+<code>"true"</code>, <code>"1"</code> or the number <code>1</code> are refused, so a script or a model can't confirm by accident.
+Gates can also be switched on with an empty file in the repo root (<code>ALLOW_WRITES</code> and similar). Those files only count when
+they belong to the user running the server, are not symlinks and can't be written by anyone else, and startup says when one is in use.</div>
+
+<h2 id="ai"><span class="n">6</span>Use of AI</h2>
+<div class="cols">
+<div class="box"><h3>Where a model is used</h3>
+<ul>
+<li>Turning a plain-English request into a query, tag rule or plan.</li>
+<li>Plain-English summaries and briefings.</li>
+<li>Suggesting tag names and groupings.</li>
+</ul>
+<p class="small muted">In each case the query, rule or plan is shown before anything runs, and any write still passes every gate in section 5.</p>
+</div>
+<div class="box"><h3>Where a model is never used</h3>
+<ul>
+<li>Detecting exposure — every specialist is SQL and rules.</li>
+<li>Scoring and prioritising.</li>
+<li>Deciding to write, mail or run anything.</li>
+<li>Holding or seeing your Tenable API keys.</li>
+</ul>
+<p class="small muted">The same navi.db always gives the same answer.</p>
+</div>
+</div>
+<div class="tw"><table>
+<tr><th>Provider</th><th>Data leaves the machine?</th><th>Notes</th></tr>
+<tr><td>None configured</td><td class="plain"><span class="tag t-ok">No</span></td><td class="plain">The whole console runs. Plain-English features fall back or are unavailable.</td></tr>
+<tr><td>Ollama (local)</td><td class="plain"><span class="tag t-ok">No</span></td><td class="plain">No key, no network egress. Suits regulated environments.</td></tr>
+<tr><td>AWS Bedrock</td><td class="plain"><span class="tag t-warn">To your AWS account</span></td><td class="plain">Converse API in your chosen region, under your AWS controls.</td></tr>
+<tr><td>Anthropic</td><td class="plain"><span class="tag t-warn">Yes</span></td><td class="plain">Your own API key and account terms.</td></tr>
+<tr><td>OpenAI-compatible</td><td class="plain"><span class="tag t-warn">Depends on endpoint</span></td><td class="plain">OpenAI, Azure-style, or a self-hosted vLLM / LM Studio server.</td></tr>
+</table></div>
+<p>Output tokens are capped (<code>NAVI_LLM_MAX_TOKENS</code>, default 8,000). <code>python3 check_llm.py</code> prints which provider,
+model and endpoint the server resolved.</p>
+
+<h2 id="faq"><span class="n">7</span>Common questions</h2>
+
+<div class="faq"><div class="q">Does it need inbound firewall rules or a public endpoint?</div>
+<div class="a">No. By default it listens on 127.0.0.1 and nothing outside the machine can reach it. Shared use is an explicit opt-in
+(<code>HOUNDS_BIND</code>) that adds a per-launch access token, and even then changes are only accepted from the console's own machine.</div></div>
+
+<div class="faq"><div class="q">What Tenable permissions does it need?</div>
+<div class="a">Whatever the navi API keys have. For a read-only deployment, give navi keys from a Tenable user with read access and leave
+the write gate off; the console still works fully for analysis. Tagging and ACR changes need a role that can manage tags and assets.
+Scan launch needs scan permissions. Least privilege in Tenable is your strongest control.</div></div>
+
+<div class="faq"><div class="q">Where are credentials stored?</div>
+<div class="a">Tenable keys, SMTP and SSH settings are stored by navi (in navi.db), not by the Ensemble. Model API keys come from the environment,
+<code>.env</code>, or the Settings config file (<code>hounds.config.json</code>, <code>chmod 600</code>, plain text, git-ignored).
+Choose <b>Ephemeral</b> storage or <code>HOUNDS_CONFIG=off</code> if keys must never be written to disk. Keys are never sent to the browser.</div></div>
+
+<div class="faq"><div class="q">Could someone use the console to read the API keys out of navi.db?</div>
+<div class="a">Not through the console. SQL typed by a person or proposed by a model runs under a SQLite authorizer that denies the
+<code>keys</code>, <code>smtp</code>, <code>ssh</code> and <code>resend</code> tables, and those values are also on the response scrub list.
+Anyone with file access to navi.db on the machine can read it directly, so protect that file like any credential store.</div></div>
+
+<div class="faq"><div class="q">Can it change my Tenable tenant without someone noticing?</div>
+<div class="a">Not by default: writes are off. With writes on, each change needs an explicit confirmation from a browser on the console's
+machine, shows a preview first, and is recorded in the Tagging log and job logs. Scheduled runs (Automation Station) must be armed
+deliberately and are subject to the same gates.</div></div>
+
+<div class="faq"><div class="q">Does any of our vulnerability data go to an AI company?</div>
+<div class="a">Only if you configure a hosted model, and then only the prompts for the plain-English features you use. Run with no model,
+or with Ollama on the same machine, and nothing goes to a model provider.</div></div>
+
+<div class="faq"><div class="q">Is there telemetry or phone-home?</div>
+<div class="a">No. The external connections are the ones in section 3. The only one made on every page load is Google Fonts, by the browser,
+which carries no application data and can be blocked.</div></div>
+
+<div class="faq"><div class="q">How is remote command execution controlled?</div>
+<div class="a">It is off by default and needs three switches (writes, remote execution, confirm), a browser on the console's machine, and SSH
+configured in navi. It targets one Linux host per call. Its destructive-command list only warns and forces an extra confirmation; it is not a
+sandbox, so treat this capability as privileged access and enable it only where you would allow SSH from that machine.</div></div>
+
+<div class="faq"><div class="q">What happens to navi.db and the caches?</div>
+<div class="a">They stay on the machine. navi.db is a snapshot of your tenant and should be treated as sensitive. The console only reads it.
+Caches and logs are written with owner-only permissions and are excluded from git.</div></div>
+
+<div class="faq"><div class="q">How has it been tested?</div>
+<div class="a">112 automated test suites ship with the code, including server security, write-gate, export, scale and SBOM-freshness tests.
+Release 2.44.521 was a full security sweep (bandit, semgrep, pip-audit, detect-secrets and three manual reviews, with every finding
+independently reproduced before and verified after fixing). Release 2.44.529 acted on three independent reviews: loopback-only changes,
+hardened gate files, one reference server, and no silently ignored errors.</div></div>
+
+<div class="faq"><div class="q">Can I verify what is installed?</div>
+<div class="a">Yes. The committed SBOM lists declared requirements; <b>Settings ▸ Software bill of materials ▸ This install</b>, or
+<code>python3 tools/sbom.py --installed --stdout</code>, produces an exact inventory of the running install. <code>python3 check_writes.py</code>
+shows which gates the server resolved and why.</div></div>
+
+<div class="faq"><div class="q">Who supports it?</div>
+<div class="a">navi Ensemble and navi are open source under their own licenses, not a commercial Tenable product, and come without warranty.
+Review them as you would any open-source tool you run with production credentials.</div></div>
+
+<h2 id="limits"><span class="n">8</span>Known limitations</h2>
+<p>These are known gaps rather than defects. Plan compensating controls where they matter to you.</p>
+<div class="tw"><table>
+<tr><th>Limitation</th><th>Impact</th><th>Compensating control today</th></tr>
+<tr><td>No SSO, role-based access or two-person approval</td><td class="plain">Anyone who can use the console on its machine has its full capability, within the gates.</td><td class="plain">Run per analyst, keep writes off on shared hosts, use <code>HOUNDS_REQUIRE_TOKEN=1</code>, and scope navi's Tenable role.</td></tr>
+<tr><td>Audit logs are local</td><td class="plain">No built-in forwarding to a SIEM.</td><td class="plain">Collect <code>logs/navi-jobs/</code> and <code>tag_jobs.db</code> with your log agent. Tenable's own audit log records the API calls navi makes.</td></tr>
+<tr><td>Keys in the config file are plain text</td><td class="plain">Same exposure as a <code>.env</code> file.</td><td class="plain">Owner-only permissions, Ephemeral storage, or environment variables from your secrets manager.</td></tr>
+<tr><td>Remote execution guard is advisory</td><td class="plain">A confirmed command runs as given.</td><td class="plain">Leave the gate off unless needed; restrict the SSH account navi uses.</td></tr>
+<tr><td>MCP HTTP mode is unauthenticated</td><td class="plain">Anyone who can reach the port can call it.</td><td class="plain">Loopback-only by default; stdio is the default transport.</td></tr>
+<tr><td>Legacy names</td><td class="plain">Some settings still use <code>HOUNDS_</code> names from the product's earlier name.</td><td class="plain">Kept so existing deployments keep working.</td></tr>
+</table></div>
+
+<h2 id="sbom" class="pb"><span class="n">9</span>Software bill of materials</h2>
+<p>The SBOM is regenerated on every release in two standard formats, validated against the official schemas, and checked by a test that
+fails if it is stale, if a requirement is missing, or if a page starts loading a remote script or stylesheet.</p>
+<div class="tw"><table>
+<tr><th>File</th><th>Format</th></tr>
+<tr><td><code>sbom/navi-ensemble.cdx.json</code></td><td class="plain">CycloneDX 1.6 JSON — components, dependency graph and external services with data flows</td></tr>
+<tr><td><code>sbom/navi-ensemble.spdx.json</code></td><td class="plain">SPDX 2.3 JSON — the same packages and relationships</td></tr>
+</table></div>
+
+<h3>Required at runtime</h3>
+<div class="tw"><table>
+<tr><th>Component</th><th>Version</th><th>License</th><th>Role</th></tr>
+<tr><td>navi Ensemble</td><td class="plain">2.44.529</td><td class="plain">MIT</td><td class="plain">This application</td></tr>
+<tr><td>CPython</td><td class="plain">≥ 3.10</td><td class="plain">PSF-2.0</td><td class="plain">Runtime. The core uses only the standard library (sqlite3, subprocess, urllib, ssl).</td></tr>
+<tr><td>navi CLI (navi-pro)</td><td class="plain">≥ 8.8</td><td class="plain">GPL-3.0-only / MIT*</td><td class="plain">Every Tenable read and write</td></tr>
+</table></div>
+<p class="small muted">* navi's <code>setup.py</code> declares GPLv3 while its LICENSE file is MIT; the SBOM records both. Licenses listed are the upstream
+declared licenses, not a legal review.</p>
+
+<h3>Brought in by navi</h3>
+<div class="tw"><table>
+<tr><th>Package</th><th>Version</th><th>License</th><th>Package</th><th>Version</th><th>License</th></tr>
+<tr><td>click</td><td class="plain">≥ 7.0</td><td class="plain">BSD-3-Clause</td><td>pytenable</td><td class="plain">≥ 1.4.3</td><td class="plain">MIT</td></tr>
+<tr><td>restfly</td><td class="plain">≤ 1.5.1</td><td class="plain">MIT</td><td>arrow</td><td class="plain">≥ 0.17.0</td><td class="plain">Apache-2.0</td></tr>
+<tr><td>requests</td><td class="plain">≥ 2.31</td><td class="plain">Apache-2.0</td><td>boto3</td><td class="plain">≥ 1.17.48</td><td class="plain">Apache-2.0</td></tr>
+<tr><td>flask</td><td class="plain">≥ 2.3.2</td><td class="plain">BSD-3-Clause</td><td>pexpect</td><td class="plain">≥ 4.8.0</td><td class="plain">ISC</td></tr>
+<tr><td>IPy</td><td class="plain">≥ 1.0</td><td class="plain">BSD-3-Clause</td><td>typing-extensions</td><td class="plain">≥ 4.0.1</td><td class="plain">PSF-2.0</td></tr>
+<tr><td>pandas</td><td class="plain">≥ 1.1.5</td><td class="plain">BSD-3-Clause</td><td>numpy</td><td class="plain">≥ 1.19.5</td><td class="plain">BSD-3-Clause</td></tr>
+<tr><td>xlrd</td><td class="plain">≥ 2.0.1</td><td class="plain">BSD-3-Clause</td><td></td><td></td><td></td></tr>
+</table></div>
+
+<h3>Optional (only when you choose the feature)</h3>
+<div class="tw"><table>
+<tr><th>Package</th><th>Version</th><th>License</th><th>Used for</th></tr>
+<tr><td>fastapi · starlette · uvicorn</td><td class="plain">fastapi ≥ 0.110, uvicorn ≥ 0.27</td><td class="plain">MIT · BSD-3-Clause</td><td class="plain">Alternative web server</td></tr>
+<tr><td>flask · werkzeug</td><td class="plain">flask ≥ 3.0</td><td class="plain">BSD-3-Clause</td><td class="plain">Alternative web server</td></tr>
+<tr><td>boto3</td><td class="plain">≥ 1.34</td><td class="plain">Apache-2.0</td><td class="plain">AWS Bedrock model provider</td></tr>
+<tr><td>certifi</td><td class="plain">any</td><td class="plain">MPL-2.0</td><td class="plain">CA bundle for model-provider TLS; falls back to the system store</td></tr>
+<tr><td>fastmcp · mcp</td><td class="plain">fastmcp ≥ 2.0</td><td class="plain">Apache-2.0 · MIT</td><td class="plain">Optional MCP server</td></tr>
+</table></div>
+
+<h3>Excluded from production</h3>
+<p>Playwright (Apache-2.0) and anyio (MIT) are used only by tests.</p>
+
+<h3>Browser assets</h3>
+<p>No third-party JavaScript or CSS is vendored or loaded; every file under <code>web/</code> is first-party. The web fonts Inter,
+Space Grotesk and JetBrains Mono (OFL-1.1) are loaded by the browser from Google Fonts.</p>
+
+<h3>External services declared in the SBOM</h3>
+<div class="tw"><table>
+<tr><th>Service</th><th>Endpoint</th><th>When</th></tr>
+<tr><td>Tenable VM / Tenable One</td><td class="plain"><code>cloud.tenable.com</code></td><td class="plain">Always, through navi</td></tr>
+<tr><td>Anthropic</td><td class="plain"><code>api.anthropic.com</code></td><td class="plain">If configured</td></tr>
+<tr><td>OpenAI-compatible</td><td class="plain"><code>api.openai.com/v1</code> or your endpoint</td><td class="plain">If configured</td></tr>
+<tr><td>AWS Bedrock</td><td class="plain"><code>bedrock-runtime.&lt;region&gt;.amazonaws.com</code></td><td class="plain">If configured</td></tr>
+<tr><td>Ollama</td><td class="plain"><code>localhost:11434</code></td><td class="plain">If configured (local)</td></tr>
+<tr><td>CISA KEV</td><td class="plain"><code>cisa.gov</code>, mirror on <code>raw.githubusercontent.com/cisagov</code></td><td class="plain">KEV refresh</td></tr>
+<tr><td>NVD · OSV.dev · MITRE CVE</td><td class="plain"><code>services.nvd.nist.gov</code>, <code>api.osv.dev</code>, <code>cveawg.mitre.org</code></td><td class="plain">Advisory lookups</td></tr>
+<tr><td>endoflife.date</td><td class="plain"><code>endoflife.date/api</code></td><td class="plain">End-of-life data</td></tr>
+<tr><td>CTID ATT&amp;CK mappings</td><td class="plain"><code>raw.githubusercontent.com/center-for-threat-informed-defense</code></td><td class="plain">ATT&amp;CK refresh</td></tr>
+<tr><td>Google Fonts</td><td class="plain"><code>fonts.googleapis.com</code>, <code>fonts.gstatic.com</code></td><td class="plain">Page load, by the browser</td></tr>
+</table></div>
+
+<h3>Verify it yourself</h3>
+<div class="tw"><table>
+<tr><th>Task</th><th>Command</th></tr>
+<tr><td>Regenerate both SBOM files</td><td class="plain"><code>python3 tools/sbom.py</code></td></tr>
+<tr><td>Fail if the committed SBOM is stale</td><td class="plain"><code>python3 tools/sbom.py --check</code></td></tr>
+<tr><td>Exact inventory of this install</td><td class="plain"><code>python3 tools/sbom.py --installed --stdout &gt; installed.cdx.json</code></td></tr>
+<tr><td>Show which gates are on and why</td><td class="plain"><code>python3 check_writes.py</code></td></tr>
+<tr><td>Show the model provider in use</td><td class="plain"><code>python3 check_llm.py</code></td></tr>
+</table></div>
+
+<h2 id="deploy"><span class="n">10</span>Deployment checklist</h2>
+<ol>
+<li>Run it on a managed analyst workstation or a hardened jump box, as a dedicated non-admin user.</li>
+<li>Give navi Tenable API keys from a least-privilege user. Read-only if you only need analysis.</li>
+<li>Keep the default 127.0.0.1 bind. If you must share it, set <code>HOUNDS_REQUIRE_TOKEN=1</code> and put it behind your own TLS and access controls.</li>
+<li>Leave <code>NAVI_ALLOW_WRITES</code> off until a named owner needs tagging or ACR changes. Enable email, remote execution and scan launch only where they are needed, and only on that machine.</li>
+<li>Choose a model provider that matches your data policy: none, Ollama, Bedrock in your account, or a hosted provider under your terms.</li>
+<li>Store model keys in the environment or use Ephemeral storage; protect navi.db as a credential store and tenant snapshot.</li>
+<li>Forward <code>logs/navi-jobs/</code> and the Tagging log to your SIEM, and watch Tenable's audit log for the navi API user.</li>
+<li>Keep the full-disk encryption and endpoint protection you require for any host that stores vulnerability data.</li>
+<li>Record the installed SBOM (<code>--installed</code>) with each upgrade, and review the CHANGELOG before upgrading.</li>
+</ol>
+
+<footer>
+navi Ensemble security brief · version 2.44.529 · 22 November 2026. Based on the code, README, INSTALL, BYO_MODEL and SBOM in this release.
+Settings names and defaults are those of 2.44.529; check the README of the release you run. navi Ensemble and navi are open-source projects
+provided without warranty.
+</footer>
+</div>
+</body>
+</html>

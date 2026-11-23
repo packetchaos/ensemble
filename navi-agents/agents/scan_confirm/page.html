@@ -603,10 +603,15 @@ async function delOld(d){
 
 /* ---------- hand-off from other specialists (prefill only — never runs) ---------- */
 (function(){ const q=new URLSearchParams(location.search);
-  const cve=q.get('cve'), plugins=q.get('plugins'), uuids=q.get('uuids');
+  const cve=q.get('cve'), plugins=q.get('plugins'), uuids=q.get('uuids'), ips=q.get('ips'), from=q.get('from');
   if(cve && /^CVE-\d{4}-\d{4,7}$/i.test(cve)){ $('fQ').value=cve.toUpperCase(); setTimeout(()=>$('fGo').click(),0); }   // a read: lists what's open
   if(plugins && /^[\d,\s]+$/.test(plugins)){ $('plugins').value=plugins; pluginChips(); }
   if(uuids && /^[0-9a-f,\-\s]+$/i.test(uuids)){ setSel('uuids'); $('uuids').value=uuids.split(',').join('\n'); }
+  else if(ips && /^[A-Za-z0-9.:,\-]+$/.test(ips)){ setSel('ips'); $('ips').value=ips.split(',').join('\n'); }   // build 530
+  if(from && /^[A-Za-z &-]{1,40}$/.test(from) && plugins){
+    const n=(uuids||ips||'').split(',').filter(Boolean).length;
+    setTimeout(()=>flash('flash','📨 <b>Request from '+esc(from)+'</b> — a remediation scan of plugin '+esc(plugins)+' on '+N(n)+' host'+(n===1?'':'s')
+      +'. Pick the scanner (and a credential for 🔑 local checks), press Plan, review, then launch. Nothing runs until you do.','run'),0); }
 })();
 
 mountAgentHeader({id:'scan_confirm',icon:'📡',name:'Scan Confirmation',sub:'confirm a fix · run a one-off scan'});

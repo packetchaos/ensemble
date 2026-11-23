@@ -215,7 +215,7 @@
 
     <section class="card stage" id="s8"><h2 style="margin:0">⑧ Verify</h2>
       <ol style="font-size:13.5px;line-height:2;margin:8px 0">
-        <li>Rescan the changed hosts in Tenable (agent or scan) — not run from here. Tenable confirms a fix only after a scan.</li>
+        <li><button class="btn sm" id="rescanBtn" type="button">📡 Verify with a remediation scan…</button> <span class="why">Sends the changed hosts and this finding's plugin to Scan Confirmation, pre-filled. You review and launch it there (scan launch is gated); its per-host verdicts say fixed or still open. Tenable confirms a fix only after a scan.</span></li>
         <li><button class="btn ghost sm" id="syncBtn2" type="button">Sync navi.db…</button> <span class="why">navi.db last written <span id="dbAge2">—</span> · whole estate (assets + vulns) · asks first</span></li>
         <li><button class="btn ghost sm" id="verifyBtn" type="button" data-run>Check findings (navi.db)</button> <span id="verifyOut" class="why"></span></li></ol>
       <div class="infobox" id="v8sum">Reboot-required and services still using the old library are read on every host after its change (read-only). Remote Remediation never reboots a host.</div></section>
@@ -1273,11 +1273,20 @@ function fixedBox(o, fx){
   if(m.not_os_package) return '<div class="critbox" id="notOsPkg">✗ '+esc((m.warnings||[])[0]||'Not an OS-package fix — no package plan.')+'</div>';
   if(m.esm) h+='<div class="warnbox" id="esmNote">⚠ '+esc((m.warnings||[]).find(w=>/ESM/.test(w))||'The fix needs Ubuntu ESM / Ubuntu Pro repositories.')+'</div>';
   if(m.kernel_workflow) h+='<div class="warnbox">⟳ Debian / Ubuntu kernel — a new kernel is a NEW package (new ABI); <span class="mono">--only-upgrade</span> of the running one does nothing. This needs a kernel workflow and a reboot; Remote Remediation plans no steps for it.</div>';
+  if(m.library){ const L=m.library;
+    // build 530: a Python library pip installed — never an OS-package plan
+    if(L.managed!=='pip') return '<div class="critbox" id="libRefuse">✗ '+esc((m.warnings||[])[0]||'This Python library is not pip-managed — no plan.')+'</div>';
+    h+='<div class="okbox" id="libBox">🐍 <b>Python library, not an OS package</b> — <span class="mono"><b>'+esc(L.name)+'</b> '+esc(L.installed)+' → ≥ '+esc(L.fixed)+'</span>'
+      +(L.fixed_stated&&L.fixed_stated!==L.fixed?' <span class="sub">(Tenable lists '+esc(L.fixed_stated)+'; the plan stays on the installed '+esc(String(L.installed).split('.')[0])+'.x line)</span>':'')
+      +'<br>Installed by pip in <span class="mono">'+esc(L.site)+'</span> · upgraded with <span class="mono">'+esc(L.interpreter)+' -m pip</span>, never the OS <span class="mono">python3</span> package · checks read <span class="mono">pip show</span> and compare versions.</div>';
+    (m.warnings||[]).forEach(w=>{ h+='<div class="warnbox">⚠ '+esc(w)+'</div>'; });
+    return h; }
   if(pk.length&&pk.some(n=>fxm[n]&&fxm[n].version)){
     h+='<div class="'+(m.fixed_source==='distro'?'okbox':'warnbox')+'">Fixed build'+(pk.length>1?'s':'')+': '+pk.map(n=>'<span class="mono"><b>'+esc(n)+'</b> ≥ '+esc((fxm[n]||{}).version||'— not stated')+'</span>').join(' · ')
       +' — <b>'+esc(m.fixed_source_label||'')+'</b>'+(pk.length>1?' · all upgraded in ONE transaction; Fixed = every package ≥ its own build':'')
       +(m.fixed_source==='upstream'?'<br>⚠ Tenable compared the <b>upstream</b> version (backport-unaware). Your distro may already ship the fix under an older-looking number — so no version compare is made; the changelog check in pre-flight is the evidence (a miss is "no evidence", never "not fixed").':'')+'</div>';
-  } else h+='<div class="warnbox">⚠ <b>Fixed version: not found in the plugin output</b> — a run can only say "upgraded, fix not proven"; rescan to confirm.</div>';
+  } else if(m.upstream_fixed) h+='<div class="warnbox">⚠ <b>Tenable states fixed version '+esc(m.upstream_fixed)+'</b> but no OS package it belongs to — a run can only say "upgraded, fix not proven". Confirm with a remediation scan (⑧ Verify).</div>';
+  else h+='<div class="warnbox">⚠ <b>No fixed version in the plugin output</b> — a run can only say "upgraded, fix not proven". Confirm with a remediation scan (⑧ Verify).</div>';
   if(m.scope==='output') h+='<div class="sub">Package scope: exactly the packages on this finding\'s own installed / fixed lines in Tenable\'s plugin output — the Solution text and the AI never add or rename one.</div>';
   { const lb=m.listed_by||{}, hc=m.host_count||0;
     const part=Object.keys(lb).filter(n=>hc>1&&(lb[n]||[]).length<hc);
@@ -1505,6 +1514,24 @@ function renderV8(){ const hs=[].concat(CANARY_RUN?(CANARY_RUN.run.hosts||[]):[]
   const rb=hs.filter(x=>x.reboot_required), sv=hs.filter(x=>(x.restart_services||[]).length);
   $('v8sum').innerHTML=hs.length?('<b>Hosts not effective until reboot: '+rb.length+'</b>'+(rb.length?' ('+esc(rb.map(x=>x.target+(x.running_kernel?' running '+x.running_kernel:'')).join(', '))+')':'')+' · <b>services to restart: '+(sv.length?esc(sv.map(x=>x.target+' ('+x.restart_services.join(', ')+')').join('; ')):'0')+'</b><div class="why">Read on each host right after its change (reboot-required / needs-restarting / dnf needs-restarting -r / zypper needs-rebooting, else running vs newest kernel; needrestart / needs-restarting -s / zypper ps -s). Remote Remediation never reboots or restarts on its own — schedule it, then re-run pre-flight to confirm the running kernel.</div>')
     :'Reboot-required and services still using the old library are read on every host after its change (read-only). Nothing deployed yet in this group. Remote Remediation never reboots a host.'; }
+/* ⑧ Verify — a remediation scan (build 530): the changed hosts + this finding's plugin(s), handed to Scan Confirmation
+   pre-filled (URL params it already accepts — plugin ids, asset UUIDs or IPs). Nothing launches from here. */
+function changedHosts(){ return [...new Set([].concat(CANARY_RUN?(CANARY_RUN.run.hosts||[]):[], ROLL_RUN?(ROLL_RUN.run.hosts||[]):[]).filter(x=>x.status==='changed').map(x=>x.target))]; }
+function rescanUrl(){
+  const pids=(((REM&&REM.source&&REM.source.plugin_ids)||[]).map(String).filter(x=>/^\d{1,7}$/.test(x))).slice(0,25);
+  if(!pids.length) return null;
+  const ch=changedHosts(), tg=(ch.length?ch:SCOPE.map(e=>e.target)).slice(0,500);
+  const uu=tg.map(t=>{ const e=byT(t); return (e&&e.asset&&e.asset.uuid)||''; });
+  const enc=encodeURIComponent;   // an OUTGOING link only — this page never reads its own URL (sec C5)
+  let q='plugins='+enc(pids.join(','))+'&from='+enc('Remote Remediation');
+  if(uu.length&&uu.every(u=>/^[0-9a-f-]{32,36}$/i.test(u))) q+='&uuids='+enc(uu.join(','));
+  else q+='&ips='+enc(tg.filter(t=>/^[A-Za-z0-9.:-]{1,253}$/.test(t)).join(','));
+  return {url:'/agents/scan_confirm/page.html?'+q, hosts:tg.length, changed:ch.length, pids};
+}
+$('rescanBtn').onclick=()=>{ const r=rescanUrl(); if(!r){ flash('flash','Plan a finding in ① first — the remediation scan needs its plugin id.','warn'); return; }
+  if(!r.hosts){ flash('flash','No hosts in the Target set.','warn'); return; }
+  if(!r.changed&&!confirm('No host has changed yet in this group. Open Scan Confirmation for all '+r.hosts+' host(s) in the Target set anyway?')) return;
+  const a=document.createElement('a'); a.href=r.url; a.target='_blank'; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove(); };   // a new tab keeps this page's runs
 /* ⑧ Verify — read-only navi.db check of the hosts that changed */
 $('verifyBtn').onclick=async()=>{ const sel=(REM&&REM.selector)||$('remSel').value.trim(); if(!sel){ flash('flash','Enter the plugin id / CVE in ①.','warn'); return; }
   const hosts=[...new Set([].concat(CANARY_RUN?(CANARY_RUN.run.hosts||[]):[], ROLL_RUN?(ROLL_RUN.run.hosts||[]):[]).filter(x=>x.status==='changed').map(x=>x.target))];

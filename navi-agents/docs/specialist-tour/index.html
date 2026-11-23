@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Specialist Page Tour</title>
+<meta name="description" content="A quick-start tour of a navi Ensemble specialist page. Standalone, works offline.">
+<style>
+/* Layout: app shell — top bar, left route nav, one view at a time; the Page map view pairs a wireframe with a single zone's detail. */
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --panel-2:#eef1f9; --line:#d9dfec;
+  --ink:#16213d; --ink-2:#3c486a; --ink-3:#5b6580;
+  --accent:#5457cc; --accent-soft:rgba(84,87,204,.10); --on-accent:#ffffff; --teal:#2a7d9c;
+  --ok:#0b6b47; --warn:#9a6412; --crit:#c81e3f;
+  --display:"Space Grotesk","Segoe UI Semibold",system-ui,-apple-system,sans-serif;
+  --body:Inter,"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#14161b; --panel:#1b1e25; --panel-2:#232732; --line:#2f3440;
+  --ink:#f2f4f8; --ink-2:#c3c9d4; --ink-3:#9aa3b2;
+  --accent:#8b8fe6; --accent-soft:rgba(139,143,230,.14); --on-accent:#14161b; --teal:#6ea8e6;
+  --ok:#43b98a; --warn:#e0b04f; --crit:#f0707a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14161b; --panel:#1b1e25; --panel-2:#232732; --line:#2f3440;
+  --ink:#f2f4f8; --ink-2:#c3c9d4; --ink-3:#9aa3b2;
+  --accent:#8b8fe6; --accent-soft:rgba(139,143,230,.14); --on-accent:#14161b; --teal:#6ea8e6;
+  --ok:#43b98a; --warn:#e0b04f; --crit:#f0707a; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--body);
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+h1,h2,h3{font-family:var(--display);line-height:1.15;text-wrap:balance;margin:0}
+h1{font-size:clamp(28px,4vw,40px);letter-spacing:-.02em}
+h2{font-size:22px;letter-spacing:-.01em}
+h3{font-size:17px}
+p{margin:0}
+a{color:var(--accent)}
+code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:0 5px}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* shell */
+.bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;background:var(--panel);border-bottom:1px solid var(--line);
+  padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+.brand{display:flex;align-items:center;gap:10px;font:600 15px/1 var(--display);text-decoration:none;color:var(--ink)}
+.brand .mk{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--accent);color:var(--on-accent);font:700 14px/1 var(--display)}
+.brand small{font:500 12px/1 var(--body);color:var(--ink-3)}
+.bar .sp{flex:1}
+.iconbtn{border:1px solid var(--line);background:var(--panel-2);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+.shell{display:grid;grid-template-columns:230px minmax(0,1fr);max-width:1240px;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.side{position:sticky;top:57px;align-self:start;padding:24px 18px 24px 0;display:grid;gap:4px}
+.side a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;text-decoration:none;color:var(--ink-2);font-size:14px}
+.side a .ix{font:600 11px/1 var(--mono);color:var(--ink-3);min-width:20px}
+.side a:hover{background:var(--panel-2);color:var(--ink)}
+.side a[aria-current="page"]{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.side a[aria-current="page"] .ix{color:var(--accent)}
+.side .note{font-size:12px;color:var(--ink-3);margin-top:16px;padding:0 10px}
+main{min-width:0;padding-block:28px 64px}
+.view{display:grid;gap:22px}
+.view[hidden]{display:none}
+.eyebrow{font:600 12px/1 var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.lede{font-size:17px;color:var(--ink-2);max-width:66ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;min-width:0}
+.card p{color:var(--ink-2);font-size:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.cta{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);
+  border-radius:9px;padding:9px 14px;font-weight:600;font-size:14px;text-decoration:none;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+
+/* start: five steps */
+.quick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;padding:0;margin:0;list-style:none;counter-reset:q}
+.quick li{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;counter-increment:q;min-width:0}
+.quick li::before{content:counter(q);display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;
+  background:var(--accent);color:var(--on-accent);font:600 12px/1 var(--body);margin-bottom:8px}
+.quick b{display:block;font-size:14px}
+.quick span{font-size:13px;color:var(--ink-2)}
+
+/* page map */
+.map{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:24px;align-items:start}
+.wire{position:sticky;top:76px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:6px}
+.wire .cap{font-size:11.5px;color:var(--ink-3);display:flex;justify-content:space-between;padding:0 2px 4px}
+.wire .group{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:6px 2px 0}
+.z{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;align-items:center;text-align:left;cursor:pointer;width:100%;
+  border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--panel-2);font-size:12.5px;color:var(--ink-2);text-decoration:none}
+.z .n{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--accent);color:var(--accent);font:600 11.5px/1 var(--body)}
+.z .bars{display:flex;gap:4px;margin-top:4px}
+.z .bars i{display:block;height:6px;border-radius:3px;background:var(--line)}
+.z:hover{border-color:var(--accent)}
+.z[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+.z[aria-current="true"] .n{background:var(--accent);color:var(--on-accent)}
+.detail{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;min-width:0}
+.detail .top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.detail .top .n{font:700 28px/1 var(--display);color:var(--accent)}
+.detail .where{font-size:12.5px;color:var(--ink-3);margin-top:4px}
+.detail .body{margin-top:14px;display:grid;gap:10px;max-width:68ch}
+.detail ul{margin:0;padding-left:20px}
+.detail li{margin:4px 0}
+.pager{display:flex;justify-content:space-between;gap:10px;margin-top:22px;padding-top:14px;border-top:1px solid var(--line)}
+.pager a{font-size:13.5px;text-decoration:none;max-width:48%}
+.pager a small{display:block;color:var(--ink-3);font-size:11.5px}
+.pager .nx{text-align:right;margin-left:auto}
+.ui{display:inline-block;font:500 12.5px/1.4 var(--body);border:1px solid var(--line);background:var(--panel-2);border-radius:999px;padding:1px 9px;white-space:nowrap;color:var(--ink)}
+.tip{font-size:13.5px;border-left:3px solid var(--teal);padding:4px 0 4px 10px;color:var(--ink-2)}
+.tip.warn{border-color:var(--warn)}
+.kpis{display:flex;flex-wrap:wrap;gap:6px}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12px;background:var(--panel-2)}
+.kpi b{display:block;font-size:14px;font-variant-numeric:tabular-nums}
+.kpi.ok b{color:var(--ok)} .kpi.warn b{color:var(--warn)} .kpi.bad b{color:var(--crit)}
+.flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:0;margin:0;list-style:none}
+.flow li{border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:12.5px;background:var(--panel-2);min-width:0;margin:0}
+.flow li b{display:block;font-size:13px;color:var(--ink)}
+.keys{font-size:12px;color:var(--ink-3)}
+kbd{font:500 11px/1 var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:2px 5px;background:var(--panel-2)}
+
+/* glossary */
+.gfilter{width:100%;max-width:420px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:9px;padding:9px 12px;font:inherit}
+dl{display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr);margin:0;border-top:1px solid var(--line)}
+dt,dd{margin:0;padding:11px 0;border-bottom:1px solid var(--line)}
+dt{font-weight:600;padding-right:14px}
+dd{color:var(--ink-2);font-size:14px}
+.empty{color:var(--ink-3);font-size:14px;padding:12px 0}
+
+footer{grid-column:1/-1;font-size:12.5px;color:var(--ink-3);border-top:1px solid var(--line);padding:14px 0 24px}
+
+@media (max-width:980px){
+  .map{grid-template-columns:1fr}
+  .wire{position:static}
+  .quick{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .flow{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:760px){
+  #menuBtn{display:inline-block}
+  .brand small{display:none}
+  .shell{grid-template-columns:1fr}
+  .side{position:static;display:none;padding:12px 0;border-bottom:1px solid var(--line)}
+  .side.open{display:grid}
+}
+@media (max-width:560px){
+  .quick,.flow,.grid2{grid-template-columns:1fr}
+  dl{grid-template-columns:1fr} dt{border-bottom:0;padding-bottom:0}
+  .detail{padding:18px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<header class="bar">
+  <button class="iconbtn" id="menuBtn" aria-expanded="false" aria-controls="side">☰ Menu</button>
+  <a class="brand" href="#start"><span class="mk">n</span><span>Specialist Page Tour <small>navi Ensemble 2.44.529</small></span></a>
+  <span class="sp"></span>
+  <button class="iconbtn" id="themeBtn" type="button" title="Switch between light and dark">◐ Theme</button>
+</header>
+
+<div class="shell">
+  <nav class="side" id="side" aria-label="Sections">
+    <a href="#start"><span class="ix">01</span>Start here</a>
+    <a href="#map"><span class="ix">02</span>Page map</a>
+    <a href="#tagging"><span class="ix">03</span>Tagging, step by step</a>
+    <a href="#habits"><span class="ix">04</span>Good habits</a>
+    <a href="#glossary"><span class="ix">05</span>Words you'll see</a>
+    <p class="note">Works offline. Every specialist uses this same layout.</p>
+  </nav>
+
+  <main id="main" tabindex="-1">
+    <!-- START -->
+    <section class="view" data-view="start" aria-labelledby="h-start">
+      <div class="eyebrow">Quick start for new users</div>
+      <h1 id="h-start">How to read a specialist page</h1>
+      <p class="lede">Every specialist (the hounds) uses the same page layout, from CISA KEV to Certificates to Exposure Score.
+      Learn it once and you can use all 43.</p>
+      <h2>Your first run, in five steps</h2>
+      <ol class="quick">
+        <li><b>Open a specialist</b><span>From the home page or the sidebar. Nothing runs until you ask.</span></li>
+        <li><b>Choose what to cover</b><span>The whole estate, or one tag such as a business unit.</span></li>
+        <li><b>Press ▶ Run</b><span>Approve any public catalog download it asks for.</span></li>
+        <li><b>Read At a glance</b><span>Click any number to see the assets behind it.</span></li>
+        <li><b>Tag what matters</b><span>Confirm, then watch Done so far and the Tagging log.</span></li>
+      </ol>
+      <div class="cta">
+        <a class="btn" href="#map">Take the page tour →</a>
+        <a class="btn ghost" href="#tagging">How tagging works</a>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>Read-only until you say so</h3><p>Opening or running a specialist only reads navi.db, the local copy of your Tenable data. Nothing changes in Tenable until you press a 🏷️ button and confirm.</p></div>
+        <div class="card"><h3>Every number has evidence</h3><p>Findings come from SQL and rules, not an AI model. Click any number to see exactly which assets or findings it counts.</p></div>
+      </div>
+    </section>
+
+    <!-- MAP -->
+    <section class="view" data-view="map" aria-labelledby="h-map" hidden>
+      <div class="eyebrow">Page map</div>
+      <h1 id="h-map">A specialist page, top to bottom</h1>
+      <p class="keys">Pick a zone, or use <kbd>←</kbd> <kbd>→</kbd> to step through them.</p>
+      <div class="map">
+        <nav class="wire" id="wire" aria-label="Zones of a specialist page"></nav>
+        <article class="detail" id="detail" aria-live="polite"></article>
+      </div>
+    </section>
+
+    <!-- TAGGING -->
+    <section class="view" data-view="tagging" aria-labelledby="h-tag" hidden>
+      <div class="eyebrow">Making changes</div>
+      <h1 id="h-tag">Tagging, step by step</h1>
+      <p class="lede">Tagging writes to your Tenable tenant, so every 🏷️ button follows the same five steps.</p>
+      <ol class="flow">
+        <li><b>Preview</b>The button names the tag and how many assets it will touch.</li>
+        <li><b>Confirm</b>You agree to that exact tag and count.</li>
+        <li><b>Queue</b>The job joins the tag queue and runs at a safe pace.</li>
+        <li><b>Track</b>Follow it in the Tagging log; Done so far updates.</li>
+        <li><b>Sync</b>Update navi.db to see the tags on assets here.</li>
+      </ol>
+      <div class="grid2">
+        <div class="card"><h3>If the button says writes are off</h3><p>Writes are switched off in Settings by default, and the job is blocked. Ask whoever runs the console to turn writes on. Writes also only work from a browser on the console's own machine.</p></div>
+        <div class="card"><h3>Tag views stay inside the tag</h3><p>When the page is filtered to one tag, a tag write only touches assets carrying that tag. The confirmation says so.</p></div>
+        <div class="card"><h3>When will I see it?</h3><p>Tags reach Tenable within about 30 minutes. They show on this page after the next navi.db update; until then Done so far counts them as awaiting navi sync.</p></div>
+        <div class="card"><h3>Tags feed everything else</h3><p>Other specialists and Tenable One read the tags you write, so one specialist's work improves the rest.</p></div>
+      </div>
+    </section>
+
+    <!-- HABITS -->
+    <section class="view" data-view="habits" aria-labelledby="h-hab" hidden>
+      <div class="eyebrow">Good habits</div>
+      <h1 id="h-hab">Get more out of every run</h1>
+      <div class="grid2">
+        <div class="card"><h3>Start from fresh data</h3><p>Every specialist reads navi.db. Update it (Settings, or on a schedule) before a review, then press ↻ Re-run on pages you restored.</p></div>
+        <div class="card"><h3>Follow the evidence</h3><p>Before acting on a number, click it. The list behind it is the real asset set you would be tagging or reporting.</p></div>
+        <div class="card"><h3>Try tags in a test run</h3><p>Turn on Settings → Test run, tag, check the result in Tenable, then clean up with Tag Removal before tagging for real.</p></div>
+        <div class="card"><h3>Let the Ensemble run overnight</h3><p>Schedule Run the Ensemble in Automation Station so every page is ready when the team logs in.</p></div>
+        <div class="card"><h3>Review by owner</h3><p>Use the Tag filter to open a team's tag. Every number on the page then covers only their assets.</p></div>
+        <div class="card"><h3>Set the crown-jewel line once</h3><p>Settings → Crown jewels decides which ACR counts as a crown jewel (8 by default). Every specialist follows it.</p></div>
+      </div>
+    </section>
+
+    <!-- GLOSSARY -->
+    <section class="view" data-view="glossary" aria-labelledby="h-glo" hidden>
+      <div class="eyebrow">Glossary</div>
+      <h1 id="h-glo">Words you'll see</h1>
+      <label for="gq" class="keys">Filter terms</label>
+      <input class="gfilter" id="gq" type="search" placeholder="Type a word, e.g. sync" autocomplete="off">
+      <dl id="gloss"></dl>
+      <p class="empty" id="gEmpty" hidden>No matching terms.</p>
+    </section>
+  </main>
+
+  <footer>navi Ensemble v2.44.529. Layout and labels as they appear in this release; a few specialists add sections of their own.</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  /* ---- content: the twelve zones, in page order ---- */
+  var Z = [
+    {id:"header", g:"Above the work", t:"Header and switcher", where:"Top of every page", bars:[30,20,14], html:
+      "<p>Shows which specialist you're on and lets you move to the next one without going back home. Two things to notice:</p>"+
+      "<ul><li><span class='ui'>✉</span> emails this page, with its At a glance numbers and charts as pictures. It only works when email is turned on in Settings.</li>"+
+      "<li><span class='ui'>🧪 Test run</span> appears when Settings → Test run is on. Every tag the Ensemble writes then gets your test prefix, so you can try tagging safely and clean it up with Tag Removal.</li></ul>"},
+    {id:"tag-filter", g:"Above the work", t:"🏷 Tag filter", where:"Under the header", bars:[22,22,22], html:
+      "<p>Decides which assets the page covers. <span class='ui'>🌐 Whole estate</span> covers everything. Pick a tag category and value (an owner, a business unit, an environment) and press <span class='ui'>▶ Run for this tag</span> to see the same specialist for just those assets.</p>"+
+      "<ul><li>The last five tags you ran this specialist on stay as chips. Each keeps its own results, so switching is instant and never re-runs anything.</li>"+
+      "<li>Any tag you write from a tag view only touches assets inside that tag.</li></ul>"+
+      "<p class='tip'>Good for owner reviews: open the team's tag, run, and every number on the page is theirs.</p>"},
+    {id:"about", g:"Above the work", t:"About this specialist", where:"Named specialists only", bars:[70], html:
+      "<p>The nine named specialists (Laelaps for CISA KEV, Fenrir for Attack Paths, Charon for End of Life and others) open with a short strip: <b>What it does</b>, <b>Key capabilities</b> and <b>What's in the name</b>. <span class='ui'>Deep dive ↗</span> opens the specialist's one-page explainer.</p>"+
+      "<p>Every other specialist skips this strip and goes straight to the work.</p>"},
+    {id:"done-so-far", g:"Above the work", t:"📋 Done so far", where:"Specialists that tag", bars:[16,16,16,16], html:
+      "<p>A running record of what this specialist has done on your install, checked against navi.db:</p>"+
+      "<div class='kpis' aria-label='Example Done so far chips'><span class='kpi'><b>2 h ago</b>last run</span><span class='kpi'><b>4</b>tag values applied</span>"+
+      "<span class='kpi ok'><b>1,284</b>assets carry them now</span><span class='kpi warn'><b>312</b>awaiting navi sync</span><span class='kpi bad'><b>1</b>failed</span></div>"+
+      "<ul><li><b>Awaiting navi sync</b> means Tenable accepted the tag but navi.db hasn't been refreshed yet. Update navi.db (Settings) and the number moves to “carry them now”.</li>"+
+      "<li><b>Failed</b> means every attempt for a value failed. The Tagging log says why.</li>"+
+      "<li><span class='ui'>Details ▾</span> lists every tag value, its asset count and status, plus matching tags applied from somewhere else (the navi CLI, the Tenable UI, another install).</li></ul>"+
+      "<p class='tip'>Numbers above are illustrative.</p>"},
+    {id:"restored", g:"Above the work", t:"↺ Restored your last run", where:"When a saved run exists", bars:[60], html:
+      "<p>The server keeps each page's last run for 24 hours and shares it with every browser. When you come back, the page shows that run straight away and says how old it is.</p>"+
+      "<ul><li><span class='ui'>↻ Re-run</span> fetches fresh numbers and skips every cache.</li>"+
+      "<li><b>Released by Run the Ensemble</b> means every specialist ran in the background (from the home page, or on a schedule in Automation Station) so the page was ready before you opened it.</li></ul>"+
+      "<p class='tip'>Results follow navi.db. If navi.db was updated after the run, press ↻ Re-run.</p>"},
+    {id:"intro", g:"Running it", t:"Intro card, ▶ Run and tag buttons", where:"First card", bars:[80], html:
+      "<p>Says in a sentence what the specialist finds and lists the exact tags it can write, such as <code>CISA KEV : Vulnerable</code>. Then the controls:</p>"+
+      "<ul><li><span class='ui'>▶ Run</span> starts the analysis. Opening a page never runs it for you.</li>"+
+      "<li><b>Human approval</b> appears when a run needs a public catalog (CISA KEV, end-of-life dates, MITRE ATT&amp;CK). Review the source and press <span class='ui'>✓ Approve &amp; download</span>, or upload the file yourself.</li>"+
+      "<li><span class='ui'>🏷️ Tag …</span> buttons stay greyed out until a run finds assets to tag.</li></ul>"},
+    {id:"jump-to", g:"Running it", t:"Jump to", where:"Right after the intro card", bars:[18,18,18,18], html:
+      "<p>One chip per section on the page, with a live count on each (for example <span class='ui'>🧨 KEV CVEs on your assets 41</span>). Click a chip to jump to that section. Every section heading has <span class='ui'>↑ Sections</span> to come back.</p>"+
+      "<p class='tip'>Scan the counts first. They tell you which sections have something in them before you scroll.</p>"},
+    {id:"at-a-glance", g:"Reading results", t:"📊 At a glance", where:"First section", bars:[22,22,22,22], html:
+      "<p>The headline numbers: how many assets are affected, how many are crown jewels, what to act on now. Every tile links to its evidence, meaning the exact assets or findings behind the number, already filtered.</p>"+
+      "<ul><li><b>Crown jewels</b> are assets with an Asset Criticality Rating at or above the line in Settings → Crown jewels (8 by default). Every page uses the same line.</li>"+
+      "<li>Findings come from SQL and rules over navi.db, not from an AI model, so the same data gives the same answer.</li></ul>"},
+    {id:"ask", g:"Reading results", t:"✨ Ask", where:"When a model is set up", bars:[75], html:
+      "<p>Type a question in plain English, such as <i>“assets with a CISA KEV and ACR over 7”</i>. The specialist turns it into a read-only query, shows it, and runs it against navi.db.</p>"+
+      "<p class='tip'>No model configured? The box is replaced by a short note and everything else on the page still works.</p>"},
+    {id:"tables", g:"Reading results", t:"Section tables, pages and CSV", where:"The rest of the page", bars:[90], html:
+      "<p>Each section holds a table: due dates, vendors, affected assets and so on. They all work the same way:</p>"+
+      "<ul><li><b>Filters</b> above a table narrow it, for example Overdue or On crown jewels.</li>"+
+      "<li><b>Pages</b> show 20 rows at a time; you can change the page size. Large lists load from the server in chunks, so even tens of thousands of rows stay quick.</li>"+
+      "<li><b>Checkboxes</b> pick rows for a tag button, with All and None shortcuts.</li>"+
+      "<li><span class='ui'>CSV ▾</span> offers <b>This page</b> or <b>Every row</b>. Up to 5,000 rows download straight away; bigger lists become a background export.</li></ul>"},
+    {id:"tagging-zone", g:"Making changes", t:"Tagging: preview, confirm, log", where:"Any 🏷️ button", bars:[40,40], html:
+      "<p>Tagging writes to your Tenable tenant, so it always goes through the same steps: preview, confirm, queue, track, sync.</p>"+
+      "<p class='tip warn'>If writes are switched off in Settings, the confirmation says so and the job is blocked. Writes also only work from a browser on the console's own machine.</p>"+
+      "<p><a href='#tagging'>Tagging, step by step →</a></p>"},
+    {id:"exports", g:"Making changes", t:"Exports tray", where:"Bottom right, when an export runs", bars:[35], html:
+      "<p>Big CSV exports run in the background. The tray shows each one's progress, survives page changes and lets you cancel. When an export finishes, download it from the tray.</p>"}
+  ];
+  var G = [
+    ["navi.db","The local copy of your Tenable data that navi downloads. Every specialist reads it; none of them change it."],
+    ["Specialist","One page and its engine, focused on one exposure question. The project started as “The Hounds”, and the named specialists keep hound names."],
+    ["Tag","A category and value on an asset in Tenable, such as CISA KEV : Ransomware. Tags are how specialists share results with each other and with Tenable One."],
+    ["ACR","Asset Criticality Rating, 1 to 10, from Tenable. It decides which assets count as crown jewels."],
+    ["Crown jewel","An asset at or above the ACR line in Settings → Crown jewels (8 by default)."],
+    ["Tag view","A specialist run for only the assets carrying one tag."],
+    ["Tagging log","The record of every tag job: what was asked, when, how many assets and whether it worked."],
+    ["Awaiting navi sync","Tenable accepted the tag, but navi.db hasn't been updated since."],
+    ["Run the Ensemble","Runs every specialist in the background, read-only, so all pages are ready to open."],
+    ["Test run","A Settings switch that adds your test prefix to every tag the Ensemble writes, so trial tags are easy to find and remove."],
+    ["Evidence","The exact assets or findings behind a number. Every At a glance tile opens it."]
+  ];
+
+  /* ---- helpers ---- */
+  function $(s){ return document.querySelector(s); }
+  function el(tag, attrs, html){ var e=document.createElement(tag); for(var k in attrs) e.setAttribute(k, attrs[k]); if(html!=null) e.innerHTML=html; return e; }
+
+  /* ---- theme (per-viewer convenience only) ---- */
+  var root=document.documentElement;
+  try{ var t=localStorage.getItem("tourTheme"); if(t==="light"||t==="dark") root.setAttribute("data-theme", t); }catch(e){}
+  $("#themeBtn").addEventListener("click", function(){
+    var cur=root.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    var next=cur==="dark"?"light":"dark"; root.setAttribute("data-theme", next);
+    try{ localStorage.setItem("tourTheme", next); }catch(e){}
+  });
+
+  /* ---- mobile menu ---- */
+  var side=$("#side"), mb=$("#menuBtn");
+  mb.addEventListener("click", function(){ var o=side.classList.toggle("open"); mb.setAttribute("aria-expanded", o?"true":"false"); });
+
+  /* ---- wireframe ---- */
+  var wire=$("#wire"), lastG="";
+  wire.appendChild(el("div",{"class":"cap"},"<span>Top to bottom</span><span>12 zones</span>"));
+  Z.forEach(function(z,i){
+    if(z.g!==lastG){ wire.appendChild(el("div",{"class":"group"}, z.g)); lastG=z.g; }
+    var bars=z.bars.map(function(w){ return "<i style='width:"+w+"%'></i>"; }).join("");
+    var a=el("a",{"class":"z","href":"#map-"+z.id,"data-i":String(i)},"<span class='n'>"+(i+1)+"</span><span>"+z.t+"<span class='bars'>"+bars+"</span></span>");
+    wire.appendChild(a);
+  });
+
+  function showZone(i){
+    var z=Z[i], prev=Z[i-1], next=Z[i+1];
+    $("#detail").innerHTML=
+      "<div class='top'><span class='n'>"+(i+1)+"</span><h2>"+z.t+"</h2></div>"+
+      "<div class='where'>"+z.g+" · "+z.where+"</div>"+
+      "<div class='body'>"+z.html+"</div>"+
+      "<div class='pager'>"+
+        (prev?"<a href='#map-"+prev.id+"'><small>← Previous</small>"+(i)+". "+prev.t+"</a>":"<span></span>")+
+        (next?"<a class='nx' href='#map-"+next.id+"'><small>Next →</small>"+(i+2)+". "+next.t+"</a>":"<a class='nx' href='#tagging'><small>Next →</small>Tagging, step by step</a>")+
+      "</div>";
+    wire.querySelectorAll(".z").forEach(function(a){ a.setAttribute("aria-current", a.getAttribute("data-i")===String(i)?"true":"false"); });
+  }
+
+  /* ---- glossary ---- */
+  var dl=$("#gloss");
+  function drawGloss(q){
+    q=(q||"").trim().toLowerCase(); dl.innerHTML=""; var n=0;
+    G.forEach(function(r){
+      if(q && (r[0]+" "+r[1]).toLowerCase().indexOf(q)<0) return;
+      dl.appendChild(el("dt",{},null)).textContent=r[0];
+      dl.appendChild(el("dd",{},null)).textContent=r[1]; n++;
+    });
+    $("#gEmpty").hidden = n>0;
+  }
+  $("#gq").addEventListener("input", function(e){ drawGloss(e.target.value); });
+  drawGloss("");
+
+  /* ---- router: #start · #map / #map-<zone> · #tagging · #habits · #glossary ---- */
+  var views=[].slice.call(document.querySelectorAll(".view")), curZone=0;
+  function route(){
+    var h=(location.hash||"#start").slice(1), view=h, zi=-1;
+    if(h.indexOf("map-")===0){ view="map"; var id=h.slice(4); Z.forEach(function(z,i){ if(z.id===id) zi=i; }); if(zi<0) zi=0; }
+    if(!views.some(function(v){ return v.getAttribute("data-view")===view; })) view="start";
+    views.forEach(function(v){ v.hidden = v.getAttribute("data-view")!==view; });
+    document.querySelectorAll(".side a").forEach(function(a){
+      var tv=a.getAttribute("href").slice(1);
+      if(tv===view) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current");
+    });
+    if(view==="map"){ curZone = zi>=0 ? zi : curZone; showZone(curZone); }
+    side.classList.remove("open"); mb.setAttribute("aria-expanded","false");
+    if(zi<0) window.scrollTo(0,0);
+    else if(window.innerWidth<=980){ var d=$("#detail"); if(d) d.scrollIntoView({block:"start"}); }
+  }
+  window.addEventListener("hashchange", route);
+  document.addEventListener("keydown", function(e){
+    if($(".view[data-view='map']").hidden || /input|textarea|select/i.test((e.target.tagName||""))) return;
+    if(e.key==="ArrowRight" && curZone<Z.length-1){ location.hash="map-"+Z[curZone+1].id; }
+    if(e.key==="ArrowLeft" && curZone>0){ location.hash="map-"+Z[curZone-1].id; }
+  });
+  route();
+})();
+</script>
+</body>
+</html>
